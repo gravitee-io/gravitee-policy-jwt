@@ -55,46 +55,7 @@ public class JWTPolicy {
             Jwts.parser().setSigningKey(key).parseClaimsJwt(jwt);
             policyChain.doNext(request, response);
         } catch (Exception e) {
-
+            policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, "Unauthorized via JWT"));
         }
-
-        // Finally continue chaining
-        policyChain.doNext(request, response);
     }
-
-//    @OnResponse
-//    public void onResponse(Request request, Response response, PolicyChain policyChain) {
-//        if (isASuccessfulResponse(response)) {
-//            policyChain.doNext(request, response);
-//        } else {
-//            policyChain.failWith(new PolicyResult() {
-//                @Override
-//                public boolean isFailure() {
-//                    return true;
-//                }
-//
-//                @Override
-//                public int httpStatusCode() {
-//                    return HttpStatusCode.INTERNAL_SERVER_ERROR_500;
-//                }
-//
-//                @Override
-//                public String message() {
-//                    return "Not a successful response :-(";
-//                }
-//            });
-//        }
-//    }
-//
-//    private static boolean isASuccessfulResponse(Response response) {
-//        switch (response.status() / 100) {
-//            case 1:
-//            case 2:
-//            case 3:
-//                return true;
-//            default:
-//                return false;
-//        }
-//    }
-
 }

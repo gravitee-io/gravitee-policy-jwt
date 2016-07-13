@@ -21,54 +21,10 @@ import io.gravitee.common.http.HttpMethod;
 @SuppressWarnings("unused")
 public class JWTPolicyConfiguration implements PolicyConfiguration {
 
-    /**
-     * A String parameter
-     */
-    private String stringParam = "defaultValue";
-
-    /**
-     * A integer parameter
-     */
-    private int integerParam;
-
-    /**
-     * A integer parameter
-     */
-    private boolean booleanParam;
-
-    /**
-     * An enum parameter
-     */
-    private HttpMethod httpMethod;
-
-    /**
-     * Get the String parameter
-     *
-     * @return the String parameter
-     */
-    public String getStringParam() {
-        return stringParam;
-    }
-
-    /**
-     * Get the integer parameter
-     *
-     * @return the integer parameter
-     */
-    public int getIntegerParam() {
-        return integerParam;
-    }
-
-    /**
-     * Get the boolean parameter
-     *
-     * @return the boolean parameter
-     */
-    public boolean getBooleanParam() {
-        return booleanParam;
-    }
-
-    public HttpMethod getHttpMethod() {
-        return httpMethod;
+    public String getPublicKey(String issuer) {
+        switch(issuer) {
+            default:
+                return "";
+        }
     }
 }
