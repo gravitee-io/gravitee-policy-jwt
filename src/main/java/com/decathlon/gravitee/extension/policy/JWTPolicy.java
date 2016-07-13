@@ -15,6 +15,7 @@
  */
 package com.decathlon.gravitee.extension.policy;
 
+import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.Response;
@@ -43,12 +44,16 @@ public class JWTPolicy {
 
     @OnRequest
     public void onRequest(Request request, Response response, PolicyChain policyChain) {
-        // Add a dummy header
-        //request.headers().set("X-DummyHeader", configuration.getStringParam());
-        String jwt = request.headers().get("Authorization").get(0);
-
         try {
-            String iss = (String) Jwts.parser().parse(jwt).getHeader().get("iss");
+            String jwt = request.headers().getFirst(HttpHeaders.AUTHORIZATION).split(" ")[1];
+            if (jwt == null) {
+                jwt = request.parameters().get("access_token");
+            }
+
+            final String iss = (String) Jwts.parser().parse(jwt).getHeader().get("iss");
+            final String key = configuration.getPublicKey(iss);
+            Jwts.parser().setSigningKey(key).parseClaimsJwt(jwt);
+            policyChain.doNext(request, response);
         } catch (Exception e) {
 
         }
