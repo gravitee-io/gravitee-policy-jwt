@@ -26,6 +26,9 @@ import io.jsonwebtoken.Jwts;
 
 @SuppressWarnings("unused")
 public class JWTPolicy {
+    private static final String BEARER = "Bearer";
+    private static final String ACCESS_TOKEN = "access_token";
+    private static final String ISS = "iss";
 
     /**
      * The associated configuration to this JWT Policy
@@ -44,17 +47,21 @@ public class JWTPolicy {
     @OnRequest
     public void onRequest(Request request, Response response, PolicyChain policyChain) {
         try {
-            String jwt = request.headers().getFirst(HttpHeaders.AUTHORIZATION).split(" ")[1];
-            if (jwt == null) {
-                jwt = request.parameters().get("access_token");
+            final String authorization = request.headers().getFirst(HttpHeaders.AUTHORIZATION);
+            String jwt;
+
+            if (authorization != null) {
+                jwt = authorization.substring(BEARER.length()).trim();
+            } else {
+                jwt = request.parameters().get(ACCESS_TOKEN);
             }
 
-            final String iss = (String) Jwts.parser().parse(jwt).getHeader().get("iss");
+            final String iss = (String) Jwts.parser().parse(jwt).getHeader().get(ISS);
             final String key = configuration.getPublicKey(iss);
             Jwts.parser().setSigningKey(key).parseClaimsJwt(jwt);
             policyChain.doNext(request, response);
         } catch (Exception e) {
-            policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, "Unauthorized via JWT"));
+            policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, "Unauthorized"));
         }
     }
 }
