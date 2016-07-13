@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.decathlon.gravitee.extension.policy;
+package io.gravitee.policy.jwt;
 
 import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.common.http.HttpStatusCode;
@@ -22,7 +22,6 @@ import io.gravitee.gateway.api.Response;
 import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.api.annotations.OnRequest;
-import io.gravitee.policy.api.annotations.OnResponse;
 import io.jsonwebtoken.Jwts;
 
 @SuppressWarnings("unused")

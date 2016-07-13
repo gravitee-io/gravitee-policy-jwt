@@ -13,18 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.decathlon.gravitee.extension.policy;
+package io.gravitee.policy.jwt;
 
-import io.gravitee.policy.api.PolicyConfiguration;
-import io.gravitee.common.http.HttpMethod;
+import org.junit.Test;
 
-@SuppressWarnings("unused")
-public class JWTPolicyConfiguration implements PolicyConfiguration {
+public class JWTPolicyTest {
 
-    public String getPublicKey(String issuer) {
-        switch(issuer) {
-            default:
-                return "";
-        }
+    @Test
+    public void testOnRequest() throws Exception {
+
     }
+
+    @Test
+    public void testOnResponse() throws Exception {
+
+    }
+
 }
