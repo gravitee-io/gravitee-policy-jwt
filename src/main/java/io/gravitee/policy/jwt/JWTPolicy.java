@@ -74,9 +74,6 @@ public class JWTPolicy {
                 jwt = request.parameters().get(ACCESS_TOKEN);
             }
 
-            final String iss = (String) Jwts.parser().parse(jwt).getHeader().get(ISS);
-            final String key = configuration.getPublicKey(iss);
-            
             SigningKeyResolver resolver = new SigningKeyResolverAdapter() {
 
                 @Override
