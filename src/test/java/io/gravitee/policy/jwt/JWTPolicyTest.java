@@ -175,8 +175,8 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
         when(configuration.isUseValidationCache()).thenReturn(true);
         when(configuration.getCacheName()).thenReturn(CACHE_NAME);
-        
-        //TODO
+
+        //Mock cache actions.
         when(executionContext.getComponent(ResourceManager.class)).thenReturn(resourceManager);
         when(resourceManager.getResource(CACHE_NAME, CacheResource.class)).thenReturn(cacheResource);
         when(cacheResource.getCache()).thenReturn(cache);
@@ -200,7 +200,7 @@ public class JWTPolicyTest {
         when(configuration.isUseValidationCache()).thenReturn(true);
         when(configuration.getCacheName()).thenReturn(CACHE_NAME);
         
-        //TODO
+        //Mock cache actions.
         when(executionContext.getComponent(ResourceManager.class)).thenReturn(resourceManager);
         when(resourceManager.getResource(CACHE_NAME, CacheResource.class)).thenReturn(cacheResource);
         when(cacheResource.getCache()).thenReturn(cache);
@@ -225,7 +225,7 @@ public class JWTPolicyTest {
         when(configuration.isUseValidationCache()).thenReturn(true);
         when(configuration.getCacheName()).thenReturn(CACHE_NAME);
         
-        //TODO
+        //Mock cache actions.
         when(executionContext.getComponent(ResourceManager.class)).thenReturn(resourceManager);
         when(resourceManager.getResource(CACHE_NAME, CacheResource.class)).thenReturn(cacheResource);
         when(cacheResource.getCache()).thenReturn(cache);
@@ -255,7 +255,7 @@ public class JWTPolicyTest {
         when(configuration.isUseValidationCache()).thenReturn(true);
         when(configuration.getCacheName()).thenReturn(CACHE_NAME);
         
-        //TODO
+        //Mock cache actions.
         when(executionContext.getComponent(ResourceManager.class)).thenReturn(resourceManager);
         when(resourceManager.getResource(CACHE_NAME, CacheResource.class)).thenReturn(cacheResource);
         when(cacheResource.getCache()).thenReturn(cache);
