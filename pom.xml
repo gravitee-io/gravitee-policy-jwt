@@ -37,6 +37,8 @@
         <gravitee-gateway-api.version>0.12.0</gravitee-gateway-api.version>
         <gravitee-policy-api.version>0.9.0</gravitee-policy-api.version>
         <gravitee-common.version>0.10.0</gravitee-common.version>
+        <gravitee-resource-api.version>0.1.0</gravitee-resource-api.version>
+        <gravitee-resource-cache.version>0.1.0</gravitee-resource-cache.version>
         <junit.version>4.12</junit.version>
         <jjwt.version>0.6.0</jjwt.version>
 
@@ -70,6 +72,20 @@
         </dependency>
 
         <dependency>
+            <groupId>io.gravitee.resource</groupId>
+            <artifactId>gravitee-resource-api</artifactId>
+            <version>${gravitee-resource-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.gravitee.resource</groupId>
+            <artifactId>gravitee-resource-cache</artifactId>
+            <version>${gravitee-resource-cache.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt</artifactId>
             <version>${jjwt.version}</version>
@@ -86,6 +102,13 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

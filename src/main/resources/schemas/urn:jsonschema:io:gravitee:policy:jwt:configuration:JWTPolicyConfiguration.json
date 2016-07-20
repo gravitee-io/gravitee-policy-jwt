@@ -1,0 +1,19 @@
+{
+  "type" : "object",
+  "id" : "urn:jsonschema:io:gravitee:policy:jwt:configuration:JWTPolicyConfiguration",
+  "properties" : {
+    "cacheName" : {
+      "title": "Cache name",
+      "description": "The cache resource used to store the element.",
+      "type" : "string"
+    },
+    "useValidationCache" : {
+      "title": "Use validation cache",
+      "description": "Cache validated JWT instead of checking signature on each API call",
+      "type" : "boolean"
+    }
+  },
+  "required": [
+    "cacheName"
+  ]
+}

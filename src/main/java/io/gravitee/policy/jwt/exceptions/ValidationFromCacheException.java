@@ -13,29 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt;
+package io.gravitee.policy.jwt.exceptions;
 
-import io.gravitee.policy.api.PolicyConfiguration;
-
-public class JWTPolicyConfiguration implements PolicyConfiguration {
-
-    private String cacheName;
-
-    private boolean useValidationCache = false;
-
-    public String getCacheName() {
-        return cacheName;
-    }
-
-    public void setCacheName(String cacheName) {
-        this.cacheName = cacheName;
-    }
-
-    public boolean isUseValidationCache() {
-        return useValidationCache;
-    }
-
-    public void setUseValidationCache(boolean useValidationCache) {
-        this.useValidationCache = useValidationCache;
+/**
+ * Created by Alexandre on 20/07/2016.
+ */
+public class ValidationFromCacheException extends Exception{
+    public ValidationFromCacheException(String message) {
+        super(message);
     }
 }
