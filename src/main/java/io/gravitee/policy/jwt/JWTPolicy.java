@@ -15,24 +15,6 @@
  */
 package io.gravitee.policy.jwt;
 
-import com.sun.corba.se.impl.protocol.POALocalCRDImpl;
-import io.gravitee.common.http.HttpHeaders;
-import io.gravitee.common.http.HttpStatusCode;
-import io.gravitee.gateway.api.ExecutionContext;
-import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
-import io.gravitee.policy.api.PolicyChain;
-import io.gravitee.policy.api.PolicyResult;
-import io.gravitee.policy.api.annotations.OnRequest;
-import io.gravitee.policy.jwt.exceptions.ValidationFromCacheException;
-import io.gravitee.resource.api.ResourceManager;
-import io.gravitee.resource.cache.Cache;
-import io.gravitee.resource.cache.CacheResource;
-import io.gravitee.resource.cache.Element;
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.impl.DefaultClaims;
-import org.springframework.core.env.Environment;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -47,9 +29,41 @@ import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
+
+import io.gravitee.common.http.HttpHeaders;
+import io.gravitee.common.http.HttpStatusCode;
+import io.gravitee.gateway.api.ExecutionContext;
+import io.gravitee.gateway.api.Request;
+import io.gravitee.gateway.api.Response;
+import io.gravitee.policy.api.PolicyChain;
+import io.gravitee.policy.api.PolicyResult;
+import io.gravitee.policy.api.annotations.OnRequest;
+import io.gravitee.policy.jwt.exceptions.ValidationFromCacheException;
+import io.gravitee.resource.api.ResourceManager;
+import io.gravitee.resource.cache.Cache;
+import io.gravitee.resource.cache.CacheResource;
+import io.gravitee.resource.cache.Element;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwsHeader;
+import io.jsonwebtoken.Jwt;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.SigningKeyResolver;
+import io.jsonwebtoken.SigningKeyResolverAdapter;
+import io.jsonwebtoken.impl.DefaultClaims;
+
 @SuppressWarnings("unused")
 public class JWTPolicy {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(JWTPolicy.class);
+
+    
     /**
      * Private JWT constants
      */
@@ -99,7 +113,8 @@ public class JWTPolicy {
             //Finally continue the process...
             policyChain.doNext(request, response);
 
-        } catch (ExpiredJwtException | MalformedJwtException | SignatureException e ) {
+        } catch (ExpiredJwtException | MalformedJwtException | SignatureException | IllegalArgumentException e ) {
+            LOGGER.error(e.getMessage(),e.getCause());
             policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, "Unauthorized"));
         }
     }
@@ -177,7 +192,11 @@ public class JWTPolicy {
                 }
 
                 Environment env = executionContext.getComponent(Environment.class);
-                return parsePublicKey(env.getProperty(String.format(PUBLIC_KEY_PROPERTY, iss, keyId)));
+                String publicKey = env.getProperty(String.format(PUBLIC_KEY_PROPERTY, iss, keyId));
+                if(publicKey==null || publicKey.trim().isEmpty()) {
+                    return null;
+                }
+                return parsePublicKey(publicKey);
             }
         };
 
@@ -204,6 +223,11 @@ public class JWTPolicy {
         });
     }
 
+    /**
+     * Generate RSA Public Key from the ssh-(rsa|dsa) ([A-Za-z0-9/+]+=*) (.*) stored key.
+     * @param key String.
+     * @return RSAPublicKey
+     */
     static RSAPublicKey parsePublicKey(String key) {
         Matcher m = SSH_PUB_KEY.matcher(key);
 
