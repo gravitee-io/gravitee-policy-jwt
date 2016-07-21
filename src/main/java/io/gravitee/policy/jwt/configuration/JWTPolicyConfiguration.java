@@ -17,6 +17,9 @@ package io.gravitee.policy.jwt.configuration;
 
 import io.gravitee.policy.api.PolicyConfiguration;
 
+/**
+* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+*/
 public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     //settings attributes

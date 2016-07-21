@@ -16,8 +16,8 @@
 package io.gravitee.policy.jwt.exceptions;
 
 /**
- * Created by Alexandre on 20/07/2016.
- */
+* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+*/
 public class ValidationFromCacheException extends Exception{
     public ValidationFromCacheException(String message) {
         super(message);
