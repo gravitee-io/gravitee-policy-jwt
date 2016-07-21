@@ -15,7 +15,9 @@
  */
 package io.gravitee.policy.jwt.configuration;
 
-
+/**
+* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+*/
 public enum PublicKeyResolver {
     GIVEN_KEY,
     GATEWAY_KEYS

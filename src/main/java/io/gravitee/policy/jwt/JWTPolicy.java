@@ -47,7 +47,6 @@ import io.gravitee.repository.cache.api.CacheManager;
 import io.gravitee.repository.cache.model.Cache;
 import io.gravitee.repository.cache.model.Element;
 import io.gravitee.repository.exceptions.CacheException;
-import io.gravitee.resource.api.ResourceManager;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwsHeader;
@@ -61,7 +60,9 @@ import io.jsonwebtoken.SigningKeyResolver;
 import io.jsonwebtoken.SigningKeyResolverAdapter;
 import io.jsonwebtoken.impl.DefaultClaims;
 
-@SuppressWarnings("unused")
+/**
+* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+*/
 public class JWTPolicy {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JWTPolicy.class);
@@ -72,7 +73,6 @@ public class JWTPolicy {
      */
     private static final String BEARER = "Bearer";
     private static final String ACCESS_TOKEN = "access_token";
-    private static final String ISS = "iss";
     private static final String DEFAULT_KID = "default";
     private static final String PUBLIC_KEY_PROPERTY = "policy.jwt.issuer.%s.%s";
     private static final String CACHE_NAME = "JWT_CACHE";//must be also set into your distributed cache settings (ex :hazelcast.xml)
@@ -84,6 +84,7 @@ public class JWTPolicy {
     private JWTPolicyConfiguration configuration;
     private Cache cache;
 
+    
     /**
      * Create a new JWT Policy instance based on its associated configuration
      *
@@ -92,7 +93,6 @@ public class JWTPolicy {
     public JWTPolicy(JWTPolicyConfiguration configuration) {
         this.configuration = configuration;
     }
-
 
 
     @OnRequest
@@ -113,9 +113,6 @@ public class JWTPolicy {
             //Finally continue the process...
             policyChain.doNext(request, response);
 
-        } 
-        catch (ValidationFromCacheException e ){
-            policyChain.failWith(PolicyResult.failure(e.getMessage()));
         }
         catch (ExpiredJwtException | MalformedJwtException | SignatureException | IllegalArgumentException e ) {
             LOGGER.error(e.getMessage(),e.getCause());
@@ -143,7 +140,7 @@ public class JWTPolicy {
         return jwt;
     }
 
-    private void validateTokenFromCache(ExecutionContext executionContext, String jwt) throws ValidationFromCacheException{
+    private void validateTokenFromCache(ExecutionContext executionContext, String jwt) {
         try {
             // Get Cache
             CacheManager cacheManager = executionContext.getComponent(CacheManager.class);
@@ -172,7 +169,7 @@ public class JWTPolicy {
             }
         }
         // If Cache is not correctly set or active, then do not break the policy
-        catch (ValidationFromCacheException | CacheException e) {// TODO wait Grégoire to provide gravitee CacheException
+        catch (ValidationFromCacheException | CacheException e) {
             LOGGER.warn("Problem occurs on cache access, token is validated throught public key! Error is : "+e.getMessage());
             validateJsonWebToken(executionContext, jwt);
         }

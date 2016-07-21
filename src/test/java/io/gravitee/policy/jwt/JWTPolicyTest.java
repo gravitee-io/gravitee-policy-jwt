@@ -61,6 +61,9 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
+/**
+* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+*/
 public class JWTPolicyTest {
 
     private static final String ISS = "gravitee.authorization.server";
