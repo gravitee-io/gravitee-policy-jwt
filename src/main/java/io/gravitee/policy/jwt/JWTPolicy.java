@@ -47,7 +47,6 @@ import io.gravitee.repository.cache.api.CacheManager;
 import io.gravitee.repository.cache.model.Cache;
 import io.gravitee.repository.cache.model.Element;
 import io.gravitee.repository.exceptions.CacheException;
-import io.gravitee.resource.api.ResourceManager;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwsHeader;
@@ -61,7 +60,9 @@ import io.jsonwebtoken.SigningKeyResolver;
 import io.jsonwebtoken.SigningKeyResolverAdapter;
 import io.jsonwebtoken.impl.DefaultClaims;
 
-@SuppressWarnings("unused")
+/**
+* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+*/
 public class JWTPolicy {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JWTPolicy.class);
@@ -72,11 +73,11 @@ public class JWTPolicy {
      */
     private static final String BEARER = "Bearer";
     private static final String ACCESS_TOKEN = "access_token";
-    private static final String ISS = "iss";
     private static final String DEFAULT_KID = "default";
     private static final String PUBLIC_KEY_PROPERTY = "policy.jwt.issuer.%s.%s";
     private static final String CACHE_NAME = "JWT_CACHE";//must be also set into your distributed cache settings (ex :hazelcast.xml)
     private static final Pattern SSH_PUB_KEY = Pattern.compile("ssh-(rsa|dsa) ([A-Za-z0-9/+]+=*) (.*)");
+    private static final Pattern PIPE_SPLIT_ISSUER = Pattern.compile("\\|");
     
     /**
      * The associated configuration to this JWT Policy
@@ -84,6 +85,7 @@ public class JWTPolicy {
     private JWTPolicyConfiguration configuration;
     private Cache cache;
 
+    
     /**
      * Create a new JWT Policy instance based on its associated configuration
      *
@@ -92,7 +94,6 @@ public class JWTPolicy {
     public JWTPolicy(JWTPolicyConfiguration configuration) {
         this.configuration = configuration;
     }
-
 
 
     @OnRequest
@@ -113,9 +114,6 @@ public class JWTPolicy {
             //Finally continue the process...
             policyChain.doNext(request, response);
 
-        } 
-        catch (ValidationFromCacheException e ){
-            policyChain.failWith(PolicyResult.failure(e.getMessage()));
         }
         catch (ExpiredJwtException | MalformedJwtException | SignatureException | IllegalArgumentException e ) {
             LOGGER.error(e.getMessage(),e.getCause());
@@ -143,7 +141,7 @@ public class JWTPolicy {
         return jwt;
     }
 
-    private void validateTokenFromCache(ExecutionContext executionContext, String jwt) throws ValidationFromCacheException{
+    private void validateTokenFromCache(ExecutionContext executionContext, String jwt) {
         try {
             // Get Cache
             CacheManager cacheManager = executionContext.getComponent(CacheManager.class);
@@ -172,7 +170,7 @@ public class JWTPolicy {
             }
         }
         // If Cache is not correctly set or active, then do not break the policy
-        catch (ValidationFromCacheException | CacheException e) {// TODO wait Grégoire to provide gravitee CacheException
+        catch (ValidationFromCacheException | CacheException e) {
             LOGGER.warn("Problem occurs on cache access, token is validated throught public key! Error is : "+e.getMessage());
             validateJsonWebToken(executionContext, jwt);
         }
@@ -192,14 +190,10 @@ public class JWTPolicy {
         
         switch (configuration.getPublicKeyResolver()) {
             case GIVEN_KEY:
-                String givenKey = configuration.getGivenKey();
-                if(givenKey==null || givenKey.trim().equals("")) {
-                    throw new IllegalArgumentException("No specified given key while expecting it due to policy settings.");
-                }
-                // Given endpoint can be defined as the template using EL
-                LOGGER.debug("Transform given key {} using template engine", givenKey);
-                givenKey = executionContext.getTemplateEngine().convert(givenKey);
-                jwtParser.setSigningKey(parsePublicKey(givenKey));
+                jwtParser.setSigningKey(getPublickKeyByPolicySettings(executionContext));//Use key set into the policy
+                break;
+            case GIVEN_ISSUER:
+                jwtParser.setSigningKeyResolver(getSigningKeyResolverByPolicyIssuer(executionContext));
                 break;
             case GATEWAY_KEYS:
                 jwtParser.setSigningKeyResolver(getSigningKeyResolverByGatewaySettings(executionContext));
@@ -240,6 +234,71 @@ public class JWTPolicy {
         }; 
     }
 
+    /**
+     * Return a SigingKeyResolver which will read iss claims value in order to get the associated public key.
+     * The associated public keys are set into the gateway settings and retrieved thanks to ExecutionContext.
+     * @param executionContext ExecutionContext
+     * @return SigningKeyResolver
+     */
+    private SigningKeyResolver getSigningKeyResolverByPolicyIssuer(ExecutionContext executionContext) {
+     
+        if(configuration.getResolverParameter()==null || configuration.getResolverParameter().trim().isEmpty()) {
+            throw new IllegalArgumentException("missing issuer into the policy settings");
+        }
+        
+        return new SigningKeyResolverAdapter() {
+            @Override
+            public Key resolveSigningKey(JwsHeader header, Claims claims) {
+
+                //ISSUER management
+                final String iss = (String) claims.get(Claims.ISSUER);
+                
+                // Given issuer can be defined as the template using EL
+                LOGGER.debug("Transform given issuer {} using template engine", configuration.getResolverParameter());
+                final String givenIssuers = executionContext.getTemplateEngine().convert(configuration.getResolverParameter());
+                
+                //check jwt issuer belongs to allowed policy issuers.
+                boolean isValidIssuer = PIPE_SPLIT_ISSUER.splitAsStream(givenIssuers).anyMatch(s -> s.equals(iss));
+                
+                //no public key must be retrieved when issuer is not expected.
+                if(!isValidIssuer) {
+                    return null;
+                }
+                
+                //KID (Key ID) management
+                String keyId = header.getKeyId(); //or any other field that you need to inspect
+                if (keyId == null || keyId.trim().isEmpty()) {
+                    keyId = DEFAULT_KID;
+                }
+
+                //Get the public key from the gateway settings.
+                Environment env = executionContext.getComponent(Environment.class);
+                String publicKey = env.getProperty(String.format(PUBLIC_KEY_PROPERTY, iss, keyId));
+                if(publicKey==null || publicKey.trim().isEmpty()) {
+                    return null;
+                }
+                return parsePublicKey(publicKey);
+            }
+        }; 
+    }    
+    
+    /**
+     * Return RSA public key set into the policy settings.
+     * @param executionContext ExecutionContext
+     * @return RSAPublicKey
+     */
+    private RSAPublicKey getPublickKeyByPolicySettings(ExecutionContext executionContext) {
+        String givenKey = configuration.getResolverParameter();
+        if(givenKey==null || givenKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("No specified given key while expecting it due to policy settings.");
+        }
+        
+        // Given key can be defined as the template using EL
+        LOGGER.debug("Transform given key {} using template engine", givenKey);
+        givenKey = executionContext.getTemplateEngine().convert(givenKey);
+        return parsePublicKey(givenKey);
+    }
+    
     /**
      * Generate RSA Public Key from the ssh-(rsa|dsa) ([A-Za-z0-9/+]+=*) (.*) stored key.
      * @param key String.

@@ -17,10 +17,13 @@ package io.gravitee.policy.jwt.configuration;
 
 import io.gravitee.policy.api.PolicyConfiguration;
 
+/**
+* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+*/
 public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     //settings attributes
-    private String givenKey;
+    private String resolverParameter;
     private boolean useValidationCache = false;
     private PublicKeyResolver publicKeyResolver = PublicKeyResolver.GIVEN_KEY;
     
@@ -34,12 +37,12 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
         this.publicKeyResolver = publicKeyResolver;
     }
     
-    public String getGivenKey() {
-        return givenKey;
+    public String getResolverParameter() {
+        return resolverParameter;
     }
     
-    public void setGivenKey(String givenKey) {
-        this.givenKey = givenKey;
+    public void setResolverParameter(String givenKey) {
+        this.resolverParameter = givenKey;
     }
     
     public boolean isUseValidationCache() {

@@ -61,6 +61,9 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
+/**
+* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+*/
 public class JWTPolicyTest {
 
     private static final String ISS = "gravitee.authorization.server";
@@ -124,7 +127,7 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
         when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
-        when(configuration.getGivenKey()).thenReturn(getSshRsaKey());
+        when(configuration.getResolverParameter()).thenReturn(getSshRsaKey());
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
         when(templateEngine.convert(getSshRsaKey())).thenReturn(getSshRsaKey());
         
@@ -147,7 +150,7 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
         when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
-        when(configuration.getGivenKey()).thenReturn(property);
+        when(configuration.getResolverParameter()).thenReturn(property);
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
         when(templateEngine.convert(property)).thenReturn(getSshRsaKey());
         
@@ -169,7 +172,7 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
         when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
-        when(configuration.getGivenKey()).thenReturn(null);
+        when(configuration.getResolverParameter()).thenReturn(null);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -398,6 +401,74 @@ public class JWTPolicyTest {
 
         verify(policyChain,Mockito.times(0)).failWith(any(PolicyResult.class));
         verify(policyChain,Mockito.times(1)).doNext(request, response);
+    }
+    
+    @Test
+    public void test_with_cache_disabled_and_given_issuer_and_valid_authorization_header() throws Exception {
+        String jwt = getJsonWebToken(7200);
+        final String resolverParameter = "validIss1|"+ISS+"|validIss3";
+        
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer "+jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.isUseValidationCache()).thenReturn(false);
+        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
+        when(configuration.getResolverParameter()).thenReturn(resolverParameter);
+        when(templateEngine.convert(resolverParameter)).thenReturn(resolverParameter);
+ 
+        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        verify(policyChain,times(0)).failWith(any(PolicyResult.class));
+        verify(policyChain,Mockito.times(1)).doNext(request, response);
+    }
+    
+    @Test
+    public void test_with_cache_disabled_and_given_issuer_using_EL_and_valid_authorization_header() throws Exception {
+        
+        String jwt = getJsonWebToken(7200);
+        final String property = "prop['key']";
+        
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer "+jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.isUseValidationCache()).thenReturn(false);
+        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
+        when(configuration.getResolverParameter()).thenReturn(property);
+        when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
+        when(templateEngine.convert(property)).thenReturn(ISS);
+        
+        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        verify(policyChain,times(0)).failWith(any(PolicyResult.class));
+        verify(policyChain,Mockito.times(1)).doNext(request, response);
+    }
+    
+    @Test
+    public void test_with_cache_disabled_and_given_issuer_but_not_provided() throws Exception {
+        
+        String jwt = getJsonWebToken(7200);
+
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer "+jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.isUseValidationCache()).thenReturn(false);
+        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
+        when(configuration.getResolverParameter()).thenReturn(null);
+        
+        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
+        verify(policyChain,Mockito.times(0)).doNext(request, response);
     }
     
     
