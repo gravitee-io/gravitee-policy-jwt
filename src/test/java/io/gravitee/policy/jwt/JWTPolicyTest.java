@@ -442,7 +442,7 @@ public class JWTPolicyTest {
      * @throws Exception
      */
     private PrivateKey getPrivateKey() throws Exception {
-        File file = new File(getClass().getClassLoader().getResource("private_key.der").getFile());
+        File file = new File(getClass().getClassLoader().getResource("private_key.der").toURI());
         FileInputStream fis = new FileInputStream(file);
         DataInputStream dis = new DataInputStream(fis);
         byte[] keyBytes = new byte[(int) file.length()];
