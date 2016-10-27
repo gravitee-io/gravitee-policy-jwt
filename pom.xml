@@ -39,7 +39,6 @@
         <gravitee-common.version>1.0.0</gravitee-common.version>
         <gravitee-resource-api.version>1.0.0</gravitee-resource-api.version>
         <gravitee-repository.version>1.0.0</gravitee-repository.version>
-        <junit.version>4.12</junit.version>
         <jjwt.version>0.6.0</jjwt.version>
 
         <json-schema-generator-maven-plugin.version>1.1.0</json-schema-generator-maven-plugin.version>
@@ -91,16 +90,26 @@
             <version>${jjwt.version}</version>
         </dependency>
 
+        <!-- Jackson dependencies -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
             <version>${spring.version}</version>
+            <scope>provided</scope>
         </dependency>
         
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.1.7</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- Test scope -->
