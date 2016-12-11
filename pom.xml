@@ -24,7 +24,7 @@
     <artifactId>gravitee-policy-jwt</artifactId>
     <version>1.1.0-SNAPSHOT</version>
 
-    <name>JWT Gravitee Policy</name>
+    <name>Gravitee.io APIM - Policy - JWT</name>
     <description>Description of the JWT Gravitee Policy</description>
 
     <parent>
