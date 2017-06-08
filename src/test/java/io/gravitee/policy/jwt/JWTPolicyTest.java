@@ -15,34 +15,6 @@
  */
 package io.gravitee.policy.jwt;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.security.KeyFactory;
-import java.security.PrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.time.Instant;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
-import org.springframework.core.env.Environment;
-
 import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
@@ -52,14 +24,28 @@ import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.configuration.PublicKeyResolver;
-import io.gravitee.repository.cache.api.CacheManager;
-import io.gravitee.repository.cache.model.Cache;
-import io.gravitee.repository.cache.model.Element;
-import io.gravitee.repository.exceptions.CacheException;
 import io.jsonwebtoken.JwtBuilder;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.springframework.core.env.Environment;
+
+import java.io.*;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Instant;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.*;
 
 /**
 * @author Alexandre FARIA (alexandre82.faria at gmail.com)
@@ -81,12 +67,6 @@ public class JWTPolicyTest {
     private PolicyChain policyChain;
     @Mock
     private JWTPolicyConfiguration configuration;
-    @Mock
-    private CacheManager cacheManager;
-    @Mock
-    private Cache cache;
-    @Mock
-    private Element element;
     @Mock 
     TemplateEngine templateEngine;
     
@@ -106,7 +86,6 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
@@ -125,7 +104,6 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(getSshRsaKey());
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
@@ -148,7 +126,6 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(property);
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
@@ -170,7 +147,6 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(null);
         
@@ -193,7 +169,6 @@ public class JWTPolicyTest {
 
         when(request.headers()).thenReturn(new HttpHeaders());
         when(request.parameters()).thenReturn(parameters);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
@@ -213,7 +188,6 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
@@ -233,174 +207,11 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
         verify(policyChain,Mockito.times(0)).doNext(request, response);
-    }
-    
-    @Test
-    public void test_with_cache_enabled_and_valid_expiration_date_cache() throws Exception {
-        
-        String jwt = "jwtUsedAsKeyCache";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(true);
-
-        //Mock cache actions.
-        when(executionContext.getComponent(CacheManager.class)).thenReturn(cacheManager);
-        when(cacheManager.getCache(any(String.class))).thenReturn(cache);
-        when(cache.get(jwt)).thenReturn(element);
-        when(element.value()).thenReturn(Instant.now().plusSeconds(7200));
-       
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
-    }
-    
-    @Test(expected = JwtException.class)
-    public void test_with_cache_enabled_and_non_valid_expiration_date_cache() throws Exception {
-        
-        String jwt = "jwtUsedAsKeyCache";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(true);
-        
-        //Mock cache actions.
-        when(executionContext.getComponent(CacheManager.class)).thenReturn(cacheManager);
-        when(cacheManager.getCache(any(String.class))).thenReturn(cache);
-        when(cache.get(jwt)).thenReturn(element);
-        when(element.value()).thenReturn(Instant.now().minusSeconds(1));
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
-    }
- 
-    @Test
-    public void test_with_empty_cache_enabled_and_gateway_keys_and_valid_jwt() throws Exception {
-        
-        String jwt = getJsonWebToken(7200);
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(true);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
-        
-        //Mock cache actions.
-        when(executionContext.getComponent(CacheManager.class)).thenReturn(cacheManager);
-        when(cacheManager.getCache(any(String.class))).thenReturn(cache);
-        when(cache.get(jwt)).thenReturn(null);
-        when(element.value()).thenReturn(Instant.now().plusSeconds(7200));
-       
-        JWTPolicy policy = new JWTPolicy(configuration);
-        
-        policy.onRequest(request, response, executionContext, policyChain);//1st time no cache found
-        when(cache.get(jwt)).thenReturn(element);
-        policy.onRequest(request, response, executionContext, policyChain);//2nd time cache found
-
-        verify(cache,times(1)).put(any(Element.class));
-        verify(policyChain,Mockito.times(2)).doNext(request, response);
-    }
-    
-    @Test
-    public void test_with_empty_cache_enabled_and_expired_jwt() throws Exception {
-        
-        String jwt = getJsonWebToken(0);
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(true);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
-        
-        //Mock cache actions.
-        when(executionContext.getComponent(CacheManager.class)).thenReturn(cacheManager);
-        when(cacheManager.getCache(any(String.class))).thenReturn(cache);
-        when(cache.get(jwt)).thenReturn(null);
-       
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
-        verify(policyChain,Mockito.times(0)).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_cache_enabled_and_no_cache_manager() throws Exception {
-
-        String jwt = getJsonWebToken(7200);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(true);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
-        
-        //Mock cache actions.
-        when(executionContext.getComponent(CacheManager.class)).thenReturn(null);
-
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,Mockito.times(0)).failWith(any(PolicyResult.class));
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
-    }
-    
-    @Test
-    public void test_with_cache_enabled_and_no_cache_name() throws Exception {
-
-        String jwt = getJsonWebToken(7200);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(true);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
-        
-        //Mock cache actions.
-        when(executionContext.getComponent(CacheManager.class)).thenReturn(cacheManager);
-
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,Mockito.times(0)).failWith(any(PolicyResult.class));
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
-    }
-    
-    @Test
-    public void test_with_cache_enabled_and_cache_exception() throws Exception {
-
-        String jwt = getJsonWebToken(7200);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(true);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
-        
-        //Mock cache actions.
-        when(executionContext.getComponent(CacheManager.class)).thenThrow(CacheException.class);
-
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,Mockito.times(0)).failWith(any(PolicyResult.class));
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
     }
     
     @Test
@@ -415,7 +226,6 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
         when(configuration.getResolverParameter()).thenReturn(resolverParameter);
         when(templateEngine.convert(resolverParameter)).thenReturn(resolverParameter);
@@ -438,7 +248,6 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
         when(configuration.getResolverParameter()).thenReturn(property);
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
@@ -461,7 +270,6 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.isUseValidationCache()).thenReturn(false);
         when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
         when(configuration.getResolverParameter()).thenReturn(null);
         

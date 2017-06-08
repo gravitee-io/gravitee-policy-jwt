@@ -24,9 +24,8 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     //settings attributes
     private String resolverParameter;
-    private boolean useValidationCache = false;
     private PublicKeyResolver publicKeyResolver = PublicKeyResolver.GIVEN_KEY;
-    
+    private boolean extractClaims = false;
     
     //getter and setters
     public PublicKeyResolver getPublicKeyResolver() {
@@ -44,12 +43,12 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     public void setResolverParameter(String givenKey) {
         this.resolverParameter = givenKey;
     }
-    
-    public boolean isUseValidationCache() {
-        return useValidationCache;
+
+    public boolean isExtractClaims() {
+        return extractClaims;
     }
 
-    public void setUseValidationCache(boolean useValidationCache) {
-        this.useValidationCache = useValidationCache;
+    public void setExtractClaims(boolean extractClaims) {
+        this.extractClaims = extractClaims;
     }
 }
