@@ -54,7 +54,7 @@ Policy aims to validate the token signature & expiration date before sending the
 
 |publicKeyResolver|X|The way to resolve the public key needed to validate the signature|enum|GIVEN_KEY
 |resolverParameter||Needed if you use the GATEWAY_KEYS or GIVEN_ISSUER resolver. (support EL)|string|
-|useValidationCache||Tick this option if you want to cache the result in order to avoid to validate the signature on each api call|boolean|false
+|extractClaims||Tick this option if you want to extract claims into the request context|boolean|false
 |===
 
 
@@ -86,9 +86,37 @@ On this mode, the policy will inspect the jwt :
 Thanks to both values, the gateway will be able to retrieve the corresponding public key.
 
 
+== Attributes
 
+|===
+|Name |Description
 
+.^|jwt.token
+|JWT token extracted from ```Authorization``` HTTP header.
 
+.^|jwt.claims
+|A map of claims registered into the JWT token body. Useful when you want to extract data from it. Only if `extractClaims` is enabled from policy configuration.
+
+|===
+
+=== Extract data from JWT claims
+
+If JWT claims (payload) are as follow:
+[source, json]
+----
+{
+  "iss": "Gravitee.io AM"
+  "sub": "1234567890",
+  "name": "John Doe",
+  "admin": true
+}
+----
+
+You can extract the issuer from JWT by using EL:
+[source]
+----
+{#context.attributes['jwt.claims']['iss']}
+----
 
 == Http Status Code
 

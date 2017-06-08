@@ -15,24 +15,6 @@
  */
 package io.gravitee.policy.jwt;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.security.Key;
-import java.security.KeyFactory;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.RSAPublicKeySpec;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
-
 import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.gateway.api.ExecutionContext;
@@ -42,23 +24,25 @@ import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.api.annotations.OnRequest;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
-import io.gravitee.policy.jwt.exceptions.ValidationFromCacheException;
-import io.gravitee.repository.cache.api.CacheManager;
-import io.gravitee.repository.cache.model.Cache;
-import io.gravitee.repository.cache.model.Element;
-import io.gravitee.repository.exceptions.CacheException;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwsHeader;
-import io.jsonwebtoken.Jwt;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureException;
-import io.jsonwebtoken.SigningKeyResolver;
-import io.jsonwebtoken.SigningKeyResolverAdapter;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.impl.DefaultClaims;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.RSAPublicKeySpec;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
 * @author Alexandre FARIA (alexandre82.faria at gmail.com)
@@ -66,7 +50,6 @@ import io.jsonwebtoken.impl.DefaultClaims;
 public class JWTPolicy {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JWTPolicy.class);
-
     
     /**
      * Private JWT constants
@@ -78,13 +61,17 @@ public class JWTPolicy {
     private static final String CACHE_NAME = "JWT_CACHE";//must be also set into your distributed cache settings (ex :hazelcast.xml)
     private static final Pattern SSH_PUB_KEY = Pattern.compile("ssh-(rsa|dsa) ([A-Za-z0-9/+]+=*) (.*)");
     private static final Pattern PIPE_SPLIT_ISSUER = Pattern.compile("\\|");
-    
+
+    /**
+     * Request attributes
+     */
+    private static final String CONTEXT_ATTRIBUTE_JWT_CLAIMS = "jwt.claims";
+    private static final String CONTEXT_ATTRIBUTE_JWT_TOKEN = "jwt.token";
+
     /**
      * The associated configuration to this JWT Policy
      */
     private JWTPolicyConfiguration configuration;
-    private Cache cache;
-
     
     /**
      * Create a new JWT Policy instance based on its associated configuration
@@ -95,20 +82,20 @@ public class JWTPolicy {
         this.configuration = configuration;
     }
 
-
     @OnRequest
     public void onRequest(Request request, Response response, ExecutionContext executionContext, PolicyChain policyChain) {
         try {
             //1st extract the JWT to validate.
             String jwt = extractJsonWebToken(request);
 
-            //2nd check if cache is enabled and if yes, check if JWT has already been validated.
-            if(this.configuration.isUseValidationCache()) {
-                validateTokenFromCache(executionContext, jwt);
-            }
-            //3rd, if no cache is used, then just parse and validate it.
-            else {
-                validateJsonWebToken(executionContext, jwt);
+            //2nd check if JWT has already been validated.
+            DefaultClaims claims = validateJsonWebToken(executionContext, jwt);
+
+            //3rd set access_token in context
+            executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_TOKEN, jwt);
+
+            if (configuration.isExtractClaims()) {
+                executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, new HashMap<>(claims));
             }
 
             //Finally continue the process...
@@ -141,50 +128,14 @@ public class JWTPolicy {
         return jwt;
     }
 
-    private void validateTokenFromCache(ExecutionContext executionContext, String jwt) {
-        try {
-            // Get Cache
-            CacheManager cacheManager = executionContext.getComponent(CacheManager.class);
-            if (cacheManager == null) {
-                throw new ValidationFromCacheException("No cache manager has been found");
-            }
-
-            cache = cacheManager.getCache(CACHE_NAME);
-            if (cache == null) {
-                throw new ValidationFromCacheException("No cache named [ " + CACHE_NAME + " ] has been found.");
-            }
-
-            // Get token expiration date from cache.
-            Element cacheElement = cache.get(jwt);
-            Instant expiration;
-            if (cacheElement == null) {
-                // If no token found in cache then parse/validate/cache it
-                expiration = validateJsonWebToken(executionContext, jwt);
-                cache.put(Element.from(jwt, expiration));
-            } else {
-                // If token (cache key) exists in cache, check expiration time (cache value).
-                expiration = (Instant) cacheElement.value();
-                if (Instant.now().isAfter(expiration)) {
-                    throw new JwtException("Token expired!");
-                }
-            }
-        }
-        // If Cache is not correctly set or active, then do not break the policy
-        catch (ValidationFromCacheException | CacheException e) {
-            LOGGER.warn("Problem occurs on cache access, token is validated throught public key! Error is : "+e.getMessage());
-            validateJsonWebToken(executionContext, jwt);
-        }
-    }
-
     /**
      * This method is used to validate the JWT Token.
      * It will check the signature (by using the public RSA key linked to the JWT issuer)
-     * Then it will check the expiration date provided in the token.
      * @param executionContext ExecutionContext used to retrieve the public RSA key.
      * @param jwt String Json Web Token
-     * @return Instant expiration provided in the token (may be cached)
+     * @return DefaultClaims claims extracted from JWT body
      */
-    private Instant validateJsonWebToken(ExecutionContext executionContext, String jwt) {
+    private DefaultClaims validateJsonWebToken(ExecutionContext executionContext, String jwt) {
         
         JwtParser jwtParser = Jwts.parser();
         
@@ -203,7 +154,7 @@ public class JWTPolicy {
         }
         
         final Jwt token = jwtParser.parse(jwt);
-        return ((DefaultClaims) token.getBody()).getExpiration().toInstant();
+        return ((DefaultClaims) token.getBody());
     }
     
     /**
