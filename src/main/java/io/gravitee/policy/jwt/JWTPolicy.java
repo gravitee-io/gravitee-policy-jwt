@@ -58,7 +58,6 @@ public class JWTPolicy {
     private static final String ACCESS_TOKEN = "access_token";
     private static final String DEFAULT_KID = "default";
     private static final String PUBLIC_KEY_PROPERTY = "policy.jwt.issuer.%s.%s";
-    private static final String CACHE_NAME = "JWT_CACHE";//must be also set into your distributed cache settings (ex :hazelcast.xml)
     private static final Pattern SSH_PUB_KEY = Pattern.compile("ssh-(rsa|dsa) ([A-Za-z0-9/+]+=*) (.*)");
     private static final Pattern PIPE_SPLIT_ISSUER = Pattern.compile("\\|");
 
