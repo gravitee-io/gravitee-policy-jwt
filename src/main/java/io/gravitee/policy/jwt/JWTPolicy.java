@@ -121,7 +121,7 @@ public class JWTPolicy {
         if (authorization != null) {
             jwt = authorization.substring(BEARER.length()).trim();
         } else {
-            jwt = request.parameters().get(ACCESS_TOKEN);
+            jwt = request.parameters().getFirst(ACCESS_TOKEN);
         }
 
         return jwt;
