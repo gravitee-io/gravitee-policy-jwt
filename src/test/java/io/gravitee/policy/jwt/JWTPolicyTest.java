@@ -16,6 +16,8 @@
 package io.gravitee.policy.jwt;
 
 import io.gravitee.common.http.HttpHeaders;
+import io.gravitee.common.util.LinkedMultiValueMap;
+import io.gravitee.common.util.MultiValueMap;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.Response;
@@ -39,6 +41,7 @@ import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -164,8 +167,8 @@ public class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
         
-        Map<String,String> parameters = new HashMap<String,String>(1);
-        parameters.put("access_token", jwt);
+        MultiValueMap<String,String> parameters = new LinkedMultiValueMap<>(1);
+        parameters.put("access_token", Collections.singletonList(jwt));
 
         when(request.headers()).thenReturn(new HttpHeaders());
         when(request.parameters()).thenReturn(parameters);
