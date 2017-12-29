@@ -24,6 +24,7 @@ import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.api.annotations.OnRequest;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.exceptions.AuthSchemeException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.impl.DefaultClaims;
 import org.slf4j.Logger;
@@ -45,7 +46,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
-* @author Alexandre FARIA (alexandre82.faria at gmail.com)
+ * @author Alexandre FARIA (alexandre82.faria at gmail.com)
+ * @author Guillaume Gillon (guillaume.gillon at outlook.com)
 */
 public class JWTPolicy {
 
@@ -101,7 +103,7 @@ public class JWTPolicy {
             policyChain.doNext(request, response);
 
         }
-        catch (ExpiredJwtException | MalformedJwtException | SignatureException | IllegalArgumentException e ) {
+        catch (ExpiredJwtException | MalformedJwtException | SignatureException | IllegalArgumentException| AuthSchemeException e ) {
             LOGGER.error(e.getMessage(),e.getCause());
             policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, "Unauthorized"));
         }
@@ -114,12 +116,21 @@ public class JWTPolicy {
      * @param request Request
      * @return String Json Web Token.
      */
-    private String extractJsonWebToken(Request request) {
+    private String extractJsonWebToken(Request request) throws AuthSchemeException {
         final String authorization = request.headers().getFirst(HttpHeaders.AUTHORIZATION);
-        String jwt;
+        String jwt = null;
 
         if (authorization != null) {
-            jwt = authorization.substring(BEARER.length()).trim();
+            String[] auth = authorization.split(" ");
+            if(auth.length > 1 && BEARER.equals(auth[0])) {
+                //jwt = authorization.substring(BEARER.length()).trim();
+                jwt = auth[1].trim();
+            } else if(auth.length > 1){
+                throw new AuthSchemeException("Authentification scheme '" + auth[0] + "' is not supported for JWT");
+            } else {
+                throw new AuthSchemeException("Authentification scheme not found");
+            }
+
         } else {
             jwt = request.parameters().getFirst(ACCESS_TOKEN);
         }
