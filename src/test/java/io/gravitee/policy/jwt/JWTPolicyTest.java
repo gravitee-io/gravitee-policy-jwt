@@ -281,8 +281,35 @@ public class JWTPolicyTest {
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
         verify(policyChain,Mockito.times(0)).doNext(request, response);
     }
-    
-    
+
+    @Test
+    public void test_not_authentifiction_scheme() throws Exception {
+
+        String jwt = getJsonWebToken(7200);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", jwt);
+        when(request.headers()).thenReturn(headers);
+
+        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
+    }
+
+    @Test
+    public void test_not_authentifiction_scheme_supported() throws Exception {
+
+        String jwt = getJsonWebToken(7200);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Basic " + jwt);
+        when(request.headers()).thenReturn(headers);
+
+        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
+    }
+
     //PRIVATE tools method for tests
     /**
      * Return Json Web Token string value.
