@@ -66,8 +66,13 @@ public class JWTPolicy {
     /**
      * Request attributes
      */
-    private static final String CONTEXT_ATTRIBUTE_JWT_CLAIMS = "jwt.claims";
-    private static final String CONTEXT_ATTRIBUTE_JWT_TOKEN = "jwt.token";
+    static final String CONTEXT_ATTRIBUTE_PREFIX = "jwt.";
+    static final String CONTEXT_ATTRIBUTE_JWT_CLAIMS = CONTEXT_ATTRIBUTE_PREFIX + "claims";
+    static final String CONTEXT_ATTRIBUTE_JWT_TOKEN = CONTEXT_ATTRIBUTE_PREFIX + "token";
+    static final String CONTEXT_ATTRIBUTE_CLIENT_ID = "client_id";
+
+    static final String CONTEXT_ATTRIBUTE_OAUTH_PREFIX = "oauth.";
+    static final String CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID = CONTEXT_ATTRIBUTE_OAUTH_PREFIX + CONTEXT_ATTRIBUTE_CLIENT_ID;
 
     /**
      * The associated configuration to this JWT Policy
@@ -94,6 +99,9 @@ public class JWTPolicy {
 
             //3rd set access_token in context
             executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_TOKEN, jwt);
+
+            String clientId = claims.get(CONTEXT_ATTRIBUTE_CLIENT_ID, String.class);
+            executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
 
             if (configuration.isExtractClaims()) {
                 executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, new HashMap<>(claims));
