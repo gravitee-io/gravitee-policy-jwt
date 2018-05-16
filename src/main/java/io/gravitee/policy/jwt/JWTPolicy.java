@@ -20,9 +20,13 @@ import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.Response;
+import io.gravitee.policy.api.ChainScope;
 import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
+import io.gravitee.policy.api.annotations.Category;
 import io.gravitee.policy.api.annotations.OnRequest;
+import io.gravitee.policy.api.annotations.Policy;
+import io.gravitee.policy.api.annotations.Scope;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.exceptions.AuthSchemeException;
 import io.jsonwebtoken.*;
@@ -49,6 +53,10 @@ import java.util.regex.Pattern;
  * @author Alexandre FARIA (alexandre82.faria at gmail.com)
  * @author Guillaume Gillon (guillaume.gillon at outlook.com)
 */
+@Policy(
+        category = @Category(io.gravitee.policy.api.Category.SECURITY),
+        scope = @Scope({ChainScope.API, ChainScope.SECURITY})
+)
 public class JWTPolicy {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JWTPolicy.class);
