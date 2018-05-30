@@ -42,6 +42,7 @@ import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -70,6 +71,8 @@ public class JWTPolicy {
     static final String CONTEXT_ATTRIBUTE_JWT_CLAIMS = CONTEXT_ATTRIBUTE_PREFIX + "claims";
     static final String CONTEXT_ATTRIBUTE_JWT_TOKEN = CONTEXT_ATTRIBUTE_PREFIX + "token";
     static final String CONTEXT_ATTRIBUTE_CLIENT_ID = "client_id";
+    static final String CONTEXT_ATTRIBUTE_AUDIENCE = "aud";
+    static final String CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY = "azp";
 
     static final String CONTEXT_ATTRIBUTE_OAUTH_PREFIX = "oauth.";
     static final String CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID = CONTEXT_ATTRIBUTE_OAUTH_PREFIX + CONTEXT_ATTRIBUTE_CLIENT_ID;
@@ -100,7 +103,7 @@ public class JWTPolicy {
             //3rd set access_token in context
             executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_TOKEN, jwt);
 
-            String clientId = claims.get(CONTEXT_ATTRIBUTE_CLIENT_ID, String.class);
+            String clientId = getClientId(claims);
             executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
 
             if (configuration.isExtractClaims()) {
@@ -109,12 +112,42 @@ public class JWTPolicy {
 
             //Finally continue the process...
             policyChain.doNext(request, response);
-
         }
         catch (ExpiredJwtException | MalformedJwtException | SignatureException | IllegalArgumentException| AuthSchemeException e ) {
             LOGGER.error(e.getMessage(),e.getCause());
             policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, "Unauthorized"));
         }
+    }
+
+    private String getClientId(DefaultClaims claims) {
+        String clientId = null;
+
+        // Look for the OAuth2 client_id of the Relying Party from the Authorized party claim
+        String authorizedParty = claims.get(CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY, String.class);
+        if (authorizedParty != null && ! authorizedParty.isEmpty()) {
+            clientId = authorizedParty;
+        }
+
+        if (clientId == null) {
+            // Look for the OAuth2 client_id of the Relying Party from the audience claim
+            Object audClaim = claims.get(CONTEXT_ATTRIBUTE_AUDIENCE);
+            if (audClaim != null) {
+                if (audClaim instanceof List) {
+                    List<String> audiences = (List<String>) audClaim;
+                    // For the moment, we took only the first value of the array
+                    clientId = audiences.get(0);
+                } else {
+                    clientId = (String) audClaim;
+                }
+            }
+        }
+
+        // Is there any client_id claim in JWT claims ?
+        if (clientId == null) {
+            clientId = claims.get(CONTEXT_ATTRIBUTE_CLIENT_ID, String.class);
+        }
+
+        return clientId;
     }
 
     /**
