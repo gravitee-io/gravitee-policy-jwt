@@ -113,8 +113,12 @@ public class JWTPolicy {
             //Finally continue the process...
             policyChain.doNext(request, response);
         }
-        catch (ExpiredJwtException | MalformedJwtException | SignatureException | IllegalArgumentException| AuthSchemeException e ) {
-            LOGGER.error(e.getMessage(),e.getCause());
+        catch (ExpiredJwtException | MalformedJwtException | SignatureException | IllegalArgumentException| AuthSchemeException e) {
+            if (e instanceof ExpiredJwtException) {
+                LOGGER.debug(e.getMessage(),e.getCause());
+            } else {
+                LOGGER.error(e.getMessage(),e.getCause());
+            }
             policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, "Unauthorized"));
         }
     }
