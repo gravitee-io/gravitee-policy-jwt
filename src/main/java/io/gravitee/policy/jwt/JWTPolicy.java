@@ -193,7 +193,12 @@ public class JWTPolicy {
     private DefaultClaims validateJsonWebToken(ExecutionContext executionContext, String jwt) {
         
         JwtParser jwtParser = Jwts.parser();
-        
+
+        boolean signed = jwtParser.isSigned(jwt);
+        if (! signed) {
+            throw new SignatureException("JWT Token is not signed!");
+        }
+
         switch (configuration.getPublicKeyResolver()) {
             case GIVEN_KEY:
                 jwtParser.setSigningKey(getPublickKeyByPolicySettings(executionContext));//Use key set into the policy
