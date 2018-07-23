@@ -120,6 +120,28 @@ public class JWTPolicyTest {
     }
 
     @Test
+    public void test_unsigned_jwt() throws Exception {
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
+
+        JwtBuilder builder = getJsonWebToken(7200);
+        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
+
+        String jwt = builder.compact();
+        jwt = jwt.substring(0, jwt.lastIndexOf('.')+1);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer "+jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+
+        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+
+        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
+        verify(policyChain,Mockito.times(0)).doNext(request, response);
+    }
+
+    @Test
     public void test_get_client_with_aud_claim() throws Exception {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
