@@ -30,15 +30,14 @@
     <parent>
         <groupId>io.gravitee</groupId>
         <artifactId>gravitee-parent</artifactId>
-        <version>12</version>
+        <version>13</version>
     </parent>
 
     <properties>
         <gravitee-gateway-api.version>1.11.0</gravitee-gateway-api.version>
         <gravitee-policy-api.version>1.2.0</gravitee-policy-api.version>
-        <gravitee-common.version>1.12.0</gravitee-common.version>
-        <jjwt.version>0.9.1</jjwt.version>
-
+        <gravitee-common.version>1.13.0</gravitee-common.version>
+        <nimbus-jose-jwt.version>6.3</nimbus-jose-jwt.version>
         <json-schema-generator-maven-plugin.version>1.1.0</json-schema-generator-maven-plugin.version>
         <json-schema-generator-maven-plugin.outputDirectory>${project.build.directory}/schemas</json-schema-generator-maven-plugin.outputDirectory>
 
@@ -69,9 +68,17 @@
         </dependency>
 
         <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt</artifactId>
-            <version>${jjwt.version}</version>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>${nimbus-jose-jwt.version}</version>
+        </dependency>
+
+        <!-- HTTP client -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>${vertx.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Jackson dependencies -->

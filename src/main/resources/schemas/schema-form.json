@@ -7,7 +7,7 @@
       "description": "Select how public key is retrieved among : given key or gateway key settings...",
       "type" : "string",
       "default": "GIVEN_KEY",
-      "enum" : [ "GIVEN_KEY", "GIVEN_ISSUER", "GATEWAY_KEYS" ]
+      "enum" : [ "GIVEN_KEY", "GATEWAY_KEYS" ]
     },
     "resolverParameter" : {
       "title": "Public key (ssh-rsa KEY xxx@yyy.zz) or expected issuers (name1|name2|...)",

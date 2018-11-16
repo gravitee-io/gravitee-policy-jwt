@@ -15,6 +15,13 @@
  */
 package io.gravitee.policy.jwt;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.common.util.LinkedMultiValueMap;
 import io.gravitee.common.util.MultiValueMap;
@@ -25,10 +32,9 @@ import io.gravitee.gateway.api.expression.TemplateEngine;
 import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
-import io.gravitee.policy.jwt.configuration.PublicKeyResolver;
-import io.jsonwebtoken.JwtBuilder;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.gravitee.policy.jwt.configuration.KeyResolver;
+import io.gravitee.policy.jwt.key.PublicKeyHelper;
+import io.gravitee.reporter.api.http.Metrics;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -43,16 +49,16 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
 /**
-* @author Alexandre FARIA (alexandre82.faria at gmail.com)
-*/
+ * @author Alexandre FARIA (alexandre82.faria at gmail.com)
+ * @author David BRASSELY (david.brassely at graviteesource.com)
+ * @author GraviteeSource Team
+ */
 public class JWTPolicyTest {
 
     private static final String ISS = "gravitee.authorization.server";
@@ -76,12 +82,13 @@ public class JWTPolicyTest {
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
+        when(request.metrics()).thenReturn(Metrics.on(System.currentTimeMillis()).build());
     }
 
     @Test
     public void test_with_cache_disabled_and_gateway_keys_and_valid_authorization_header() throws Exception {
         
-        String jwt = getJsonWebToken(7200).compact();
+        String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
@@ -89,7 +96,7 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -101,15 +108,15 @@ public class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
 
-        JwtBuilder builder = getJsonWebToken(7200);
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
 
-        String jwt = builder.compact();
+        String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -124,15 +131,16 @@ public class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
 
-        JwtBuilder builder = getJsonWebToken(7200);
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
 
-        String jwt = builder.compact();
+        String jwt = sign(builder.build());
+
         jwt = jwt.substring(0, jwt.lastIndexOf('.')+1);
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -146,16 +154,16 @@ public class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
 
-        JwtBuilder builder = getJsonWebToken(7200);
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, "my-client-id-from-aud");
 
-        String jwt = builder.compact();
+        String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -170,16 +178,16 @@ public class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
 
-        JwtBuilder builder = getJsonWebToken(7200);
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, new String [] {"my-client-id-from-aud"});
+        builder.audience(Collections.singletonList("my-client-id-from-aud"));
 
-        String jwt = builder.compact();
+        String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -194,16 +202,16 @@ public class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
 
-        JwtBuilder builder = getJsonWebToken(7200);
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY, "my-client-id-from-azp");
 
-        String jwt = builder.compact();
+        String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -218,17 +226,17 @@ public class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
 
-        JwtBuilder builder = getJsonWebToken(7200);
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, new String [] {"my-client-id-from-aud"});
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY, "my-client-id-from-azp");
 
-        String jwt = builder.compact();
+        String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -243,14 +251,14 @@ public class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
 
-        JwtBuilder builder = getJsonWebToken(7200);
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
 
-        String jwt = builder.compact();
+        String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -262,8 +270,8 @@ public class JWTPolicyTest {
 
     @Test
     public void test_with_cache_disabled_and_given_key_and_valid_authorization_header() throws Exception {
-        
-        String jwt = getJsonWebToken(7200).compact();
+
+        String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
@@ -271,7 +279,7 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(getSshRsaKey());
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
         when(templateEngine.convert(getSshRsaKey())).thenReturn(getSshRsaKey());
@@ -284,7 +292,7 @@ public class JWTPolicyTest {
     @Test
     public void test_with_cache_disabled_and_given_key_using_EL_and_valid_authorization_header() throws Exception {
         
-        String jwt = getJsonWebToken(7200).compact();
+        String jwt = getJsonWebToken(7200);
         final String property = "prop['key']";
         
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
@@ -293,7 +301,7 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(property);
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
         when(templateEngine.convert(property)).thenReturn(getSshRsaKey());
@@ -306,7 +314,7 @@ public class JWTPolicyTest {
     @Test
     public void test_with_cache_disabled_and_given_key_but_not_provided() throws Exception {
         
-        String jwt = getJsonWebToken(7200).compact();
+        String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
@@ -314,7 +322,7 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_KEY);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(null);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
@@ -326,7 +334,7 @@ public class JWTPolicyTest {
     @Test
     public void test_with_cache_disabled_and_gateway_keys_and_valid_access_token() throws Exception {
         
-        String jwt = getJsonWebToken(7200).compact();
+        String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
@@ -336,7 +344,7 @@ public class JWTPolicyTest {
 
         when(request.headers()).thenReturn(new HttpHeaders());
         when(request.parameters()).thenReturn(parameters);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
@@ -347,7 +355,7 @@ public class JWTPolicyTest {
     @Test
     public void test_with_cache_disabled_and_gateway_keys_and_expired_header_token() throws Exception {
 
-        String jwt = getJsonWebToken(0).compact();
+        String jwt = getJsonWebToken(0);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
@@ -355,7 +363,7 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
         
@@ -366,7 +374,7 @@ public class JWTPolicyTest {
     @Test
     public void test_with_cache_disabled_and_gateway_keys_and_unknonw_issuer() throws Exception {
         
-        String jwt = getJsonWebToken(7200,"unknown",null).compact();
+        String jwt = getJsonWebToken(7200,"unknown");
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
@@ -374,82 +382,17 @@ public class JWTPolicyTest {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GATEWAY_KEYS);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
         
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
         verify(policyChain,Mockito.times(0)).doNext(request, response);
     }
-    
-    @Test
-    public void test_with_cache_disabled_and_given_issuer_and_valid_authorization_header() throws Exception {
-        String jwt = getJsonWebToken(7200).compact();
-        final String resolverParameter = "validIss1|"+ISS+"|validIss3";
-        
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
-        when(configuration.getResolverParameter()).thenReturn(resolverParameter);
-        when(templateEngine.convert(resolverParameter)).thenReturn(resolverParameter);
- 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,times(0)).failWith(any(PolicyResult.class));
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
-    }
-    
-    @Test
-    public void test_with_cache_disabled_and_given_issuer_using_EL_and_valid_authorization_header() throws Exception {
-        
-        String jwt = getJsonWebToken(7200).compact();
-        final String property = "prop['key']";
-        
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
-        when(configuration.getResolverParameter()).thenReturn(property);
-        when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
-        when(templateEngine.convert(property)).thenReturn(ISS);
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,times(0)).failWith(any(PolicyResult.class));
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
-    }
-    
-    @Test
-    public void test_with_cache_disabled_and_given_issuer_but_not_provided() throws Exception {
-        
-        String jwt = getJsonWebToken(7200).compact();
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(PublicKeyResolver.GIVEN_ISSUER);
-        when(configuration.getResolverParameter()).thenReturn(null);
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
-        verify(policyChain,Mockito.times(0)).doNext(request, response);
-    }
 
     @Test
-    public void test_not_authentifiction_scheme() throws Exception {
+    public void test_not_authentification_scheme() throws Exception {
 
-        String jwt = getJsonWebToken(7200).compact();
+        String jwt = getJsonWebToken(7200);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", jwt);
@@ -461,9 +404,9 @@ public class JWTPolicyTest {
     }
 
     @Test
-    public void test_not_authentifiction_scheme_supported() throws Exception {
+    public void test_not_authentification_scheme_supported() throws Exception {
 
-        String jwt = getJsonWebToken(7200).compact();
+        String jwt = getJsonWebToken(7200);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Basic " + jwt);
@@ -480,30 +423,52 @@ public class JWTPolicyTest {
      * @return String
      * @throws Exception
      */
-    private JwtBuilder getJsonWebToken(long secondsToAdd) throws Exception {
-        return getJsonWebToken(secondsToAdd,null,null);
+    private String getJsonWebToken(long secondsToAdd) throws Exception {
+        return sign(getJsonWebTokenBuilder(secondsToAdd,null).build());
     }
-    
+
+    private JWTClaimsSet.Builder getJsonWebTokenBuilder(long secondsToAdd) throws Exception {
+        return getJsonWebTokenBuilder(secondsToAdd,null);
+    }
+
     /**
      * Return Json Web Token string value.
      * @return String
      * @throws Exception
      */
-    private JwtBuilder getJsonWebToken(long secondsToAdd, String iss, String kid) throws Exception{
+    private String getJsonWebToken(long secondsToAdd, String iss) throws Exception {
+        return sign(getJsonWebTokenBuilder(secondsToAdd, iss).build());
+    }
 
-        Map<String,Object> header = new HashMap<String,Object>(2);
-        header.put("alg", "RS256");
-        header.put("kid", kid!=null?kid:KID);
-        
-        JwtBuilder jwtBuilder = Jwts.builder();
-        jwtBuilder.setHeader(header);
-        jwtBuilder.setSubject("alexluso");
-        jwtBuilder.setIssuer(iss!=null?iss:ISS);
-        jwtBuilder.setExpiration(Date.from(Instant.now().plusSeconds(secondsToAdd)));
+    private JWTClaimsSet.Builder getJsonWebTokenBuilder(long secondsToAdd, String iss) throws Exception {
+        // Prepare JWT with claims set
+        return new JWTClaimsSet.Builder()
+                .subject("alexluso")
+                .issuer(iss != null ? iss : ISS)
+                .expirationTime(Date.from(Instant.now().plusSeconds(secondsToAdd)));
+    }
 
-        jwtBuilder.signWith(SignatureAlgorithm.RS256, getPrivateKey());
+    private String sign(JWTClaimsSet claimsSet) throws Exception {
+        return sign(claimsSet, null);
+    }
 
-        return jwtBuilder;
+    private String sign(JWTClaimsSet claimsSet, String kid) throws Exception {
+        RSAKey rsaKey = new RSAKey
+                .Builder(PublicKeyHelper.parsePublicKey(getSshRsaKey()))
+                .privateKey(getPrivateKey())
+                .build();
+
+        JWSSigner signer = new RSASSASigner(rsaKey);
+
+        SignedJWT signedJWT = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256)
+                        .keyID(kid != null ? kid : KID)
+                        .build(),
+                claimsSet);
+
+        signedJWT.sign(signer);
+
+        return signedJWT.serialize();
     }
     
     /**
