@@ -25,6 +25,7 @@ import io.gravitee.policy.jwt.key.PublicKeyHelper;
 import io.gravitee.policy.jwt.key.PublicKeyResolver;
 
 import java.security.interfaces.RSAPublicKey;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -34,7 +35,7 @@ public class PublicKeyJWKSourceResolver<C extends SecurityContext> implements JW
 
     private final JWK jwk;
 
-    public PublicKeyJWKSourceResolver(String publicKey) {
+    private PublicKeyJWKSourceResolver(String publicKey) {
         RSAPublicKey rsaPublicKey = PublicKeyHelper.parsePublicKey(publicKey);
         this.jwk = new RSAKey.Builder(rsaPublicKey).build();
     }
@@ -44,7 +45,7 @@ public class PublicKeyJWKSourceResolver<C extends SecurityContext> implements JW
     }
 
     @Override
-    public JWKSource<C> resolve() {
-        return new ImmutableJWKSet<>(new JWKSet(jwk));
+    public CompletableFuture<JWKSource<C>> resolve() {
+        return CompletableFuture.completedFuture(new ImmutableJWKSet<>(new JWKSet(jwk)));
     }
 }

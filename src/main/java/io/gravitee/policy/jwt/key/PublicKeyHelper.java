@@ -33,7 +33,9 @@ import java.util.regex.Pattern;
  */
 public final class PublicKeyHelper {
 
-    private static final Pattern SSH_PUB_KEY = Pattern.compile("ssh-(rsa|dsa) ([A-Za-z0-9/+]+=*) (.*)");
+    private static final Pattern SSH_PUB_KEY = Pattern.compile("(ssh-(rsa|dsa) )?([A-Za-z0-9/+]+=*) ?(.*)");
+
+    private static final String SSH_RSA_ALG = "ssh-rsa";
 
     /**
      * Generate RSA Public Key from the ssh-(rsa|dsa) ([A-Za-z0-9/+]+=*) (.*) stored key.
@@ -45,10 +47,9 @@ public final class PublicKeyHelper {
 
         if (m.matches()) {
             String alg = m.group(1);
-            String encKey = m.group(2);
-            //String id = m.group(3);
+            String encKey = m.group(3);
 
-            if (!"rsa".equalsIgnoreCase(alg)) {
+            if (alg != null && !alg.startsWith(SSH_RSA_ALG)) {
                 throw new IllegalArgumentException("Only RSA is currently supported, but algorithm was " + alg);
             }
 

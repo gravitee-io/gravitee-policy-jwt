@@ -3,15 +3,27 @@
   "id" : "urn:jsonschema:io:gravitee:policy:jwt:configuration:JWTPolicyConfiguration",
   "properties" : {
     "publicKeyResolver" : {
-      "title": "Public key resolver",
-      "description": "Select how public key is retrieved among : given key or gateway key settings...",
+      "title": "JWKS resolver",
+      "description": "Define how the JSON Web Key Set is retrieved",
       "type" : "string",
       "default": "GIVEN_KEY",
-      "enum" : [ "GIVEN_KEY", "GATEWAY_KEYS" ]
+      "enum" : [
+        "GIVEN_KEY",
+        "GATEWAY_KEYS",
+        "JWKS_URL"
+      ],
+      "x-schema-form": {
+        "type": "select",
+        "titleMap": {
+          "GIVEN_KEY": "GIVEN_KEY: You must provide RSA Public Key as a resolver parameter",
+          "GATEWAY_KEYS": "GATEWAY_KEYS: Look for RSA Public Key from API Gateway configuration according to issuer and kid from incoming JWT",
+          "JWKS_URL": "JWKS_URL: Retrieve JWKS from URL (Basically, URL ending with '/.well-known/jwks.json')"
+        }
+      }
     },
     "resolverParameter" : {
-      "title": "Public key (ssh-rsa KEY xxx@yyy.zz) or expected issuers (name1|name2|...)",
-      "description": "Set the public key <i><b>(GIVEN_KEY)</b></i> or expected issuers <i><b>(GIVEN_ISSUER)</b></i> following selected resolver <i>(support EL)</i>.",
+      "title": "Resolver parameter",
+      "description": "Set the public key <i><b>(GIVEN_KEY)</b></i> or a JWKS URL <i><b>(JWKS_URL)</b></i> following selected resolver <i>(support EL)</i>.",
       "type" : "string"
     },
     "extractClaims" : {

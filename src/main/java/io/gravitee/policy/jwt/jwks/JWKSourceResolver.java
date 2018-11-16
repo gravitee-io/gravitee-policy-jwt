@@ -18,11 +18,13 @@ package io.gravitee.policy.jwt.jwks;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
 public interface JWKSourceResolver<C extends SecurityContext> {
 
-    JWKSource<C> resolve() throws Exception;
+    CompletableFuture<JWKSource<C>> resolve();
 }

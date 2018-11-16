@@ -15,15 +15,25 @@
  */
 package io.gravitee.policy.jwt.processor;
 
-import com.nimbusds.jwt.JWTClaimsSet;
-
-import java.util.concurrent.CompletableFuture;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.JWSKeySelector;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
+import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public interface KeyProcessor {
+public class JWKSKeyProcessor<C extends SecurityContext> extends AbstractKeyProcessor<C> {
 
-    CompletableFuture<JWTClaimsSet> process(String token);
+    public JWKSKeyProcessor(JWKSourceResolver<C> jwkSourceResolver) {
+        super(jwkSourceResolver);
+    }
+
+    @Override
+    JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource) {
+        return new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSource);
+    }
 }

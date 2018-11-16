@@ -49,6 +49,8 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.mockito.Matchers.any;
@@ -87,7 +89,6 @@ public class JWTPolicyTest {
 
     @Test
     public void test_with_cache_disabled_and_gateway_keys_and_valid_authorization_header() throws Exception {
-        
         String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
@@ -97,8 +98,8 @@ public class JWTPolicyTest {
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(policyChain,Mockito.times(1)).doNext(request, response);
     }
@@ -118,7 +119,7 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(executionContext,Mockito.times(1))
                 .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id");
@@ -142,8 +143,7 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
         verify(policyChain,Mockito.times(0)).doNext(request, response);
@@ -165,7 +165,7 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(executionContext,Mockito.times(1))
                 .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-aud");
@@ -185,16 +185,16 @@ public class JWTPolicyTest {
         String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
+        headers.add("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext,Mockito.times(1))
+        verify(executionContext, Mockito.times(1))
                 .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-aud");
 
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
+        verify(policyChain, Mockito.times(1)).doNext(request, response);
     }
 
     @Test
@@ -209,16 +209,16 @@ public class JWTPolicyTest {
         String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
+        headers.add("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext,Mockito.times(1))
+        verify(executionContext, Mockito.times(1))
                 .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-azp");
 
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
+        verify(policyChain, Mockito.times(1)).doNext(request, response);
     }
 
     @Test
@@ -234,16 +234,16 @@ public class JWTPolicyTest {
         String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
+        headers.add("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext,Mockito.times(1))
+        verify(executionContext, Mockito.times(1))
                 .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-azp");
 
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
+        verify(policyChain, Mockito.times(1)).doNext(request, response);
     }
 
     @Test
@@ -256,42 +256,40 @@ public class JWTPolicyTest {
         String jwt = sign(builder.build());
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
+        headers.add("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext,Mockito.times(1))
+        verify(executionContext, Mockito.times(1))
                 .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, null);
 
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
+        verify(policyChain, Mockito.times(1)).doNext(request, response);
     }
 
     @Test
     public void test_with_cache_disabled_and_given_key_and_valid_authorization_header() throws Exception {
-
         String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSshRsaKey());
         
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer "+jwt);
+        headers.add("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(getSshRsaKey());
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
         when(templateEngine.convert(getSshRsaKey())).thenReturn(getSshRsaKey());
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
 
-        verify(policyChain,Mockito.times(1)).doNext(request, response);
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(policyChain, Mockito.times(1)).doNext(request, response);
     }
     
     @Test
     public void test_with_cache_disabled_and_given_key_using_EL_and_valid_authorization_header() throws Exception {
-        
         String jwt = getJsonWebToken(7200);
         final String property = "prop['key']";
         
@@ -305,15 +303,14 @@ public class JWTPolicyTest {
         when(configuration.getResolverParameter()).thenReturn(property);
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
         when(templateEngine.convert(property)).thenReturn(getSshRsaKey());
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(policyChain,Mockito.times(1)).doNext(request, response);
     }
     
     @Test
     public void test_with_cache_disabled_and_given_key_but_not_provided() throws Exception {
-        
         String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
@@ -324,8 +321,8 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(null);
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
         verify(policyChain,Mockito.times(0)).doNext(request, response);
@@ -333,7 +330,6 @@ public class JWTPolicyTest {
     
     @Test
     public void test_with_cache_disabled_and_gateway_keys_and_valid_access_token() throws Exception {
-        
         String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
@@ -345,8 +341,8 @@ public class JWTPolicyTest {
         when(request.headers()).thenReturn(new HttpHeaders());
         when(request.parameters()).thenReturn(parameters);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(request,times(1)).parameters();
         verify(policyChain,times(1)).doNext(request, response);
@@ -354,7 +350,6 @@ public class JWTPolicyTest {
     
     @Test
     public void test_with_cache_disabled_and_gateway_keys_and_expired_header_token() throws Exception {
-
         String jwt = getJsonWebToken(0);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
@@ -364,16 +359,15 @@ public class JWTPolicyTest {
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
         
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
         verify(policyChain,Mockito.times(0)).doNext(request, response);
     }
 
     @Test
-    public void test_with_cache_disabled_and_gateway_keys_and_unknonw_issuer() throws Exception {
-        
+    public void test_with_cache_disabled_and_gateway_keys_and_unknown_issuer() throws Exception {
         String jwt = getJsonWebToken(7200,"unknown");
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
@@ -383,38 +377,46 @@ public class JWTPolicyTest {
         headers.add("Authorization", "Bearer "+jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-        
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
         verify(policyChain,Mockito.times(0)).doNext(request, response);
     }
 
     @Test
     public void test_not_authentification_scheme() throws Exception {
-
         String jwt = getJsonWebToken(7200);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", jwt);
         when(request.headers()).thenReturn(headers);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
     }
 
     @Test
     public void test_not_authentification_scheme_supported() throws Exception {
-
         String jwt = getJsonWebToken(7200);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Basic " + jwt);
         when(request.headers()).thenReturn(headers);
 
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+        executePolicy(configuration, request, response, executionContext, policyChain);
 
         verify(policyChain,times(1)).failWith(any(PolicyResult.class));
+    }
+
+    private void executePolicy(JWTPolicyConfiguration configuration, Request request, Response response,
+                               ExecutionContext executionContext, PolicyChain policyChain) throws InterruptedException {
+        final CountDownLatch lock = new CountDownLatch(1);
+
+        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
+
+        lock.await(1, TimeUnit.SECONDS);
     }
 
     //PRIVATE tools method for tests

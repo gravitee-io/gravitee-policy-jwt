@@ -16,10 +16,20 @@
 package io.gravitee.policy.jwt.exceptions;
 
 /**
- * @author Guillaume Gillon (guillaume.gillon at outlook.com)
+ * @author David BRASSELY (david.brassely at graviteesource.com)
+ * @author GraviteeSource Team
  */
-public class AuthSchemeException extends Exception {
-    public AuthSchemeException(String message) {
+public class InvalidTokenException extends RuntimeException {
+
+    public InvalidTokenException(String message) {
         super(message);
+    }
+
+    public InvalidTokenException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public InvalidTokenException(Throwable cause) {
+        super(cause);
     }
 }
