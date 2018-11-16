@@ -13,17 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.processor;
-
-import com.nimbusds.jwt.JWTClaimsSet;
-
-import java.util.concurrent.CompletableFuture;
+package io.gravitee.policy.jwt.exceptions;
 
 /**
- * @author David BRASSELY (david.brassely at graviteesource.com)
- * @author GraviteeSource Team
+ * @author Guillaume Gillon (guillaume.gillon at outlook.com)
  */
-public interface KeyProcessor {
-
-    CompletableFuture<JWTClaimsSet> process(String token);
+public class AuthorizationSchemeException extends Exception {
+    public AuthorizationSchemeException(String message) {
+        super(message);
+    }
 }

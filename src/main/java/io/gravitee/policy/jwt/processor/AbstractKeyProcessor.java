@@ -22,37 +22,48 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import io.gravitee.policy.jwt.exceptions.InvalidTokenException;
 import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public abstract class AbstractKeyProcessor implements KeyProcessor {
+public abstract class AbstractKeyProcessor<C extends SecurityContext> implements KeyProcessor {
 
-    private final JWKSourceResolver jwkSourceResolver;
+    private final JWKSourceResolver<C> jwkSourceResolver;
 
-    private final static DefaultJWTClaimsVerifier claimsVerifier = new DefaultJWTClaimsVerifier();
+    private final static DefaultJWTClaimsVerifier claimsVerifier = new DefaultJWTClaimsVerifier<>();
+
+    // To ensure compatibility with previous version of JWT policy.
+    // TODO: should be configurable from policy configuration.
     static {
         claimsVerifier.setMaxClockSkew(0);
     }
 
-    protected AbstractKeyProcessor(JWKSourceResolver jwkSourceResolver) {
+    AbstractKeyProcessor(JWKSourceResolver<C> jwkSourceResolver) {
         this.jwkSourceResolver = jwkSourceResolver;
     }
 
     @Override
-    public JWTClaimsSet process(String token) throws Exception {
-        JWKSource jwkSource = jwkSourceResolver.resolve();
+    public CompletableFuture<JWTClaimsSet> process(String token) {
+        return jwkSourceResolver
+                .resolve()
+                .thenCompose(jwkSource -> {
+                    ConfigurableJWTProcessor<C> jwtProcessor = new DefaultJWTProcessor<>();
+                    jwtProcessor.setJWTClaimsSetVerifier(claimsVerifier);
+                    jwtProcessor.setJWSKeySelector(jwsKeySelector(jwkSource));
 
-        ConfigurableJWTProcessor jwtProcessor = new DefaultJWTProcessor();
-        jwtProcessor.setJWTClaimsSetVerifier(claimsVerifier);
-
-        jwtProcessor.setJWSKeySelector(keySelector(jwkSource));
-
-        SecurityContext ctx = null; // optional context parameter, not required here
-        return jwtProcessor.process(token, ctx);
+                    try {
+                        return CompletableFuture.completedFuture(
+                                jwtProcessor.process(token, null));
+                    } catch (Exception ex) {
+                        throw new InvalidTokenException(ex);
+                    }
+                });
     }
 
-    abstract JWSKeySelector keySelector(JWKSource jwkSource);
+    abstract JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource);
 }

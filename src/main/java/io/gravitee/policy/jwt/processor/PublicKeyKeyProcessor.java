@@ -20,6 +20,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
 import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
 
 import java.util.Collections;
@@ -28,14 +29,14 @@ import java.util.Collections;
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class PublicKeyKeyProcessor extends AbstractKeyProcessor {
+public class PublicKeyKeyProcessor<C extends SecurityContext> extends AbstractKeyProcessor<C> {
 
-    public PublicKeyKeyProcessor(JWKSourceResolver jwkSourceResolver) {
+    public PublicKeyKeyProcessor(JWKSourceResolver<C> jwkSourceResolver) {
         super(jwkSourceResolver);
     }
 
     @Override
-    JWSKeySelector keySelector(JWKSource jwkSource) {
+    JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource) {
         return (header, context) -> {
             try {
                 return Collections.singletonList(((RSAKey) ((ImmutableJWKSet) jwkSource).getJWKSet().getKeys().get(0)).toPublicKey());

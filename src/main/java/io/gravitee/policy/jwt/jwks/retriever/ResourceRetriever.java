@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.exceptions;
+package io.gravitee.policy.jwt.jwks.retriever;
 
-/**
-* @author Alexandre FARIA (alexandre82.faria at gmail.com)
-*/
-public class ValidationFromCacheException extends Exception{
-    public ValidationFromCacheException(String message) {
-        super(message);
-    }
+import com.nimbusds.jose.util.Resource;
+
+import java.net.URL;
+import java.util.concurrent.CompletableFuture;
+
+public interface ResourceRetriever {
+
+    CompletableFuture<Resource> retrieve(URL url);
 }
