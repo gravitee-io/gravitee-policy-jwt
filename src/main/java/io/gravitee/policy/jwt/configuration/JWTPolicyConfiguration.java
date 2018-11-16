@@ -18,21 +18,23 @@ package io.gravitee.policy.jwt.configuration;
 import io.gravitee.policy.api.PolicyConfiguration;
 
 /**
-* @author Alexandre FARIA (alexandre82.faria at gmail.com)
-*/
+ * @author Alexandre FARIA (alexandre82.faria at gmail.com)
+ * @author David BRASSELY (david.brassely at graviteesource.com)
+ * @author GraviteeSource Team
+ */
 public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     //settings attributes
     private String resolverParameter;
-    private PublicKeyResolver publicKeyResolver = PublicKeyResolver.GIVEN_KEY;
+    private KeyResolver publicKeyResolver = KeyResolver.GIVEN_KEY;
     private boolean extractClaims = false;
     
     //getter and setters
-    public PublicKeyResolver getPublicKeyResolver() {
+    public KeyResolver getPublicKeyResolver() {
         return publicKeyResolver;
     }
 
-    public void setPublicKeyResolver(PublicKeyResolver publicKeyResolver) {
+    public void setPublicKeyResolver(KeyResolver publicKeyResolver) {
         this.publicKeyResolver = publicKeyResolver;
     }
     

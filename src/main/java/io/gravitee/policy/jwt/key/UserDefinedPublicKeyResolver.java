@@ -13,13 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.configuration;
+package io.gravitee.policy.jwt.key;
 
 /**
-* @author Alexandre FARIA (alexandre82.faria at gmail.com)
-*/
-public enum PublicKeyResolver {
-    GIVEN_KEY,
-    GIVEN_ISSUER,
-    GATEWAY_KEYS
+ * @author David BRASSELY (david.brassely at graviteesource.com)
+ * @author GraviteeSource Team
+ */
+public class UserDefinedPublicKeyResolver implements PublicKeyResolver {
+
+    private final String givenKey;
+
+    public UserDefinedPublicKeyResolver(String givenKey) {
+        this.givenKey = givenKey;
+    }
+
+    @Override
+    public String resolve() {
+        if (givenKey == null || givenKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("No specified given key while expecting it due to policy settings.");
+        }
+
+        return givenKey;
+    }
 }
