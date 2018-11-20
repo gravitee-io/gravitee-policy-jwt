@@ -15,12 +15,11 @@
  */
 package io.gravitee.policy.jwt.processor;
 
-import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
-import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
+import io.gravitee.policy.jwt.alg.Signature;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -28,12 +27,8 @@ import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
  */
 public class JWKSKeyProcessor<C extends SecurityContext> extends AbstractKeyProcessor<C> {
 
-    public JWKSKeyProcessor(JWKSourceResolver<C> jwkSourceResolver) {
-        super(jwkSourceResolver);
-    }
-
     @Override
-    JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource) {
-        return new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSource);
+    JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource, Signature signature) {
+        return new JWSVerificationKeySelector<>(signature.getAlg(), jwkSource);
     }
 }

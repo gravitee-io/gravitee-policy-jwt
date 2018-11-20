@@ -13,26 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.key;
+package io.gravitee.policy.jwt.alg;
+
+import com.nimbusds.jose.JWSAlgorithm;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class UserDefinedPublicKeyResolver implements PublicKeyResolver {
+public enum Signature {
+    RSA_RS256(JWSAlgorithm.RS256),
+    RSA_RS384(JWSAlgorithm.RS384),
+    RSA_RS512(JWSAlgorithm.RS512),
+    HMAC_HS256(JWSAlgorithm.HS256),
+    HMAC_HS384(JWSAlgorithm.HS384),
+    HMAC_HS512(JWSAlgorithm.HS512);
 
-    private final String givenKey;
+    private JWSAlgorithm alg;
 
-    public UserDefinedPublicKeyResolver(String givenKey) {
-        this.givenKey = givenKey;
+    Signature(JWSAlgorithm alg) {
+        this.alg = alg;
     }
 
-    @Override
-    public String resolve() {
-        if (givenKey == null || givenKey.trim().isEmpty()) {
-            throw new IllegalArgumentException("No specified given key while expecting it due to policy settings.");
-        }
-
-        return givenKey;
+    public JWSAlgorithm getAlg() {
+        return alg;
     }
 }

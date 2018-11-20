@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.key;
+package io.gravitee.policy.jwt.resolver;
 
 import io.gravitee.gateway.api.expression.TemplateEngine;
 
@@ -21,19 +21,19 @@ import io.gravitee.gateway.api.expression.TemplateEngine;
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class TemplatablePublicKeyResolver implements PublicKeyResolver {
+public class TemplatableSignatureKeyResolver implements SignatureKeyResolver {
 
     private final TemplateEngine templateEngine;
-    private final PublicKeyResolver publicKeyResolver;
+    private final SignatureKeyResolver keyResolver;
 
-    public TemplatablePublicKeyResolver(TemplateEngine templateEngine, PublicKeyResolver publicKeyResolver) {
+    public TemplatableSignatureKeyResolver(TemplateEngine templateEngine, SignatureKeyResolver keyResolver) {
         this.templateEngine = templateEngine;
-        this.publicKeyResolver = publicKeyResolver;
+        this.keyResolver = keyResolver;
     }
 
     @Override
     public String resolve() {
-        String publicKey = publicKeyResolver.resolve();
+        String publicKey = keyResolver.resolve();
         return templateEngine.convert(publicKey);
     }
 }
