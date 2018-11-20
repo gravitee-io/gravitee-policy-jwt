@@ -16,6 +16,8 @@
 package io.gravitee.policy.jwt.configuration;
 
 import io.gravitee.policy.api.PolicyConfiguration;
+import io.gravitee.policy.jwt.alg.Signature;
+import io.gravitee.policy.jwt.resolver.KeyResolver;
 
 /**
  * @author Alexandre FARIA (alexandre82.faria at gmail.com)
@@ -27,6 +29,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     //settings attributes
     private String resolverParameter;
     private KeyResolver publicKeyResolver = KeyResolver.GIVEN_KEY;
+    private Signature signature = Signature.RSA_RS256;
     private boolean extractClaims = false;
     
     //getter and setters
@@ -52,5 +55,13 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     public void setExtractClaims(boolean extractClaims) {
         this.extractClaims = extractClaims;
+    }
+
+    public Signature getSignature() {
+        return signature;
+    }
+
+    public void setSignature(Signature signature) {
+        this.signature = signature;
     }
 }

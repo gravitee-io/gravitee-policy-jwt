@@ -23,16 +23,17 @@ import io.gravitee.gateway.api.Response;
 import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.api.annotations.OnRequest;
+import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
-import io.gravitee.policy.jwt.jwks.PublicKeyJWKSourceResolver;
 import io.gravitee.policy.jwt.jwks.URLJWKSourceResolver;
+import io.gravitee.policy.jwt.jwks.hmac.MACJWKSourceResolver;
 import io.gravitee.policy.jwt.jwks.retriever.VertxResourceRetriever;
-import io.gravitee.policy.jwt.key.GatewayPublicKeyResolver;
-import io.gravitee.policy.jwt.key.TemplatablePublicKeyResolver;
-import io.gravitee.policy.jwt.key.UserDefinedPublicKeyResolver;
+import io.gravitee.policy.jwt.jwks.rsa.RSAJWKSourceResolver;
 import io.gravitee.policy.jwt.processor.AbstractKeyProcessor;
+import io.gravitee.policy.jwt.processor.HMACKeyProcessor;
 import io.gravitee.policy.jwt.processor.JWKSKeyProcessor;
-import io.gravitee.policy.jwt.processor.PublicKeyKeyProcessor;
+import io.gravitee.policy.jwt.processor.RSAKeyProcessor;
+import io.gravitee.policy.jwt.resolver.*;
 import io.gravitee.policy.jwt.token.TokenExtractor;
 import io.vertx.core.Vertx;
 import org.springframework.core.env.Environment;
@@ -141,28 +142,51 @@ public class JWTPolicy {
     }
 
     private CompletableFuture<JWTClaimsSet> validate(ExecutionContext executionContext, String token) throws Exception {
-        AbstractKeyProcessor keyProcessor;
+        final Signature signature = (configuration.getSignature() == null)
+                ? Signature.RSA_RS256 : configuration.getSignature();
 
-        switch (configuration.getPublicKeyResolver()) {
-            case GIVEN_KEY:
-                keyProcessor = new PublicKeyKeyProcessor(new PublicKeyJWKSourceResolver(
-                        new TemplatablePublicKeyResolver(
-                                executionContext.getTemplateEngine(),
-                                new UserDefinedPublicKeyResolver(configuration.getResolverParameter()))));
-                break;
-            case GATEWAY_KEYS:
-                keyProcessor = new PublicKeyKeyProcessor(new PublicKeyJWKSourceResolver(
-                        new GatewayPublicKeyResolver(executionContext.getComponent(Environment.class), token)));
-                break;
-            case JWKS_URL:
-                keyProcessor = new JWKSKeyProcessor(new URLJWKSourceResolver(
-                        configuration.getResolverParameter(),
-                        new VertxResourceRetriever(executionContext.getComponent(Vertx.class))));
-                break;
-            default:
-                throw new IllegalArgumentException("Unexpected key resolver value.");
+        AbstractKeyProcessor keyProcessor = null;
+
+        if (configuration.getPublicKeyResolver() != KeyResolver.JWKS_URL) {
+            SignatureKeyResolver signatureKeyResolver;
+            switch (configuration.getPublicKeyResolver()) {
+                case GIVEN_KEY:
+                    signatureKeyResolver = new TemplatableSignatureKeyResolver(
+                            executionContext.getTemplateEngine(),
+                            new UserDefinedSignatureKeyResolver(configuration.getResolverParameter()));
+                    break;
+                case GATEWAY_KEYS:
+                    signatureKeyResolver = new GatewaySignatureKeyResolver(
+                            executionContext.getComponent(Environment.class),
+                            token);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unexpected signature key resolver");
+            }
+
+            switch (signature) {
+                case RSA_RS256:
+                case RSA_RS384:
+                case RSA_RS512:
+                    keyProcessor = new RSAKeyProcessor();
+                    keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
+                    break;
+                case HMAC_HS256:
+                case HMAC_HS384:
+                case HMAC_HS512:
+                    keyProcessor = new HMACKeyProcessor();
+                    keyProcessor.setJwkSourceResolver(new MACJWKSourceResolver(signatureKeyResolver));
+                    break;
+            }
+
+
+        } else {
+            keyProcessor = new JWKSKeyProcessor();
+            keyProcessor.setJwkSourceResolver(new URLJWKSourceResolver(
+                    configuration.getResolverParameter(),
+                    new VertxResourceRetriever(executionContext.getComponent(Vertx.class))));
         }
 
-        return keyProcessor.process(token);
+        return keyProcessor.process(signature, token);
     }
 }

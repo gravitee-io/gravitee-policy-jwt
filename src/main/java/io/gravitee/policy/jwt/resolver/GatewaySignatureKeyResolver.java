@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.key;
+package io.gravitee.policy.jwt.resolver;
 
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jwt.JWT;
@@ -28,17 +28,17 @@ import java.text.ParseException;
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class GatewayPublicKeyResolver implements PublicKeyResolver {
+public class GatewaySignatureKeyResolver implements SignatureKeyResolver {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GatewayPublicKeyResolver.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GatewaySignatureKeyResolver.class);
 
     private static final String DEFAULT_KID = "default";
-    private static final String PUBLIC_KEY_PROPERTY = "policy.jwt.issuer.%s.%s";
+    private static final String KEY_PROPERTY = "policy.jwt.issuer.%s.%s";
 
     private final Environment environment;
     private final String token;
 
-    public GatewayPublicKeyResolver(Environment environment, String token) {
+    public GatewaySignatureKeyResolver(Environment environment, String token) {
         this.environment = environment;
         this.token = token;
     }
@@ -55,7 +55,7 @@ public class GatewayPublicKeyResolver implements PublicKeyResolver {
                 keyId = DEFAULT_KID;
             }
 
-            String publicKey = environment.getProperty(String.format(PUBLIC_KEY_PROPERTY, iss, keyId));
+            String publicKey = environment.getProperty(String.format(KEY_PROPERTY, iss, keyId));
             return (publicKey == null || publicKey.trim().isEmpty()) ? null : publicKey;
         } catch (ParseException pe) {
             LOGGER.debug("Unexpected error while parsing JWT", pe);

@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.key;
+package io.gravitee.policy.jwt.resolver;
 
 /**
+ * @author Alexandre FARIA (alexandre82.faria at gmail.com)
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public interface PublicKeyResolver {
-
-    String resolve();
+public enum KeyResolver {
+    GIVEN_KEY,
+    GATEWAY_KEYS,
+    JWKS_URL
 }

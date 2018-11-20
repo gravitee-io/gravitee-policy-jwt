@@ -13,36 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.processor;
+package io.gravitee.policy.jwt.jwks.hmac;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
+import io.gravitee.policy.jwt.resolver.SignatureKeyResolver;
 
-import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class PublicKeyKeyProcessor<C extends SecurityContext> extends AbstractKeyProcessor<C> {
+public class MACJWKSourceResolver<C extends SecurityContext> implements JWKSourceResolver<C> {
 
-    public PublicKeyKeyProcessor(JWKSourceResolver<C> jwkSourceResolver) {
-        super(jwkSourceResolver);
+    private final JWK jwk;
+
+    private MACJWKSourceResolver(String secretKey) {
+        this.jwk = new OctetSequenceKey.Builder(secretKey.getBytes()).build();
+    }
+
+    public MACJWKSourceResolver(SignatureKeyResolver publicKeyResolver) {
+        this(publicKeyResolver.resolve());
     }
 
     @Override
-    JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource) {
-        return (header, context) -> {
-            try {
-                return Collections.singletonList(((RSAKey) ((ImmutableJWKSet) jwkSource).getJWKSet().getKeys().get(0)).toPublicKey());
-            } catch (JOSEException e) {
-                return null;
-            }
-        };
+    public CompletableFuture<JWKSource<C>> resolve() {
+        return CompletableFuture.completedFuture(new ImmutableJWKSet<>(new JWKSet(jwk)));
     }
 }

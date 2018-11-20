@@ -22,6 +22,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.exceptions.InvalidTokenException;
 import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
 
@@ -33,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public abstract class AbstractKeyProcessor<C extends SecurityContext> implements KeyProcessor {
 
-    private final JWKSourceResolver<C> jwkSourceResolver;
+    private JWKSourceResolver<C> jwkSourceResolver;
 
     private final static DefaultJWTClaimsVerifier claimsVerifier = new DefaultJWTClaimsVerifier<>();
 
@@ -43,18 +44,14 @@ public abstract class AbstractKeyProcessor<C extends SecurityContext> implements
         claimsVerifier.setMaxClockSkew(0);
     }
 
-    AbstractKeyProcessor(JWKSourceResolver<C> jwkSourceResolver) {
-        this.jwkSourceResolver = jwkSourceResolver;
-    }
-
     @Override
-    public CompletableFuture<JWTClaimsSet> process(String token) {
+    public CompletableFuture<JWTClaimsSet> process(Signature signature, String token) {
         return jwkSourceResolver
                 .resolve()
                 .thenCompose(jwkSource -> {
                     ConfigurableJWTProcessor<C> jwtProcessor = new DefaultJWTProcessor<>();
                     jwtProcessor.setJWTClaimsSetVerifier(claimsVerifier);
-                    jwtProcessor.setJWSKeySelector(jwsKeySelector(jwkSource));
+                    jwtProcessor.setJWSKeySelector(jwsKeySelector(jwkSource, signature));
 
                     try {
                         return CompletableFuture.completedFuture(
@@ -65,5 +62,9 @@ public abstract class AbstractKeyProcessor<C extends SecurityContext> implements
                 });
     }
 
-    abstract JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource);
+    public void setJwkSourceResolver(JWKSourceResolver<C> jwkSourceResolver) {
+        this.jwkSourceResolver = jwkSourceResolver;
+    }
+
+    abstract JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource, Signature signature);
 }
