@@ -16,6 +16,7 @@
 package io.gravitee.policy.jwt;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
@@ -105,6 +106,9 @@ public class JWTPolicy {
                         }
                     });
 
+            if (!configuration.isPropagateAuthHeader()) {
+                request.headers().remove(HttpHeaders.AUTHORIZATION);
+            }
         } catch (Exception ex) {
             policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
         }

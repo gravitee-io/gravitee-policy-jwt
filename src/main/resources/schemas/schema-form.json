@@ -56,6 +56,12 @@
       "description": "Put claims into the 'jwt.claims' context attribute.",
       "type" : "boolean",
       "default": false
+    },
+    "propagateAuthHeader" : {
+      "title": "Propagate Authorization header",
+      "description": "Allows to propagate Authorization header to the target endpoints",
+      "type" : "boolean",
+      "default": true
     }
   },
   "required": [

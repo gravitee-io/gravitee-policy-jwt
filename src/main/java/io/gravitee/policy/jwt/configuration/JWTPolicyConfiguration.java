@@ -31,6 +31,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private KeyResolver publicKeyResolver = KeyResolver.GIVEN_KEY;
     private Signature signature = Signature.RSA_RS256;
     private boolean extractClaims = false;
+    private boolean propagateAuthHeader = true;
     
     //getter and setters
     public KeyResolver getPublicKeyResolver() {
@@ -63,5 +64,13 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     public void setSignature(Signature signature) {
         this.signature = signature;
+    }
+
+    public boolean isPropagateAuthHeader() {
+        return propagateAuthHeader;
+    }
+
+    public void setPropagateAuthHeader(boolean propagateAuthHeader) {
+        this.propagateAuthHeader = propagateAuthHeader;
     }
 }
