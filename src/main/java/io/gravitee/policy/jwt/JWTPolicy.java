@@ -36,6 +36,8 @@ import io.gravitee.policy.jwt.processor.RSAKeyProcessor;
 import io.gravitee.policy.jwt.resolver.*;
 import io.gravitee.policy.jwt.token.TokenExtractor;
 import io.vertx.core.Vertx;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 
 import java.util.List;
@@ -46,6 +48,8 @@ import java.util.concurrent.CompletableFuture;
  * @author GraviteeSource Team
  */
 public class JWTPolicy {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JWTPolicy.class);
 
     /**
      * Request attributes
@@ -105,7 +109,8 @@ public class JWTPolicy {
                         }
                     });
 
-        } catch (Exception ex) {
+        } catch (Exception e) {
+            LOGGER.error("[request-id:" + request.id() + "] [request-path:" + request.path() +"] " + e.getMessage(), e.getCause());
             policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
         }
     }
