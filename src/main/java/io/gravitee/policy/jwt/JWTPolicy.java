@@ -25,6 +25,7 @@ import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.api.annotations.OnRequest;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.exceptions.InvalidTokenException;
 import io.gravitee.policy.jwt.jwks.URLJWKSourceResolver;
 import io.gravitee.policy.jwt.jwks.hmac.MACJWKSourceResolver;
 import io.gravitee.policy.jwt.jwks.retriever.VertxResourceRetriever;
@@ -67,10 +68,15 @@ public class JWTPolicy {
     static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
 
     /**
+     * Error message format
+     */
+    static final String errorMessageFormat = "[request-id:%s] [request-path:%s] %s";
+
+    /**
      * The associated configuration to this JWT Policy
      */
     private JWTPolicyConfiguration configuration;
-    
+
     /**
      * Create a new JWT Policy instance based on its associated configuration
      *
@@ -90,7 +96,13 @@ public class JWTPolicy {
             validate(executionContext, jwt)
                     .whenComplete((claims, throwable) -> {
                         if (throwable != null) {
-                            request.metrics().setMessage(throwable.getCause().getCause().getMessage());
+                            if (throwable.getCause() instanceof InvalidTokenException) {
+                                LOGGER.debug(String.format(errorMessageFormat, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
+                                request.metrics().setMessage(throwable.getCause().getCause().getMessage());
+                            } else {
+                                LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
+                                request.metrics().setMessage(throwable.getCause().getMessage());
+                            }
                             policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
                         }
                         else {
@@ -110,7 +122,7 @@ public class JWTPolicy {
                     });
 
         } catch (Exception e) {
-            LOGGER.error("[request-id:" + request.id() + "] [request-path:" + request.path() +"] " + e.getMessage(), e.getCause());
+            LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), e.getMessage()), e.getCause());
             policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
         }
     }
