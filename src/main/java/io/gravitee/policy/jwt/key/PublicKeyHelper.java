@@ -35,6 +35,8 @@ public final class PublicKeyHelper {
 
     private static final Pattern SSH_PUB_KEY = Pattern.compile("(ssh-(rsa|dsa) )?([A-Za-z0-9/+]+=*) ?(.*)");
 
+    private static final byte[] PREFIX = new byte[] {0,0,0,7, 's','s','h','-','r','s','a'};
+    
     private static final String SSH_RSA_ALG = "ssh-rsa";
 
     /**
@@ -69,7 +71,6 @@ public final class PublicKeyHelper {
      * @return RSAPublicKey
      */
     private static RSAPublicKey parseSSHPublicKey(String encKey) {
-        final byte[] PREFIX = new byte[] {0,0,0,7, 's','s','h','-','r','s','a'};
         ByteArrayInputStream in = new ByteArrayInputStream(Base64.getDecoder().decode(StandardCharsets.UTF_8.encode(encKey)).array());
 
         byte[] prefix = new byte[11];
