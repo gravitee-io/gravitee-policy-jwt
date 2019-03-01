@@ -22,10 +22,10 @@ import com.nimbusds.jwt.SignedJWT;
 import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.common.util.LinkedMultiValueMap;
 import io.gravitee.common.util.MultiValueMap;
+import io.gravitee.el.TemplateEngine;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.Response;
-import io.gravitee.gateway.api.expression.TemplateEngine;
 import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.jwt.alg.Signature;
@@ -69,7 +69,7 @@ public abstract class JWTPolicyTest {
     private PolicyChain policyChain;
     @Mock
     private JWTPolicyConfiguration configuration;
-    @Mock 
+    @Mock
     TemplateEngine templateEngine;
     
     @Before
@@ -273,7 +273,7 @@ public abstract class JWTPolicyTest {
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(getSignatureKey());
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
-        when(templateEngine.convert(getSignatureKey())).thenReturn(getSignatureKey());
+        when(templateEngine.getValue(getSignatureKey(), String.class)).thenReturn(getSignatureKey());
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
@@ -294,7 +294,7 @@ public abstract class JWTPolicyTest {
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(property);
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
-        when(templateEngine.convert(property)).thenReturn(getSignatureKey());
+        when(templateEngine.getValue(property, String.class)).thenReturn(getSignatureKey());
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
