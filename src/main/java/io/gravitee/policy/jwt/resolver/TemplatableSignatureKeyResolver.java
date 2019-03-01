@@ -15,7 +15,8 @@
  */
 package io.gravitee.policy.jwt.resolver;
 
-import io.gravitee.gateway.api.expression.TemplateEngine;
+
+import io.gravitee.el.TemplateEngine;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -34,6 +35,6 @@ public class TemplatableSignatureKeyResolver implements SignatureKeyResolver {
     @Override
     public String resolve() {
         String publicKey = keyResolver.resolve();
-        return templateEngine.convert(publicKey);
+        return templateEngine.getValue(publicKey, String.class);
     }
 }
