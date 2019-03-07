@@ -45,6 +45,8 @@ import org.springframework.core.env.Environment;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
+
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
@@ -112,6 +114,7 @@ public class JWTPolicy {
 
                             String clientId = getClientId(claims);
                             executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
+                            executionContext.setAttribute(ATTR_USER, claims.getSubject());
 
                             if (configuration.isExtractClaims()) {
                                 executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
