@@ -46,4 +46,11 @@ public class PublicKeyHelperTest {
 
         Assert.assertNotNull(publicKey);
     }
+
+    @Test
+    public void shouldGetPublicKey_completeSshRsa_RS384() {
+        RSAPublicKey publicKey = PublicKeyHelper.parsePublicKey("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCBKYIaYRQU5eHRNqi09OP/dxY/uqS3+RYUBDMBaQeaCydgxciGWg0ijY+FlkjaIj/dlC4QfNxsglOgZtlZ2oFiQ5sDri0kGcczRbgDkTpg0q9+2W0huFxccCM0YOGuKBN8VZCIQhnRvC4gPHwzOdgNNCJqJc0qbuwN9WEkBt5O5aqLbVS395r9qbHFg76K3TVbPUXLtYr6Cmig9iTePEBiXyS4ZV0JjqvDryNP/nCeWf9oz091Eto3UKPZ4K6h1fsi7F9OdP867/2I+F3y/Gxdwk4GHkpq/mVzzVM3x//xTPYfgTZtDf8triNS3gBn0JbEIk8sSMh5MVA1nnAoEsxQM6WWlYJbLbWT5Q1N5nQKShTTnAamTuUg2o4MPJoozVW7GDYHWLL6zkbwGzjXULeZQVQi0VH7ZXdXjk4FC6DxmrIRE9gZhkFC7YpMk/fUmB7aLsXGkpLxjM/2DEq02ypAFfPcQwR3Oi0S+TKb9DqwjX/sb06C4n7pIaZzxMJn4xc= brasseld@gmail.com");
+
+        Assert.assertNotNull(publicKey);
+    }
 }
