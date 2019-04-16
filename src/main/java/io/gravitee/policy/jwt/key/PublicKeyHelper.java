@@ -18,6 +18,7 @@ package io.gravitee.policy.jwt.key;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
@@ -36,7 +37,7 @@ public final class PublicKeyHelper {
     private static final Pattern SSH_PUB_KEY = Pattern.compile("(ssh-(rsa|dsa) )?([A-Za-z0-9/+]+=*) ?(.*)");
 
     private static final byte[] PREFIX = new byte[] {0,0,0,7, 's','s','h','-','r','s','a'};
-    
+
     private static final String SSH_RSA_ALG = "ssh-rsa";
 
     /**
@@ -112,7 +113,7 @@ public final class PublicKeyHelper {
             throw new IOException("Expected length data as 4 bytes");
         }
 
-        int l = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+        int l = ByteBuffer.wrap(b).getInt();
 
         b = new byte[l];
 
