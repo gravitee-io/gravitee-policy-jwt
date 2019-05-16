@@ -20,6 +20,7 @@ import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.gravitee.common.http.HttpHeaders;
+import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.common.util.LinkedMultiValueMap;
 import io.gravitee.common.util.MultiValueMap;
 import io.gravitee.el.TemplateEngine;
@@ -137,7 +138,9 @@ public abstract class JWTPolicyTest {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
+        verify(policyChain,times(1)).failWith(argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
+                && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())));
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -316,7 +319,9 @@ public abstract class JWTPolicyTest {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1)).failWith(any(PolicyResult.class));
+        verify(policyChain, times(1)).failWith(argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
+                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
         verify(policyChain, never()).doNext(request, response);
     }
     
@@ -354,7 +359,9 @@ public abstract class JWTPolicyTest {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
         
-        verify(policyChain, times(1)).failWith(any(PolicyResult.class));
+        verify(policyChain, times(1)).failWith(argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
+                        && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())));
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -372,7 +379,9 @@ public abstract class JWTPolicyTest {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1)).failWith(any(PolicyResult.class));
+        verify(policyChain, times(1)).failWith(argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
+                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -386,7 +395,9 @@ public abstract class JWTPolicyTest {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
+        verify(policyChain,times(1)).failWith(argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
+                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
     }
 
     @Test
@@ -399,7 +410,9 @@ public abstract class JWTPolicyTest {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain,times(1)).failWith(any(PolicyResult.class));
+        verify(policyChain,times(1)).failWith(argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
+                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
     }
 
     private void executePolicy(JWTPolicyConfiguration configuration, Request request, Response response,

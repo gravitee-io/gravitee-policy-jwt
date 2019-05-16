@@ -70,6 +70,9 @@ public class JWTPolicy {
 
     static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
 
+    static final String JWT_MISSING_TOKEN_KEY = "JWT_MISSING_TOKEN";
+    static final String JWT_INVALID_TOKEN_KEY = "JWT_INVALID_TOKEN";
+
     /**
      * Error message format
      */
@@ -106,7 +109,10 @@ public class JWTPolicy {
                                 LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
                                 request.metrics().setMessage(throwable.getCause().getMessage());
                             }
-                            policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
+                            policyChain.failWith(PolicyResult.failure(
+                                    JWT_INVALID_TOKEN_KEY,
+                                    HttpStatusCode.UNAUTHORIZED_401,
+                                    UNAUTHORIZED_MESSAGE));
                         }
                         else {
                             // 3_ Set access_token in context
@@ -130,7 +136,10 @@ public class JWTPolicy {
             }
         } catch (Exception e) {
             LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), e.getMessage()), e.getCause());
-            policyChain.failWith(PolicyResult.failure(HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
+            policyChain.failWith(PolicyResult.failure(
+                    JWT_MISSING_TOKEN_KEY,
+                    HttpStatusCode.UNAUTHORIZED_401,
+                    UNAUTHORIZED_MESSAGE));
         }
     }
 
