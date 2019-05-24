@@ -31,10 +31,7 @@ import io.gravitee.policy.jwt.jwks.URLJWKSourceResolver;
 import io.gravitee.policy.jwt.jwks.hmac.MACJWKSourceResolver;
 import io.gravitee.policy.jwt.jwks.retriever.VertxResourceRetriever;
 import io.gravitee.policy.jwt.jwks.rsa.RSAJWKSourceResolver;
-import io.gravitee.policy.jwt.processor.AbstractKeyProcessor;
-import io.gravitee.policy.jwt.processor.HMACKeyProcessor;
-import io.gravitee.policy.jwt.processor.JWKSKeyProcessor;
-import io.gravitee.policy.jwt.processor.RSAKeyProcessor;
+import io.gravitee.policy.jwt.processor.*;
 import io.gravitee.policy.jwt.resolver.*;
 import io.gravitee.policy.jwt.token.TokenExtractor;
 import io.vertx.core.Vertx;
@@ -166,8 +163,7 @@ public class JWTPolicy {
     }
 
     private CompletableFuture<JWTClaimsSet> validate(ExecutionContext executionContext, String token) throws Exception {
-        final Signature signature = (configuration.getSignature() == null)
-                ? Signature.RSA_RS256 : configuration.getSignature();
+        final Signature signature = configuration.getSignature();
 
         AbstractKeyProcessor keyProcessor = null;
 
@@ -188,22 +184,26 @@ public class JWTPolicy {
                     throw new IllegalArgumentException("Unexpected signature key resolver");
             }
 
-            switch (signature) {
-                case RSA_RS256:
-                case RSA_RS384:
-                case RSA_RS512:
-                    keyProcessor = new RSAKeyProcessor();
-                    keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
-                    break;
-                case HMAC_HS256:
-                case HMAC_HS384:
-                case HMAC_HS512:
-                    keyProcessor = new HMACKeyProcessor();
-                    keyProcessor.setJwkSourceResolver(new MACJWKSourceResolver(signatureKeyResolver));
-                    break;
+            if (signature != null) {
+                switch (signature) {
+                    case RSA_RS256:
+                    case RSA_RS384:
+                    case RSA_RS512:
+                        keyProcessor = new RSAKeyProcessor();
+                        keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
+                        break;
+                    case HMAC_HS256:
+                    case HMAC_HS384:
+                    case HMAC_HS512:
+                        keyProcessor = new HMACKeyProcessor();
+                        keyProcessor.setJwkSourceResolver(new MACJWKSourceResolver(signatureKeyResolver));
+                        break;
+                }
+            } else {
+                // For backward compatibility
+                keyProcessor = new NoAlgorithmRSAKeyProcessor();
+                keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
             }
-
-
         } else {
             keyProcessor = new JWKSKeyProcessor();
             keyProcessor.setJwkSourceResolver(new URLJWKSourceResolver(
