@@ -29,7 +29,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     //settings attributes
     private String resolverParameter;
     private KeyResolver publicKeyResolver = KeyResolver.GIVEN_KEY;
-    private Signature signature = Signature.RSA_RS256;
+    private Signature signature;
     private boolean extractClaims = false;
     private boolean propagateAuthHeader = true;
     
