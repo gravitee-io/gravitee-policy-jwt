@@ -123,14 +123,14 @@ public class JWTPolicy {
                                 executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
                             }
 
+                            if (!configuration.isPropagateAuthHeader()) {
+                                request.headers().remove(HttpHeaders.AUTHORIZATION);
+                            }
+                            
                             // Finally continue the process...
                             policyChain.doNext(request, response);
                         }
                     });
-
-            if (!configuration.isPropagateAuthHeader()) {
-                request.headers().remove(HttpHeaders.AUTHORIZATION);
-            }
         } catch (Exception e) {
             LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), e.getMessage()), e.getCause());
             policyChain.failWith(PolicyResult.failure(
