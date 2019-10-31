@@ -62,6 +62,12 @@
       "description": "Allows to propagate Authorization header to the target endpoints",
       "type" : "boolean",
       "default": true
+    },
+    "userClaim": {
+      "title": "User claim",
+      "description": "Claim where the user can be extracted",
+      "type": "string",
+      "default": "sub"
     }
   },
   "required": [

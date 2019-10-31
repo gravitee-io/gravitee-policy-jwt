@@ -32,6 +32,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private Signature signature;
     private boolean extractClaims = false;
     private boolean propagateAuthHeader = true;
+    private String userClaim;
     
     //getter and setters
     public KeyResolver getPublicKeyResolver() {
@@ -72,5 +73,13 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     public void setPropagateAuthHeader(boolean propagateAuthHeader) {
         this.propagateAuthHeader = propagateAuthHeader;
+    }
+
+    public String getUserClaim() {
+        return userClaim;
+    }
+
+    public void setUserClaim(String userClaim) {
+        this.userClaim = userClaim;
     }
 }
