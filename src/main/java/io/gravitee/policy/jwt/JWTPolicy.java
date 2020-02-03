@@ -117,7 +117,10 @@ public class JWTPolicy {
 
                             String clientId = getClientId(claims);
                             executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
-                            executionContext.setAttribute(ATTR_USER, claims.getSubject());
+
+                            final String user = claims.getSubject();
+                            executionContext.setAttribute(ATTR_USER, user);
+                            request.metrics().setUser(user);
 
                             if (configuration.isExtractClaims()) {
                                 executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
