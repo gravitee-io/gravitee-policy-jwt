@@ -98,6 +98,23 @@ public abstract class JWTPolicyTest {
     }
 
     @Test
+    public void test_with_gateway_keys_and_valid_lowercase_authorization_header() throws Exception {
+        String jwt = getJsonWebToken(7200);
+
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "bearer "+jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(policyChain, times(1)).doNext(request, response);
+    }
+
+    @Test
     public void test_get_client_with_client_id_claim() throws Exception {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
@@ -341,7 +358,7 @@ public abstract class JWTPolicyTest {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(request, times(1)).parameters();
+        verify(request, times(2)).parameters();
         verify(policyChain, times(1)).doNext(request, response);
     }
     

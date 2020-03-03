@@ -18,6 +18,10 @@ package io.gravitee.policy.jwt.token;
 import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.policy.jwt.exceptions.AuthorizationSchemeException;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -36,20 +40,25 @@ public class TokenExtractor {
      * @return String Json Web Token.
      */
     public static String extract(Request request) throws AuthorizationSchemeException {
-        final String authorization = request.headers().getFirst(HttpHeaders.AUTHORIZATION);
+        List<String> authorizationHeaders = request.headers() != null ? request.headers().get(HttpHeaders.AUTHORIZATION) : null;
 
-        if (authorization != null) {
-            String[] auth = authorization.split(" ");
-            if(auth.length > 1 && BEARER.equals(auth[0])) {
-                return auth[1].trim();
-            } else if(auth.length > 1){
-                throw new AuthorizationSchemeException("Authentification scheme '" + auth[0] + "' is not supported for JWT");
+        if (authorizationHeaders != null && !authorizationHeaders.isEmpty()) {
+            Optional<String> authorizationBearerHeader = authorizationHeaders
+                    .stream()
+                    .filter(h -> StringUtils.startsWithIgnoreCase(h, BEARER))
+                    .findFirst();
+            if (authorizationBearerHeader.isPresent()) {
+                String authToken = authorizationBearerHeader.get().substring(BEARER.length()).trim();
+                if (! authToken.isEmpty()) {
+                    return authToken;
+                } else {
+                    throw new AuthorizationSchemeException("Authorization scheme is not supported for JWT");
+                }
             } else {
-                throw new AuthorizationSchemeException("Authentification scheme not found");
+                throw new AuthorizationSchemeException("Authorization scheme not found");
             }
-
         }
 
-        return request.parameters().getFirst(ACCESS_TOKEN);
+        return request.parameters() != null ? request.parameters().getFirst(ACCESS_TOKEN) : null;
     }
 }
