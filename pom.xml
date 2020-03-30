@@ -36,7 +36,7 @@
     <properties>
         <gravitee-gateway-api.version>1.19.1</gravitee-gateway-api.version>
         <gravitee-policy-api.version>1.6.0</gravitee-policy-api.version>
-        <gravitee-common.version>1.15.4</gravitee-common.version>
+        <gravitee-common.version>1.15.5</gravitee-common.version>
         <nimbus-jose-jwt.version>6.3</nimbus-jose-jwt.version>
         <guava.version>26.0-jre</guava.version>
         <json-schema-generator-maven-plugin.version>1.1.0</json-schema-generator-maven-plugin.version>

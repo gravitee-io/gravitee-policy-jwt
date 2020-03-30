@@ -93,6 +93,20 @@ public class TokenExtractorTest {
     }
 
     @Test
+    public void shouldExtract_fromInsensitiveHeader() throws AuthorizationSchemeException {
+        String jwt = "dummy-token";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "bearer " + jwt);
+        when(request.headers()).thenReturn(headers);
+
+        String token = TokenExtractor.extract(request);
+
+        Assert.assertNotNull(token);
+        Assert.assertEquals(jwt, token);
+    }
+
+    @Test
     public void shouldExtract_fromQueryParameter() throws AuthorizationSchemeException {
         String jwt = "dummy-token";
 
