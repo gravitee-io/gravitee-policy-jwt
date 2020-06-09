@@ -22,7 +22,7 @@
 
     <groupId>io.gravitee.policy</groupId>
     <artifactId>gravitee-policy-jwt</artifactId>
-    <version>1.14.2-SNAPSHOT</version>
+    <version>1.14.3-SNAPSHOT</version>
 
     <name>Gravitee.io APIM - Policy - JWT</name>
     <description>Description of the JWT Gravitee Policy</description>
@@ -74,6 +74,17 @@
             <version>${nimbus-jose-jwt.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+            <version>[1.52,)</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>[1.52,)</version>
+        </dependency>
+
         <!-- HTTP client -->
         <dependency>
             <groupId>io.vertx</groupId>
@@ -103,7 +114,7 @@
             <version>${spring.version}</version>
             <scope>provided</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
@@ -116,7 +127,7 @@
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>

@@ -15,6 +15,7 @@
  */
 package io.gravitee.policy.jwt.jwks.rsa;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -37,7 +38,19 @@ public class RSAJWKSourceResolver<C extends SecurityContext> implements JWKSourc
     private final JWK jwk;
 
     private RSAJWKSourceResolver(String publicKey) {
-        RSAPublicKey rsaPublicKey = PublicKeyHelper.parsePublicKey(publicKey);
+        RSAPublicKey rsaPublicKey = null;
+
+        if (publicKey.startsWith("ssh-rsa")) {
+            rsaPublicKey = PublicKeyHelper.parsePublicKey(publicKey);
+        } else {
+            try {
+                JWK jwk = JWK.parseFromPEMEncodedObjects(publicKey);
+                rsaPublicKey = ((RSAKey) jwk).toRSAPublicKey();
+            } catch (JOSEException e) {
+                e.printStackTrace();
+            }
+        }
+
         this.jwk = new RSAKey.Builder(rsaPublicKey).build();
     }
 
