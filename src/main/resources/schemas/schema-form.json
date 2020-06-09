@@ -48,8 +48,18 @@
     },
     "resolverParameter" : {
       "title": "Resolver parameter",
-      "description": "Set the signature key <i><b>(GIVEN_KEY)</b></i> or a JWKS URL <i><b>(JWKS_URL)</b></i> following selected resolver <i>(support EL)</i>.",
-      "type" : "string"
+      "description": "Set the signature key GIVEN_KEY or a JWKS_URL following selected resolver (support EL)</i>.",
+      "type" : "string",
+      "x-schema-form": {
+        "type": "codemirror",
+        "codemirrorOptions": {
+          "placeholder": "Put signature key content here",
+          "lineWrapping": true,
+          "lineNumbers": true,
+          "allowDropFileTypes": true,
+          "autoCloseTags": true
+        }
+      }
     },
     "extractClaims" : {
       "title": "Extract JWT Claims",
