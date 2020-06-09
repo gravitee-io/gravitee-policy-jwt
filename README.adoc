@@ -62,7 +62,7 @@ To validate the token signature, the policy need to use the associated Authoriza
 
 The policy ask you to select among three (GIVEN_KEY, GIVEN_ISSUER, GATEWAY_ISSUER) way of retrieving the needed public key.
 
- - GIVEN_KEY : You will provide a key (ssh-rsa KEY xx@yy.zz) format.
+ - GIVEN_KEY : You will provide a key (ssh-rsa, pem, crt, public-key) format.
  - GIVEN_ISSUER : If you want to filter on a few authorization servers, then you only need to specify the issuer name. Thanks to that, the gateway will only accept JWTs having an allowed issuer attribute. As for the GATEWAY_KEYS, the issuer is also used to retrieve the public key from the gravitee.yml gateway settings.
  - GATEWAY_KEYS : Some public key can be set into gravitee gateway settings
 
