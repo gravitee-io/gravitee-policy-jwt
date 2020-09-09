@@ -225,7 +225,7 @@ public class JWTPolicy {
             keyProcessor = new JWKSKeyProcessor();
             keyProcessor.setJwkSourceResolver(new URLJWKSourceResolver(
                     configuration.getResolverParameter(),
-                    new VertxResourceRetriever(executionContext.getComponent(Vertx.class))));
+                    new VertxResourceRetriever(executionContext.getComponent(Vertx.class), executionContext.getComponent(Environment.class), configuration.isUseSystemProxy())));
         }
 
         return keyProcessor.process(signature, token);
