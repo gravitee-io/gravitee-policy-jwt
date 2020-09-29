@@ -42,6 +42,7 @@ import org.springframework.core.env.Environment;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static io.gravitee.gateway.api.ExecutionContext.ATTR_API;
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
 
 /**
@@ -73,7 +74,7 @@ public class JWTPolicy {
     /**
      * Error message format
      */
-    static final String errorMessageFormat = "[request-id:%s] [request-path:%s] %s";
+    static final String errorMessageFormat = "[api-id:%s] [request-id:%s] [request-path:%s] %s";
 
     /**
      * The associated configuration to this JWT Policy
@@ -100,10 +101,10 @@ public class JWTPolicy {
                     .whenComplete((claims, throwable) -> {
                         if (throwable != null) {
                             if (throwable.getCause() instanceof InvalidTokenException) {
-                                LOGGER.debug(String.format(errorMessageFormat, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
+                                LOGGER.debug(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), throwable.getMessage()), throwable.getCause());
                                 request.metrics().setMessage(throwable.getCause().getCause().getMessage());
                             } else {
-                                LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
+                                LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), throwable.getMessage()), throwable.getCause());
                                 request.metrics().setMessage(throwable.getCause().getMessage());
                             }
                             policyChain.failWith(PolicyResult.failure(
@@ -134,13 +135,13 @@ public class JWTPolicy {
                             if (!configuration.isPropagateAuthHeader()) {
                                 request.headers().remove(HttpHeaders.AUTHORIZATION);
                             }
-                            
+
                             // Finally continue the process...
                             policyChain.doNext(request, response);
                         }
                     });
         } catch (Exception e) {
-            LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), e.getMessage()), e.getCause());
+            LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), e.getMessage()), e.getCause());
             policyChain.failWith(PolicyResult.failure(
                     JWT_MISSING_TOKEN_KEY,
                     HttpStatusCode.UNAUTHORIZED_401,
