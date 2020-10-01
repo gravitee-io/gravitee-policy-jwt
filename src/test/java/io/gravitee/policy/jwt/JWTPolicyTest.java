@@ -432,6 +432,31 @@ public abstract class JWTPolicyTest {
                         && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
     }
 
+    @Test
+    public void test_with_processing_error() throws Exception {
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
+
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
+        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
+        builder.audience(Collections.singletonList("my-client-id-from-aud"));
+
+        String jwt = sign(builder.build());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer " + jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
+        when(configuration.getUserClaim()).thenReturn("aud");
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(policyChain, times(1)).failWith(argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
+                        && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, never()).doNext(request, response);
+    }
+
     private void executePolicy(JWTPolicyConfiguration configuration, Request request, Response response,
                                ExecutionContext executionContext, PolicyChain policyChain) throws InterruptedException {
         final CountDownLatch lock = new CountDownLatch(1);
