@@ -113,31 +113,39 @@ public class JWTPolicy {
                                     UNAUTHORIZED_MESSAGE));
                         }
                         else {
-                            // 3_ Set access_token in context
-                            executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_TOKEN, jwt);
+                            try {
+                                // 3_ Set access_token in context
+                                executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_TOKEN, jwt);
 
-                            String clientId = getClientId(claims);
-                            executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
+                                String clientId = getClientId(claims);
+                                executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
 
-                            final String user;
-                            if (configuration.getUserClaim() != null && !configuration.getUserClaim().isEmpty()) {
-                                user = (String) claims.getClaim(configuration.getUserClaim());
-                            } else {
-                                user = claims.getSubject();
+                                final String user;
+                                if (configuration.getUserClaim() != null && !configuration.getUserClaim().isEmpty()) {
+                                    user = (String) claims.getClaim(configuration.getUserClaim());
+                                } else {
+                                    user = claims.getSubject();
+                                }
+                                executionContext.setAttribute(ATTR_USER, user);
+                                request.metrics().setUser(user);
+
+                                if (configuration.isExtractClaims()) {
+                                    executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
+                                }
+
+                                if (!configuration.isPropagateAuthHeader()) {
+                                    request.headers().remove(HttpHeaders.AUTHORIZATION);
+                                }
+
+                                // Finally continue the process...
+                                policyChain.doNext(request, response);
+                            } catch (Exception e) {
+                                LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), e.getMessage()), e.getCause());
+                                policyChain.failWith(PolicyResult.failure(
+                                        JWT_INVALID_TOKEN_KEY,
+                                        HttpStatusCode.UNAUTHORIZED_401,
+                                        UNAUTHORIZED_MESSAGE));
                             }
-                            executionContext.setAttribute(ATTR_USER, user);
-                            request.metrics().setUser(user);
-
-                            if (configuration.isExtractClaims()) {
-                                executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
-                            }
-
-                            if (!configuration.isPropagateAuthHeader()) {
-                                request.headers().remove(HttpHeaders.AUTHORIZATION);
-                            }
-
-                            // Finally continue the process...
-                            policyChain.doNext(request, response);
                         }
                     });
         } catch (Exception e) {
