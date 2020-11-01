@@ -42,6 +42,7 @@ import org.springframework.core.env.Environment;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static io.gravitee.gateway.api.ExecutionContext.ATTR_API;
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
 
 /**
@@ -73,7 +74,7 @@ public class JWTPolicy {
     /**
      * Error message format
      */
-    static final String errorMessageFormat = "[request-id:%s] [request-path:%s] %s";
+    static final String errorMessageFormat = "[api-id:%s] [request-id:%s] [request-path:%s] %s";
 
     /**
      * The associated configuration to this JWT Policy
@@ -100,10 +101,10 @@ public class JWTPolicy {
                     .whenComplete((claims, throwable) -> {
                         if (throwable != null) {
                             if (throwable.getCause() instanceof InvalidTokenException) {
-                                LOGGER.debug(String.format(errorMessageFormat, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
+                                LOGGER.debug(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), throwable.getMessage()), throwable.getCause());
                                 request.metrics().setMessage(throwable.getCause().getCause().getMessage());
                             } else {
-                                LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
+                                LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), throwable.getMessage()), throwable.getCause());
                                 request.metrics().setMessage(throwable.getCause().getMessage());
                             }
                             policyChain.failWith(PolicyResult.failure(
@@ -112,35 +113,43 @@ public class JWTPolicy {
                                     UNAUTHORIZED_MESSAGE));
                         }
                         else {
-                            // 3_ Set access_token in context
-                            executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_TOKEN, jwt);
+                            try {
+                                // 3_ Set access_token in context
+                                executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_TOKEN, jwt);
 
-                            String clientId = getClientId(claims);
-                            executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
+                                String clientId = getClientId(claims);
+                                executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
 
-                            final String user;
-                            if (configuration.getUserClaim() != null && !configuration.getUserClaim().isEmpty()) {
-                                user = (String) claims.getClaim(configuration.getUserClaim());
-                            } else {
-                                user = claims.getSubject();
+                                final String user;
+                                if (configuration.getUserClaim() != null && !configuration.getUserClaim().isEmpty()) {
+                                    user = (String) claims.getClaim(configuration.getUserClaim());
+                                } else {
+                                    user = claims.getSubject();
+                                }
+                                executionContext.setAttribute(ATTR_USER, user);
+                                request.metrics().setUser(user);
+
+                                if (configuration.isExtractClaims()) {
+                                    executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
+                                }
+
+                                if (!configuration.isPropagateAuthHeader()) {
+                                    request.headers().remove(HttpHeaders.AUTHORIZATION);
+                                }
+
+                                // Finally continue the process...
+                                policyChain.doNext(request, response);
+                            } catch (Exception e) {
+                                LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), e.getMessage()), e.getCause());
+                                policyChain.failWith(PolicyResult.failure(
+                                        JWT_INVALID_TOKEN_KEY,
+                                        HttpStatusCode.UNAUTHORIZED_401,
+                                        UNAUTHORIZED_MESSAGE));
                             }
-                            executionContext.setAttribute(ATTR_USER, user);
-                            request.metrics().setUser(user);
-
-                            if (configuration.isExtractClaims()) {
-                                executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
-                            }
-
-                            if (!configuration.isPropagateAuthHeader()) {
-                                request.headers().remove(HttpHeaders.AUTHORIZATION);
-                            }
-                            
-                            // Finally continue the process...
-                            policyChain.doNext(request, response);
                         }
                     });
         } catch (Exception e) {
-            LOGGER.error(String.format(errorMessageFormat, request.id(), request.path(), e.getMessage()), e.getCause());
+            LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), e.getMessage()), e.getCause());
             policyChain.failWith(PolicyResult.failure(
                     JWT_MISSING_TOKEN_KEY,
                     HttpStatusCode.UNAUTHORIZED_401,
@@ -225,7 +234,7 @@ public class JWTPolicy {
             keyProcessor = new JWKSKeyProcessor();
             keyProcessor.setJwkSourceResolver(new URLJWKSourceResolver(
                     configuration.getResolverParameter(),
-                    new VertxResourceRetriever(executionContext.getComponent(Vertx.class))));
+                    new VertxResourceRetriever(executionContext.getComponent(Vertx.class), executionContext.getComponent(Environment.class), configuration.isUseSystemProxy())));
         }
 
         return keyProcessor.process(signature, token);

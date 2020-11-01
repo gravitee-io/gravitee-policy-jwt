@@ -61,6 +61,12 @@
         }
       }
     },
+    "useSystemProxy" : {
+      "title": "Use system proxy",
+      "description": "Use system proxy (make sense only when resolver is set to JWKS_URL)",
+      "type" : "boolean",
+      "default": false
+    },
     "extractClaims" : {
       "title": "Extract JWT Claims",
       "description": "Put claims into the 'jwt.claims' context attribute.",
