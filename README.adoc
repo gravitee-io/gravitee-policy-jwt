@@ -54,6 +54,7 @@ Policy aims to validate the token signature & expiration date before sending the
 
 |publicKeyResolver|X|The way to resolve the public key needed to validate the signature|enum|GIVEN_KEY
 |resolverParameter||Needed if you use the GATEWAY_KEYS or GIVEN_ISSUER resolver. (support EL)|string|
+|useSystemProxy||Tick this option if you want use system proxy (make sense only when resolver is set to JWKS_URL)|boolean|false
 |extractClaims||Tick this option if you want to extract claims into the request context|boolean|false
 |===
 
