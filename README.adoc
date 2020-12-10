@@ -1,6 +1,4 @@
-= Json Web Token validator Policy documentation.
-
-
+= JSON Web Token validator policy
 
 == Phase
 
@@ -11,80 +9,66 @@
 |
 |===
 
+== Description
 
+You can use the `jwt` policy to validate the token signature and expiration date before sending the API call to the target backend.
 
-== Context
+Some authorization servers use OAuth2 protocol to provide access tokens. These access token can be in JWS/JWT format. For the RFC standards, see:
 
-Some authorization servers use oauth2 protocole to provide access tokens.
+- JWS (JSON Web Signature) standard RFC: https://tools.ietf.org/html/rfc7515
 
-These access token can be on JWS/JWT format. (see below RFC)
+- JWT (JSON Web Token) standard RFC: (https://tools.ietf.org/html/rfc7519
 
-JWS (Json Web Signature) standard RFC : https://tools.ietf.org/html/rfc7515
+=== JWT
 
-JWT (Json Web Token) standard RFC : (https://tools.ietf.org/html/rfc7519
+A JWT is composed of three parts: a header, a payload and a signature.
+You can see some examples here: http://jwt.io.
 
+- The header contains attributes indicating the algorithm used to sign the token.
 
+- The payload contains some information inserted by the AS (Authorization Server), such as the expiration date and UID of the user.
 
-== JWT Example
+Both the header and payload are encoded with Base64, so anyone can read the content.
 
-A JWT is composed of three part : header, payload, signature.
-You can see some sample here : http://jwt.io
-
-The header will contain attributes indicating the algorithm used to sign the token.
-
-The payload contains some informations inserted by the AS (Authorization Server) such as expiration date, uid of the user, etc…
-
-Both header & payload are encoded on Base64, so anyone can read the content.
-
-The third and last part is the signature. (Please see RFC for more details)
-
-
-
-== Policy aim
-
-Policy aims to validate the token signature & expiration date before sending the api call to the target backend.
-
-
+- The third and last part is the signature (for more details, see the RFC).
 
 == Configuration
-
 
 |===
 |Property |Required |Description |Type |Default
 
-|publicKeyResolver|X|The way to resolve the public key needed to validate the signature|enum|GIVEN_KEY
-|resolverParameter||Needed if you use the GATEWAY_KEYS or GIVEN_ISSUER resolver. (support EL)|string|
-|useSystemProxy||Tick this option if you want use system proxy (make sense only when resolver is set to JWKS_URL)|boolean|false
-|extractClaims||Tick this option if you want to extract claims into the request context|boolean|false
+|publicKeyResolver|X|Used to resolve the public key needed to validate the signature|enum|GIVEN_KEY
+|resolverParameter||Needed if you use the `GATEWAY_KEYS` or `GIVEN_ISSUER` resolver (EL support)|string|
+|useSystemProxy||Select this option if you want use system proxy (only useful when resolver is `JWKS_URL`)|boolean|false
+|extractClaims||Select this option if you want to extract claims into the request context|boolean|false
 |===
 
 
-To validate the token signature, the policy need to use the associated Authorization Servers public key.
+To validate the token signature, the policy needs to use the associated Authorization Servers public key.
 
-The policy ask you to select among three (GIVEN_KEY, GIVEN_ISSUER, GATEWAY_ISSUER) way of retrieving the needed public key.
+The policy prompts you to choose between three (`GIVEN_KEY`, `GIVEN_ISSUER`, `GATEWAY_ISSUER`) methods to retrieve the required public key.
 
- - GIVEN_KEY : You will provide a key (ssh-rsa, pem, crt, public-key) format.
- - GIVEN_ISSUER : If you want to filter on a few authorization servers, then you only need to specify the issuer name. Thanks to that, the gateway will only accept JWTs having an allowed issuer attribute. As for the GATEWAY_KEYS, the issuer is also used to retrieve the public key from the gravitee.yml gateway settings.
- - GATEWAY_KEYS : Some public key can be set into gravitee gateway settings
-
+ - `GIVEN_KEY` -- You provide the key (in `ssh-rsa`, `pem`, `crt` or `public-key` format)
+ - `GIVEN_ISSUER` -- If you want to filter on several authorization servers then you only need to specify the issuer name; the gateway will only accept JWTs with a permitted issuer attribute. If `GATEWAY_KEYS` is set, the issuer is also used to retrieve the public key from the `gravitee.yml` file.
+ - `GATEWAY_KEYS` -- You can set some public keys in the APIM Gateway `gravitee.yml` file
 
 [source, yml]
 ----
-policy:                  
+policy:
   jwt:
     issuer:
-      my.authorizaztion.server: 
+      my.authorizaztion.server:
         default: ssh-rsa myValidationKey anEmail@domain.com
         kid-2016: ssh-rsa myCurrentValidationKey anEmail@domain.com
 ----
 
-On this mode, the policy will inspect the jwt :
+The policy will inspect the JWT:
 
-** header in order to extract the key id (kid attribute) of the public key. If none then we set it as ‘default’.
+** header to extract the key id (`kid` attribute) of the public key. If no key id is found then it is set to `default`.
 
-** claims (payload) in order to extract the issuer (iss attribute)
+** claims (payload) to extract the issuer (`iss` attribute)
 
-Thanks to both values, the gateway will be able to retrieve the corresponding public key.
+Using these two values, the gateway can retrieve the corresponding public key.
 
 
 == Attributes
@@ -93,16 +77,17 @@ Thanks to both values, the gateway will be able to retrieve the corresponding pu
 |Name |Description
 
 .^|jwt.token
-|JWT token extracted from ```Authorization``` HTTP header.
+|JWT token extracted from the ```Authorization``` HTTP header
 
 .^|jwt.claims
-|A map of claims registered into the JWT token body. Useful when you want to extract data from it. Only if `extractClaims` is enabled from policy configuration.
+|A map of claims registered in the JWT token body, used for extracting data from it. Only if `extractClaims` is enabled in the policy configuration.
 
 |===
 
-=== Extract data from JWT claims
+== Example
 
-If JWT claims (payload) are as follow:
+Given the following JWT claims (payload):
+
 [source, json]
 ----
 {
@@ -113,29 +98,29 @@ If JWT claims (payload) are as follow:
 }
 ----
 
-You can extract the issuer from JWT by using EL:
+You can extract the issuer from JWT using the following Expression Language statement:
+
 [source]
 ----
 {#context.attributes['jwt.claims']['iss']}
 ----
 
-== Http Status Code
+== Errors
+
+=== HTTP status code
 
 |===
 |Code |Message
 
 | ```401```
-| In case of bad token format, content, signature, expired token or any others problem which forbid the policy to validate the token
+| Bad token format, content, signature, expired token or any other issue preventing the policy from validating the token
 
 |===
 
-== Errors
+You can use the response template feature to override the default response provided by the policy. These templates must be defined at the API level (see the API Console *Response Templates*
+option in the API *Proxy* menu).
 
-If you're looking to override the default response provided by the policy, you can do it
-thanks to the response templates feature. These templates must be define at the API level (see `Response Templates`
-from the `Proxy` menu).
-
-Here are the error keys send by this policy:
+The error keys sent by the policy are as follows:
 
 [cols="2*", options="header"]
 |===
@@ -152,5 +137,4 @@ Here are the error keys send by this policy:
 
 == Contributors
 
-For any comments, please use this github issue link : https://github.com/gravitee-io/issues/issues/46
-
+You can contribute comments using this GitHub issue link: https://github.com/gravitee-io/issues/issues/46
