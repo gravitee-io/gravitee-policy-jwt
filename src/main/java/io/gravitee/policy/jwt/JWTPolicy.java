@@ -37,6 +37,7 @@ import io.gravitee.policy.jwt.token.TokenExtractor;
 import io.vertx.core.Vertx;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.core.env.Environment;
 
 import java.util.List;
@@ -99,14 +100,17 @@ public class JWTPolicy {
             // 2_ Validate the token algorithm + signature
             validate(executionContext, jwt)
                     .whenComplete((claims, throwable) -> {
+                        final String api = String.valueOf(executionContext.getAttribute(ATTR_API));
+                        MDC.put("api", api);
                         if (throwable != null) {
                             if (throwable.getCause() instanceof InvalidTokenException) {
-                                LOGGER.debug(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), throwable.getMessage()), throwable.getCause());
+                                LOGGER.debug(String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
                                 request.metrics().setMessage(throwable.getCause().getCause().getMessage());
                             } else {
-                                LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), throwable.getMessage()), throwable.getCause());
+                                LOGGER.error(String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()), throwable.getCause());
                                 request.metrics().setMessage(throwable.getCause().getMessage());
                             }
+                            MDC.remove("api");
                             policyChain.failWith(PolicyResult.failure(
                                     JWT_INVALID_TOKEN_KEY,
                                     HttpStatusCode.UNAUTHORIZED_401,
@@ -140,16 +144,20 @@ public class JWTPolicy {
                                 // Finally continue the process...
                                 policyChain.doNext(request, response);
                             } catch (Exception e) {
-                                LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), e.getMessage()), e.getCause());
+                                LOGGER.error(String.format(errorMessageFormat, api, request.id(), request.path(), e.getMessage()), e.getCause());
                                 policyChain.failWith(PolicyResult.failure(
                                         JWT_INVALID_TOKEN_KEY,
                                         HttpStatusCode.UNAUTHORIZED_401,
                                         UNAUTHORIZED_MESSAGE));
+                            } finally {
+                                MDC.remove("api");
                             }
                         }
                     });
         } catch (Exception e) {
+            MDC.put("api", String.valueOf(executionContext.getAttribute(ATTR_API)));
             LOGGER.error(String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), e.getMessage()), e.getCause());
+            MDC.remove("api");
             policyChain.failWith(PolicyResult.failure(
                     JWT_MISSING_TOKEN_KEY,
                     HttpStatusCode.UNAUTHORIZED_401,
