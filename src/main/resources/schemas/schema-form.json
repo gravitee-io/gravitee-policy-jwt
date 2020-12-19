@@ -58,7 +58,8 @@
           "lineNumbers": true,
           "allowDropFileTypes": true,
           "autoCloseTags": true
-        }
+        },
+        "expression-language": true
       }
     },
     "useSystemProxy" : {
