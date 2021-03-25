@@ -32,6 +32,10 @@ Both the header and payload are encoded with Base64, so anyone can read the cont
 
 - The third and last part is the signature (for more details, see the RFC).
 
+=== Policy identifier
+
+You can enable or disable the policy with policy identifier `jwt`.
+
 == Configuration
 
 |===
