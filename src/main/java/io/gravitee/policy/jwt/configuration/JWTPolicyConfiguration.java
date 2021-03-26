@@ -33,6 +33,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private boolean extractClaims = false;
     private boolean propagateAuthHeader = true;
     private String userClaim;
+    private String clientIdClaim;
     private boolean useSystemProxy;
     
     //getter and setters
@@ -82,6 +83,14 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     public void setUserClaim(String userClaim) {
         this.userClaim = userClaim;
+    }
+
+    public String getClientIdClaim() {
+        return clientIdClaim;
+    }
+
+    public void setClientIdClaim(String clientIdClaim) {
+        this.clientIdClaim = clientIdClaim;
     }
 
     public boolean isUseSystemProxy() {

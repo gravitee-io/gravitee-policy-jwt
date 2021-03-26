@@ -186,6 +186,58 @@ public abstract class JWTPolicyTest {
     }
 
     @Test
+    public void test_get_client_with_configuration() throws Exception {
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
+
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
+        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
+        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, "my-client-id-from-aud");
+        builder.claim("configuration_client_id", "my-client-id-from-configuration");
+
+        String jwt = sign(builder.build());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer "+jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
+        when(configuration.getClientIdClaim()).thenReturn("configuration_client_id");
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(executionContext, times(1))
+                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
+
+        verify(policyChain, times(1)).doNext(request, response);
+    }
+
+    @Test
+    public void test_get_client_with_configuration_array() throws Exception {
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
+
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
+        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
+        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, "my-client-id-from-aud");
+        builder.claim("configuration_client_id", Collections.singletonList("my-client-id-from-configuration"));
+
+        String jwt = sign(builder.build());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer "+jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
+        when(configuration.getClientIdClaim()).thenReturn("configuration_client_id");
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(executionContext, times(1))
+                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
+
+        verify(policyChain, times(1)).doNext(request, response);
+    }
+
+    @Test
     public void test_get_client_with_aud_array_claim() throws Exception {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
