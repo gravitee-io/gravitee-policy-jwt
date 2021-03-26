@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.core.env.Environment;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -166,6 +167,12 @@ public class JWTPolicy {
     }
 
     private String getClientId(JWTClaimsSet claims) {
+
+        if (!StringUtils.isEmpty(configuration.getClientIdClaim())) {
+            Object clientIdClaim = claims.getClaim(configuration.getClientIdClaim());
+            return extractClientId(clientIdClaim);
+        }
+
         String clientId = null;
 
         // Look for the OAuth2 client_id of the Relying Party from the Authorized party claim
@@ -177,15 +184,7 @@ public class JWTPolicy {
         if (clientId == null) {
             // Look for the OAuth2 client_id of the Relying Party from the audience claim
             Object audClaim = claims.getClaim(CONTEXT_ATTRIBUTE_AUDIENCE);
-            if (audClaim != null) {
-                if (audClaim instanceof List) {
-                    List<String> audiences = (List<String>) audClaim;
-                    // For the moment, we took only the first value of the array
-                    clientId = audiences.get(0);
-                } else {
-                    clientId = (String) audClaim;
-                }
-            }
+            clientId = extractClientId(audClaim);
         }
 
         // Is there any client_id claim in JWT claims ?
@@ -194,6 +193,19 @@ public class JWTPolicy {
         }
 
         return clientId;
+    }
+
+    private String extractClientId(Object claim) {
+        if (claim != null) {
+            if (claim instanceof List) {
+                List<String> claims = (List<String>) claim;
+                // For the moment, we took only the first value of the array
+                return claims.get(0);
+            } else {
+                return (String) claim;
+            }
+        }
+        return null;
     }
 
     private CompletableFuture<JWTClaimsSet> validate(ExecutionContext executionContext, String token) throws Exception {

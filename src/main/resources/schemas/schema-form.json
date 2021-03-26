@@ -85,6 +85,11 @@
       "description": "Claim where the user can be extracted",
       "type": "string",
       "default": "sub"
+    },
+    "clientIdClaim": {
+      "title": "Client ID claim",
+      "description": "Claim where the client ID can be extracted",
+      "type": "string"
     }
   },
   "required": [

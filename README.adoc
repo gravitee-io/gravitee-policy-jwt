@@ -41,6 +41,7 @@ Both the header and payload are encoded with Base64, so anyone can read the cont
 |resolverParameter||Needed if you use the `GATEWAY_KEYS` or `GIVEN_ISSUER` resolver (EL support)|string|
 |useSystemProxy||Select this option if you want use system proxy (only useful when resolver is `JWKS_URL`)|boolean|false
 |extractClaims||Select this option if you want to extract claims into the request context|boolean|false
+|clientIdClaim||Required if the client_id should be read from non-standard claims (aud, azp, client_id)|string|
 |===
 
 
@@ -57,7 +58,7 @@ The policy prompts you to choose between three (`GIVEN_KEY`, `GIVEN_ISSUER`, `GA
 policy:
   jwt:
     issuer:
-      my.authorizaztion.server:
+      my.authorization.server:
         default: ssh-rsa myValidationKey anEmail@domain.com
         kid-2016: ssh-rsa myCurrentValidationKey anEmail@domain.com
 ----
@@ -91,7 +92,7 @@ Given the following JWT claims (payload):
 [source, json]
 ----
 {
-  "iss": "Gravitee.io AM"
+  "iss": "Gravitee.io AM",
   "sub": "1234567890",
   "name": "John Doe",
   "admin": true
@@ -134,7 +135,3 @@ The error keys sent by the policy are as follows:
 ^.^|-
 
 |===
-
-== Contributors
-
-You can contribute comments using this GitHub issue link: https://github.com/gravitee-io/issues/issues/46
