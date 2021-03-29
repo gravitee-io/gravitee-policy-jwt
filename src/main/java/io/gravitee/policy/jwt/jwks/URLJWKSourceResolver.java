@@ -21,6 +21,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import io.gravitee.el.TemplateEngine;
 import io.gravitee.policy.jwt.jwks.retriever.ResourceRetriever;
 
 import java.net.MalformedURLException;
@@ -43,8 +44,8 @@ public class URLJWKSourceResolver<C extends SecurityContext> implements JWKSourc
             .expireAfterWrite(5, TimeUnit.MINUTES)
             .build();
 
-    public URLJWKSourceResolver(String url, ResourceRetriever resourceRetriever) throws MalformedURLException {
-        this.jwksUrl = new URL(url);
+    public URLJWKSourceResolver(TemplateEngine templateEngine, String url, ResourceRetriever resourceRetriever) throws MalformedURLException {
+        this.jwksUrl = new URL(templateEngine.getValue(url, String.class));
         this.resourceRetriever = resourceRetriever;
     }
 
