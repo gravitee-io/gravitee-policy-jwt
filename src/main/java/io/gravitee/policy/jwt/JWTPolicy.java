@@ -241,7 +241,7 @@ public class JWTPolicy {
         } else {
             keyProcessor = new JWKSKeyProcessor();
             keyProcessor.setJwkSourceResolver(new URLJWKSourceResolver(
-                    configuration.getResolverParameter(),
+                    executionContext.getTemplateEngine(), configuration.getResolverParameter(),
                     new VertxResourceRetriever(executionContext.getComponent(Vertx.class), executionContext.getComponent(Environment.class), configuration.isUseSystemProxy())));
         }
 
