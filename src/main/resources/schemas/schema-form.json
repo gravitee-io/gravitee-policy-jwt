@@ -88,7 +88,7 @@
     },
     "clientIdClaim": {
       "title": "Client ID claim",
-      "description": "Claim where the client ID can be extracted",
+      "description": "Claim where the client ID can be extracted. Configuring this field will override the standard behavior.",
       "type": "string"
     }
   },
