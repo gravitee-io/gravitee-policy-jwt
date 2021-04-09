@@ -41,7 +41,7 @@ Both the header and payload are encoded with Base64, so anyone can read the cont
 |resolverParameter||Needed if you use the `GATEWAY_KEYS` or `GIVEN_ISSUER` resolver (EL support)|string|
 |useSystemProxy||Select this option if you want use system proxy (only useful when resolver is `JWKS_URL`)|boolean|false
 |extractClaims||Select this option if you want to extract claims into the request context|boolean|false
-|clientIdClaim||Required if the client_id should be read from non-standard claims (aud, azp, client_id)|string|
+|clientIdClaim||Required if the client_id should be read from non-standard claims (azp, aud, client_id)|string|
 |===
 
 
@@ -71,6 +71,8 @@ The policy will inspect the JWT:
 
 Using these two values, the gateway can retrieve the corresponding public key.
 
+Regarding the client_id, the standard behavior is to read it from the `azp` claim, then if not found in the `aud` claim and finally in the `client_id` claim.
+You can override this behavior by providing a custom `clientIdClaim` in the configuration.
 
 == Attributes
 
