@@ -509,6 +509,30 @@ public abstract class JWTPolicyTest {
         verify(policyChain, never()).doNext(request, response);
     }
 
+    @Test
+    public void test_with_jwks_url() throws Exception {
+        String jwksUrl = "https://{#dictionaries['myauthdomains']['test']}.com";
+        String jwt = getJsonWebToken(7200);
+
+        when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer "+jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.JWKS_URL);
+        when(configuration.getResolverParameter()).thenReturn(jwksUrl);
+        when(templateEngine.getValue(jwksUrl, String.class)).thenReturn("https://test.com");
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        // Here we expect that JWKSet resource has not been retrieved and so we finally get a 401.
+        // Note: VertxResourceRetriever is hard to mock and throws an NPE (that's why we get a 401).
+        verify(policyChain, times(1)).failWith(argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
+                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, never()).doNext(request, response);
+    }
+
     private void executePolicy(JWTPolicyConfiguration configuration, Request request, Response response,
                                ExecutionContext executionContext, PolicyChain policyChain) throws InterruptedException {
         final CountDownLatch lock = new CountDownLatch(1);
