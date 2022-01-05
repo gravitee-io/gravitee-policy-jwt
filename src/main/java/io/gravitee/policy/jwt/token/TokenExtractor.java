@@ -15,8 +15,8 @@
  */
 package io.gravitee.policy.jwt.token;
 
-import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.gateway.api.Request;
+import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.policy.jwt.exceptions.AuthorizationSchemeException;
 import org.springframework.util.StringUtils;
 
@@ -40,7 +40,7 @@ public class TokenExtractor {
      * @return String Json Web Token.
      */
     public static String extract(Request request) throws AuthorizationSchemeException {
-        List<String> authorizationHeaders = request.headers() != null ? request.headers().get(HttpHeaders.AUTHORIZATION) : null;
+        List<String> authorizationHeaders = request.headers() != null ? request.headers().getAll(HttpHeaderNames.AUTHORIZATION) : null;
 
         if (authorizationHeaders != null && !authorizationHeaders.isEmpty()) {
             Optional<String> authorizationBearerHeader = authorizationHeaders
