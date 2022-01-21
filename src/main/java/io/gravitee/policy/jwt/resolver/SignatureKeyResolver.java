@@ -20,6 +20,5 @@ package io.gravitee.policy.jwt.resolver;
  * @author GraviteeSource Team
  */
 public interface SignatureKeyResolver {
-
     String resolve();
 }

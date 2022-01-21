@@ -16,7 +16,6 @@
 package io.gravitee.policy.jwt.jwks;
 
 import com.nimbusds.jose.jwk.source.JWKSource;
-
 import java.time.LocalDateTime;
 
 /**

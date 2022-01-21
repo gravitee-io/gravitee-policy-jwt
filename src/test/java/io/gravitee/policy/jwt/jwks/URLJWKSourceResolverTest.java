@@ -15,22 +15,21 @@
  */
 package io.gravitee.policy.jwt.jwks;
 
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.util.Resource;
 import io.gravitee.el.TemplateEngine;
 import io.gravitee.policy.jwt.jwks.retriever.ResourceRetriever;
+import java.net.MalformedURLException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-
-import java.net.MalformedURLException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 /**
  * @author GraviteeSource Team

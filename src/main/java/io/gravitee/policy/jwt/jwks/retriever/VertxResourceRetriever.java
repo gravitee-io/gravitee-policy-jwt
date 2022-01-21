@@ -24,13 +24,12 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.core.net.ProxyType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
-
 import java.net.URL;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -53,8 +52,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
 
     @Override
     public CompletableFuture<Resource> retrieve(URL url) {
-        HttpClientOptions options = new HttpClientOptions()
-                .setConnectTimeout(2000);
+        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(2000);
 
         if (useSystemProxy) {
             options.setProxyOptions(getSystemProxyOptions(url));
@@ -69,18 +67,20 @@ public class VertxResourceRetriever implements ResourceRetriever {
         Promise<Resource> promise = Promise.promise();
 
         final RequestOptions requestOptions = new RequestOptions()
-                .setMethod(HttpMethod.GET)
-                .setAbsoluteURI(url.toString())
-                .setTimeout(2000L);
+            .setMethod(HttpMethod.GET)
+            .setAbsoluteURI(url.toString())
+            .setTimeout(2000L);
 
         final Future<HttpClientRequest> futureRequest = httpClient.request(requestOptions);
 
         futureRequest
-                .onFailure(throwable -> handleFailure(httpClient, promise, throwable))
-                .onSuccess(httpRequest ->
-                        httpRequest.send()
-                                .onFailure(throwable -> handleFailure(httpClient, promise, throwable))
-                                .onSuccess(httpResponse -> handleSuccess(httpClient, promise, httpResponse)));
+            .onFailure(throwable -> handleFailure(httpClient, promise, throwable))
+            .onSuccess(httpRequest ->
+                httpRequest
+                    .send()
+                    .onFailure(throwable -> handleFailure(httpClient, promise, throwable))
+                    .onSuccess(httpResponse -> handleSuccess(httpClient, promise, httpResponse))
+            );
 
         return promise.future().toCompletionStage().toCompletableFuture();
     }
@@ -88,8 +88,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
     private void handleSuccess(HttpClient httpClient, Promise<Resource> promise, HttpClientResponse httpResponse) {
         if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() <= 299) {
             httpResponse.bodyHandler(body -> {
-                promise.complete(new Resource(body.toString(),
-                        httpResponse.getHeader(io.gravitee.common.http.HttpHeaders.CONTENT_TYPE)));
+                promise.complete(new Resource(body.toString(), httpResponse.getHeader(io.gravitee.common.http.HttpHeaders.CONTENT_TYPE)));
                 httpClient.close();
             });
         } else {
@@ -105,7 +104,6 @@ public class VertxResourceRetriever implements ResourceRetriever {
     }
 
     private ProxyOptions getSystemProxyOptions(URL url) {
-
         StringBuilder errors = new StringBuilder();
         ProxyOptions proxyOptions = new ProxyOptions();
 
@@ -134,7 +132,11 @@ public class VertxResourceRetriever implements ResourceRetriever {
         if (errors.length() == 0) {
             return proxyOptions;
         } else {
-            LOGGER.warn("JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}", url.toString(), errors);
+            LOGGER.warn(
+                "JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}",
+                url.toString(),
+                errors
+            );
             LOGGER.warn("Ignoring system proxy");
             return null;
         }

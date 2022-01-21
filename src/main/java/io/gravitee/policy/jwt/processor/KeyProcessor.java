@@ -17,7 +17,6 @@ package io.gravitee.policy.jwt.processor;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import io.gravitee.policy.jwt.alg.Signature;
-
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -25,6 +24,5 @@ import java.util.concurrent.CompletableFuture;
  * @author GraviteeSource Team
  */
 public interface KeyProcessor {
-
     CompletableFuture<JWTClaimsSet> process(Signature signature, String token);
 }

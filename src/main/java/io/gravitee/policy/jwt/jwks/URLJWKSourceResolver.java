@@ -22,9 +22,6 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.Resource;
 import io.gravitee.el.TemplateEngine;
 import io.gravitee.policy.jwt.jwks.retriever.ResourceRetriever;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
@@ -32,6 +29,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -45,16 +44,16 @@ public class URLJWKSourceResolver<C extends SecurityContext> implements JWKSourc
     private final URL jwksUrl;
     private final ResourceRetriever resourceRetriever;
 
-    final static ConcurrentHashMap<String, CachedJWKSource> cache = new ConcurrentHashMap<>();
+    static final ConcurrentHashMap<String, CachedJWKSource> cache = new ConcurrentHashMap<>();
 
-    public URLJWKSourceResolver(TemplateEngine templateEngine, String url, ResourceRetriever resourceRetriever) throws MalformedURLException {
+    public URLJWKSourceResolver(TemplateEngine templateEngine, String url, ResourceRetriever resourceRetriever)
+        throws MalformedURLException {
         this.jwksUrl = new URL(templateEngine.getValue(url, String.class));
         this.resourceRetriever = resourceRetriever;
     }
 
     @Override
     public CompletableFuture<JWKSource<C>> resolve() {
-
         CachedJWKSource cachedJWKSource = cache.get(jwksUrl.toString());
         if (cachedJWKSource != null && !isCacheExpired(cachedJWKSource)) {
             return CompletableFuture.completedFuture(cachedJWKSource.getJwkSource());

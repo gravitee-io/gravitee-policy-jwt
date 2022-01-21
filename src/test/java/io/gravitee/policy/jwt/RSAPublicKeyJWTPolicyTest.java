@@ -20,7 +20,6 @@ import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.key.PublicKeyHelper;
-
 import java.io.*;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -38,10 +37,7 @@ public class RSAPublicKeyJWTPolicyTest extends JWTPolicyTest {
     }
 
     protected JWSSigner getSigner() throws Exception {
-        RSAKey rsaKey = new RSAKey
-                .Builder(PublicKeyHelper.parsePublicKey(getRsaKey()))
-                .privateKey(getPrivateKey())
-                .build();
+        RSAKey rsaKey = new RSAKey.Builder(PublicKeyHelper.parsePublicKey(getRsaKey())).privateKey(getPrivateKey()).build();
 
         return new RSASSASigner(rsaKey);
     }
@@ -49,7 +45,6 @@ public class RSAPublicKeyJWTPolicyTest extends JWTPolicyTest {
     protected String getSignatureKey() throws IOException {
         return getPublicKey();
     }
-
 
     /**
      * Return string value of public key matching format ssh-(rsa|dsa) ([A-Za-z0-9/+]+=*) (.*)

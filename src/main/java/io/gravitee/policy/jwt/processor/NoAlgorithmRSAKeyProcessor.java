@@ -24,13 +24,12 @@ import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.gravitee.policy.jwt.alg.Signature;
-
-import javax.crypto.SecretKey;
 import java.security.Key;
 import java.security.PublicKey;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import javax.crypto.SecretKey;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -44,22 +43,23 @@ public class NoAlgorithmRSAKeyProcessor<C extends SecurityContext> extends Abstr
         return new JWSVerificationKeySelector<C>(Signature.RSA_RS256.getAlg(), jwkSource) {
             @Override
             protected JWKMatcher createJWKMatcher(final JWSHeader jwsHeader) {
-                if (JWSAlgorithm.Family.RSA.contains(jwsHeader.getAlgorithm()) || JWSAlgorithm.Family.EC.contains(jwsHeader.getAlgorithm())) {
+                if (
+                    JWSAlgorithm.Family.RSA.contains(jwsHeader.getAlgorithm()) || JWSAlgorithm.Family.EC.contains(jwsHeader.getAlgorithm())
+                ) {
                     // RSA or EC key matcher
                     return new JWKMatcher.Builder()
-                            .keyType(KeyType.forAlgorithm(jwsHeader.getAlgorithm()))
-                            .keyUses(KeyUse.SIGNATURE, null)
-                            .algorithms(jwsHeader.getAlgorithm(), null)
-                            .x509CertSHA256Thumbprint(jwsHeader.getX509CertSHA256Thumbprint())
-                            .build();
+                        .keyType(KeyType.forAlgorithm(jwsHeader.getAlgorithm()))
+                        .keyUses(KeyUse.SIGNATURE, null)
+                        .algorithms(jwsHeader.getAlgorithm(), null)
+                        .x509CertSHA256Thumbprint(jwsHeader.getX509CertSHA256Thumbprint())
+                        .build();
                 } else {
                     return null; // Unsupported algorithm
                 }
             }
 
             @Override
-            public List<Key> selectJWSKeys(final JWSHeader jwsHeader, final C context)
-                    throws KeySourceException {
+            public List<Key> selectJWSKeys(final JWSHeader jwsHeader, final C context) throws KeySourceException {
                 JWKMatcher jwkMatcher = createJWKMatcher(jwsHeader);
                 if (jwkMatcher == null) {
                     return Collections.emptyList();
@@ -69,7 +69,7 @@ public class NoAlgorithmRSAKeyProcessor<C extends SecurityContext> extends Abstr
 
                 List<Key> sanitizedKeyList = new LinkedList<>();
 
-                for (Key key: KeyConverter.toJavaKeys(jwkMatches)) {
+                for (Key key : KeyConverter.toJavaKeys(jwkMatches)) {
                     if (key instanceof PublicKey || key instanceof SecretKey) {
                         sanitizedKeyList.add(key);
                     } // skip asymmetric private keys

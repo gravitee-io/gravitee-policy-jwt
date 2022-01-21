@@ -36,7 +36,7 @@ public final class PublicKeyHelper {
 
     private static final Pattern SSH_PUB_KEY = Pattern.compile("(ssh-(rsa|dsa) )?([A-Za-z0-9/+]+=*) ?(.*)");
 
-    private static final byte[] PREFIX = new byte[] {0,0,0,7, 's','s','h','-','r','s','a'};
+    private static final byte[] PREFIX = new byte[] { 0, 0, 0, 7, 's', 's', 'h', '-', 'r', 's', 'a' };
 
     private static final String SSH_RSA_ALG = "ssh-rsa";
 
@@ -81,8 +81,8 @@ public final class PublicKeyHelper {
                 throw new IllegalArgumentException("SSH key prefix not found");
             }
 
-            BigInteger e = new BigInteger(readBigInteger(in));//public exponent
-            BigInteger n = new BigInteger(readBigInteger(in));//modulus
+            BigInteger e = new BigInteger(readBigInteger(in)); //public exponent
+            BigInteger n = new BigInteger(readBigInteger(in)); //modulus
 
             return createPublicKey(n, e);
         } catch (IOException e) {
@@ -93,8 +93,7 @@ public final class PublicKeyHelper {
     private static RSAPublicKey createPublicKey(BigInteger n, BigInteger e) {
         try {
             return (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new RSAPublicKeySpec(n, e));
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }

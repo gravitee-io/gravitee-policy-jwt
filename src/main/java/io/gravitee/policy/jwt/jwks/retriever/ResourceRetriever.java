@@ -16,11 +16,9 @@
 package io.gravitee.policy.jwt.jwks.retriever;
 
 import com.nimbusds.jose.util.Resource;
-
 import java.net.URL;
 import java.util.concurrent.CompletableFuture;
 
 public interface ResourceRetriever {
-
     CompletableFuture<Resource> retrieve(URL url);
 }

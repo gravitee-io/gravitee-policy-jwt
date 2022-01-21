@@ -15,6 +15,8 @@
  */
 package io.gravitee.policy.jwt.token;
 
+import static org.mockito.Mockito.when;
+
 import io.gravitee.common.util.LinkedMultiValueMap;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.http.HttpHeaders;
@@ -24,8 +26,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import static org.mockito.Mockito.when;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -55,8 +55,7 @@ public class TokenExtractorTest {
     public void shouldNotExtract_unknownAuthorizationHeader() throws AuthorizationSchemeException {
         String jwt = "dummy-token";
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Basic " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Basic " + jwt);
         when(request.headers()).thenReturn(headers);
 
         String token = TokenExtractor.extract(request);
@@ -68,8 +67,7 @@ public class TokenExtractorTest {
     public void shouldNotExtract_bearerAuthorizationHeader_noValue() throws AuthorizationSchemeException {
         String jwt = "dummy-token";
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", TokenExtractor.BEARER);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", TokenExtractor.BEARER);
         when(request.headers()).thenReturn(headers);
 
         String token = TokenExtractor.extract(request);
@@ -81,8 +79,7 @@ public class TokenExtractorTest {
     public void shouldExtract_fromHeader() throws AuthorizationSchemeException {
         String jwt = "dummy-token";
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", TokenExtractor.BEARER + ' ' + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", TokenExtractor.BEARER + ' ' + jwt);
         when(request.headers()).thenReturn(headers);
 
         String token = TokenExtractor.extract(request);
@@ -95,8 +92,7 @@ public class TokenExtractorTest {
     public void shouldExtract_fromInsensitiveHeader() throws AuthorizationSchemeException {
         String jwt = "dummy-token";
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "bearer " + jwt);
         when(request.headers()).thenReturn(headers);
 
         String token = TokenExtractor.extract(request);

@@ -21,7 +21,6 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.key.PublicKeyHelper;
-
 import java.io.*;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -39,10 +38,7 @@ public class RSACertificateJWTPolicyTest extends JWTPolicyTest {
     }
 
     protected JWSSigner getSigner() throws Exception {
-        RSAKey rsaKey = new RSAKey
-                .Builder(PublicKeyHelper.parsePublicKey(getPublicKey()))
-                .privateKey(getPrivateKey())
-                .build();
+        RSAKey rsaKey = new RSAKey.Builder(PublicKeyHelper.parsePublicKey(getPublicKey())).privateKey(getPrivateKey()).build();
 
         return new RSASSASigner(rsaKey);
     }

@@ -19,6 +19,7 @@ package io.gravitee.policy.jwt.exceptions;
  * @author Guillaume Gillon (guillaume.gillon at outlook.com)
  */
 public class AuthorizationSchemeException extends Exception {
+
     public AuthorizationSchemeException(String message) {
         super(message);
     }

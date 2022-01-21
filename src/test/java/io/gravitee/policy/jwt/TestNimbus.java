@@ -19,7 +19,6 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-
 import java.util.Base64;
 import java.util.UUID;
 
@@ -27,17 +26,15 @@ public class TestNimbus {
 
     public static void main(String[] args) throws JOSEException {
         RSAKey jwk = new RSAKeyGenerator(2048)
-                .keyUse(KeyUse.ENCRYPTION) // indicate the intended use of the key
-                .keyID(UUID.randomUUID().toString()) // give the key a unique ID
-                .generate();
+            .keyUse(KeyUse.ENCRYPTION) // indicate the intended use of the key
+            .keyID(UUID.randomUUID().toString()) // give the key a unique ID
+            .generate();
 
         RSAKey recipientPublicJWK = jwk.toPublicJWK();
 
         Base64.Encoder encoder = Base64.getEncoder();
         String publicKeyStr = encoder.encodeToString(recipientPublicJWK.toPublicKey().getEncoded());
         //String privateKeyStr = encoder.encodeToString(recipientPublicJWK.toPrivateKey().getEncoded());
-
-
 
         System.out.println(publicKeyStr);
         //System.out.println(privateKeyStr);

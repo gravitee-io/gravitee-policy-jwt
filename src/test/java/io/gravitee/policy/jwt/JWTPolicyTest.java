@@ -15,6 +15,9 @@
  */
 package io.gravitee.policy.jwt;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.*;
+
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -33,20 +36,16 @@ import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.resolver.KeyResolver;
 import io.gravitee.reporter.api.http.Metrics;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.core.env.Environment;
-
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.core.env.Environment;
 
 /**
  * @author Alexandre FARIA (alexandre82.faria at gmail.com)
@@ -60,19 +59,25 @@ public abstract class JWTPolicyTest {
 
     @Mock
     private ExecutionContext executionContext;
+
     @Mock
     private Environment environment;
+
     @Mock
     private Request request;
+
     @Mock
     private Response response;
+
     @Mock
     private PolicyChain policyChain;
+
     @Mock
     private JWTPolicyConfiguration configuration;
+
     @Mock
     TemplateEngine templateEngine;
-    
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
@@ -86,9 +91,8 @@ public abstract class JWTPolicyTest {
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-        
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
@@ -104,8 +108,7 @@ public abstract class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
@@ -124,15 +127,13 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext, times(1))
-                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id");
+        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id");
 
         verify(policyChain, times(1)).doNext(request, response);
     }
@@ -147,17 +148,19 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        jwt = jwt.substring(0, jwt.lastIndexOf('.')+1);
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        jwt = jwt.substring(0, jwt.lastIndexOf('.') + 1);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain,times(1)).failWith(argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
-                && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())
+                )
+            );
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -172,15 +175,13 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext, times(1))
-                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-aud");
+        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-aud");
 
         verify(policyChain, times(1)).doNext(request, response);
     }
@@ -197,16 +198,14 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
         when(configuration.getClientIdClaim()).thenReturn("configuration_client_id");
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext, times(1))
-                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
+        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
 
         verify(policyChain, times(1)).doNext(request, response);
     }
@@ -223,16 +222,14 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
         when(configuration.getClientIdClaim()).thenReturn("configuration_client_id");
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext, times(1))
-                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
+        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
 
         verify(policyChain, times(1)).doNext(request, response);
     }
@@ -248,15 +245,13 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext, times(1))
-                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-aud");
+        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-aud");
 
         verify(policyChain, times(1)).doNext(request, response);
     }
@@ -272,15 +267,13 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext, times(1))
-                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-azp");
+        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-azp");
 
         verify(policyChain, times(1)).doNext(request, response);
     }
@@ -292,20 +285,18 @@ public abstract class JWTPolicyTest {
 
         JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, new String [] {"my-client-id-from-aud"});
+        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, new String[] { "my-client-id-from-aud" });
         builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY, "my-client-id-from-azp");
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext, times(1))
-                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-azp");
+        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-azp");
 
         verify(policyChain, times(1)).doNext(request, response);
     }
@@ -319,15 +310,13 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(executionContext, times(1))
-                .setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, null);
+        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, null);
 
         verify(policyChain, times(1)).doNext(request, response);
     }
@@ -339,8 +328,7 @@ public abstract class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(getSignatureKey());
@@ -351,17 +339,16 @@ public abstract class JWTPolicyTest {
 
         verify(policyChain, times(1)).doNext(request, response);
     }
-    
+
     @Test
     public void test_with_given_key_using_EL_and_valid_authorization_header() throws Exception {
         String jwt = getJsonWebToken(7200);
         final String property = "prop['key']";
-        
+
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(property);
@@ -372,7 +359,7 @@ public abstract class JWTPolicyTest {
 
         verify(policyChain, times(1)).doNext(request, response);
     }
-    
+
     @Test
     public void test_with_given_key_but_not_provided() throws Exception {
         String jwt = getJsonWebToken(7200);
@@ -380,28 +367,30 @@ public abstract class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
         when(configuration.getResolverParameter()).thenReturn(null);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1)).failWith(argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
-                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
+                )
+            );
         verify(policyChain, never()).doNext(request, response);
     }
-    
+
     @Test
     public void test_with_gateway_keys_and_valid_access_token() throws Exception {
         String jwt = getJsonWebToken(7200);
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-        
-        MultiValueMap<String,String> parameters = new LinkedMultiValueMap<>(1);
+
+        MultiValueMap<String, String> parameters = new LinkedMultiValueMap<>(1);
         parameters.put("access_token", Collections.singletonList(jwt));
 
         when(request.headers()).thenReturn(HttpHeaders.create());
@@ -413,7 +402,7 @@ public abstract class JWTPolicyTest {
         verify(request, times(2)).parameters();
         verify(policyChain, times(1)).doNext(request, response);
     }
-    
+
     @Test
     public void test_with_gateway_keys_and_expired_header_token() throws Exception {
         String jwt = getJsonWebToken(0);
@@ -421,36 +410,40 @@ public abstract class JWTPolicyTest {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
-        
-        verify(policyChain, times(1)).failWith(argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
-                        && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())));
+
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())
+                )
+            );
         verify(policyChain, never()).doNext(request, response);
     }
 
     @Test
     public void test_with_gateway_keys_and_unknown_issuer() throws Exception {
-        String jwt = getJsonWebToken(7200,"unknown");
+        String jwt = getJsonWebToken(7200, "unknown");
 
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
         when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1)).failWith(argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
-                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
+                )
+            );
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -458,30 +451,34 @@ public abstract class JWTPolicyTest {
     public void test_not_authentification_scheme() throws Exception {
         String jwt = getJsonWebToken(7200);
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", jwt);
         when(request.headers()).thenReturn(headers);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain,times(1)).failWith(argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
-                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
+                )
+            );
     }
 
     @Test
     public void test_not_authentification_scheme_supported() throws Exception {
         String jwt = getJsonWebToken(7200);
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Basic " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Basic " + jwt);
         when(request.headers()).thenReturn(headers);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain,times(1)).failWith(argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
-                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
+                )
+            );
     }
 
     @Test
@@ -495,17 +492,19 @@ public abstract class JWTPolicyTest {
 
         String jwt = sign(builder.build());
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
         when(configuration.getUserClaim()).thenReturn("aud");
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1)).failWith(argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
-                        && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())
+                )
+            );
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -516,8 +515,7 @@ public abstract class JWTPolicyTest {
 
         when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
 
-        HttpHeaders headers = HttpHeaders.create()
-                .set("Authorization", "Bearer " + jwt);
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
         when(request.headers()).thenReturn(headers);
         when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.JWKS_URL);
         when(configuration.getResolverParameter()).thenReturn(jwksUrl);
@@ -527,14 +525,22 @@ public abstract class JWTPolicyTest {
 
         // Here we expect that JWKSet resource has not been retrieved and so we finally get a 401.
         // Note: VertxResourceRetriever is hard to mock and throws an NPE (that's why we get a 401).
-        verify(policyChain, times(1)).failWith(argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401
-                        && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())));
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
+                )
+            );
         verify(policyChain, never()).doNext(request, response);
     }
 
-    private void executePolicy(JWTPolicyConfiguration configuration, Request request, Response response,
-                               ExecutionContext executionContext, PolicyChain policyChain) throws InterruptedException {
+    private void executePolicy(
+        JWTPolicyConfiguration configuration,
+        Request request,
+        Response response,
+        ExecutionContext executionContext,
+        PolicyChain policyChain
+    ) throws InterruptedException {
         final CountDownLatch lock = new CountDownLatch(1);
 
         new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
@@ -568,9 +574,9 @@ public abstract class JWTPolicyTest {
     private JWTClaimsSet.Builder getJsonWebTokenBuilder(long secondsToAdd, String iss) throws Exception {
         // Prepare JWT with claims set
         return new JWTClaimsSet.Builder()
-                .subject("alexluso")
-                .issuer(iss != null ? iss : ISS)
-                .expirationTime(Date.from(Instant.now().plusSeconds(secondsToAdd)));
+            .subject("alexluso")
+            .issuer(iss != null ? iss : ISS)
+            .expirationTime(Date.from(Instant.now().plusSeconds(secondsToAdd)));
     }
 
     private String sign(JWTClaimsSet claimsSet) throws Exception {
@@ -581,10 +587,9 @@ public abstract class JWTPolicyTest {
         JWSSigner signer = getSigner();
 
         SignedJWT signedJWT = new SignedJWT(
-                new JWSHeader.Builder(getSignature().getAlg())
-                        .keyID(kid != null ? kid : KID)
-                        .build(),
-                claimsSet);
+            new JWSHeader.Builder(getSignature().getAlg()).keyID(kid != null ? kid : KID).build(),
+            claimsSet
+        );
 
         signedJWT.sign(signer);
 
@@ -592,6 +597,8 @@ public abstract class JWTPolicyTest {
     }
 
     abstract Signature getSignature();
+
     abstract JWSSigner getSigner() throws Exception;
+
     abstract String getSignatureKey() throws Exception;
 }
