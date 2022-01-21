@@ -18,10 +18,9 @@ package io.gravitee.policy.jwt.token;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.policy.jwt.exceptions.AuthorizationSchemeException;
-import org.springframework.util.StringUtils;
-
 import java.util.List;
 import java.util.Optional;
+import org.springframework.util.StringUtils;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -44,12 +43,12 @@ public class TokenExtractor {
 
         if (authorizationHeaders != null && !authorizationHeaders.isEmpty()) {
             Optional<String> authorizationBearerHeader = authorizationHeaders
-                    .stream()
-                    .filter(h -> StringUtils.startsWithIgnoreCase(h, BEARER))
-                    .findFirst();
+                .stream()
+                .filter(h -> StringUtils.startsWithIgnoreCase(h, BEARER))
+                .findFirst();
             if (authorizationBearerHeader.isPresent()) {
                 String authToken = authorizationBearerHeader.get().substring(BEARER.length()).trim();
-                if (! authToken.isEmpty()) {
+                if (!authToken.isEmpty()) {
                     return authToken;
                 } else {
                     throw new AuthorizationSchemeException("Authorization scheme is not supported for JWT");

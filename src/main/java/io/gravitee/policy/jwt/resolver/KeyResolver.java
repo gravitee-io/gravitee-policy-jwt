@@ -23,5 +23,5 @@ package io.gravitee.policy.jwt.resolver;
 public enum KeyResolver {
     GIVEN_KEY,
     GATEWAY_KEYS,
-    JWKS_URL
+    JWKS_URL,
 }

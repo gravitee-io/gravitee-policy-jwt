@@ -35,7 +35,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private String userClaim;
     private String clientIdClaim;
     private boolean useSystemProxy;
-    
+
     //getter and setters
     public KeyResolver getPublicKeyResolver() {
         return publicKeyResolver;
@@ -44,11 +44,11 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     public void setPublicKeyResolver(KeyResolver publicKeyResolver) {
         this.publicKeyResolver = publicKeyResolver;
     }
-    
+
     public String getResolverParameter() {
         return resolverParameter;
     }
-    
+
     public void setResolverParameter(String givenKey) {
         this.resolverParameter = givenKey;
     }

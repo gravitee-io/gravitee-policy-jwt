@@ -15,7 +15,6 @@
  */
 package io.gravitee.policy.jwt.resolver;
 
-
 import io.gravitee.el.TemplateEngine;
 
 /**

@@ -17,7 +17,6 @@ package io.gravitee.policy.jwt.jwks;
 
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -25,6 +24,5 @@ import java.util.concurrent.CompletableFuture;
  * @author GraviteeSource Team
  */
 public interface JWKSourceResolver<C extends SecurityContext> {
-
     CompletableFuture<JWKSource<C>> resolve();
 }

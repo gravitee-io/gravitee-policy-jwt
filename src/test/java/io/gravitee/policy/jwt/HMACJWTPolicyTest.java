@@ -19,7 +19,6 @@ import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import io.gravitee.policy.jwt.alg.Signature;
-
 import java.security.SecureRandom;
 
 /**
@@ -49,7 +48,6 @@ public class HMACJWTPolicyTest extends JWTPolicyTest {
     protected String getSignatureKey() throws Exception {
         return SECRET;
     }
-
     /*
     @Test
     public void test_hmac256_with_given_key_and_valid_authorization_header() throws Exception {

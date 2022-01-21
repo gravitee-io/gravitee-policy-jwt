@@ -25,7 +25,6 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.exceptions.InvalidTokenException;
 import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
-
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -36,7 +35,7 @@ public abstract class AbstractKeyProcessor<C extends SecurityContext> implements
 
     private JWKSourceResolver<C> jwkSourceResolver;
 
-    private final static DefaultJWTClaimsVerifier claimsVerifier = new DefaultJWTClaimsVerifier<>();
+    private static final DefaultJWTClaimsVerifier claimsVerifier = new DefaultJWTClaimsVerifier<>();
 
     // To ensure compatibility with previous version of JWT policy.
     // TODO: should be configurable from policy configuration.
@@ -47,19 +46,18 @@ public abstract class AbstractKeyProcessor<C extends SecurityContext> implements
     @Override
     public CompletableFuture<JWTClaimsSet> process(Signature signature, String token) {
         return jwkSourceResolver
-                .resolve()
-                .thenCompose(jwkSource -> {
-                    ConfigurableJWTProcessor<C> jwtProcessor = new DefaultJWTProcessor<>();
-                    jwtProcessor.setJWTClaimsSetVerifier(claimsVerifier);
-                    jwtProcessor.setJWSKeySelector(jwsKeySelector(jwkSource, signature));
+            .resolve()
+            .thenCompose(jwkSource -> {
+                ConfigurableJWTProcessor<C> jwtProcessor = new DefaultJWTProcessor<>();
+                jwtProcessor.setJWTClaimsSetVerifier(claimsVerifier);
+                jwtProcessor.setJWSKeySelector(jwsKeySelector(jwkSource, signature));
 
-                    try {
-                        return CompletableFuture.completedFuture(
-                                jwtProcessor.process(token, null));
-                    } catch (Exception ex) {
-                        throw new InvalidTokenException(ex);
-                    }
-                });
+                try {
+                    return CompletableFuture.completedFuture(jwtProcessor.process(token, null));
+                } catch (Exception ex) {
+                    throw new InvalidTokenException(ex);
+                }
+            });
     }
 
     public void setJwkSourceResolver(JWKSourceResolver<C> jwkSourceResolver) {

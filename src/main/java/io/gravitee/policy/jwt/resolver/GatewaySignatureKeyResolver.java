@@ -18,11 +18,10 @@ package io.gravitee.policy.jwt.resolver;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
+import java.text.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
-
-import java.text.ParseException;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -49,7 +48,7 @@ public class GatewaySignatureKeyResolver implements SignatureKeyResolver {
             final JWT jwt = JWTParser.parse(token);
 
             final String iss = jwt.getJWTClaimsSet().getIssuer();
-            String keyId = ((JWSHeader)jwt.getHeader()).getKeyID();
+            String keyId = ((JWSHeader) jwt.getHeader()).getKeyID();
 
             if (keyId == null || keyId.isEmpty()) {
                 keyId = DEFAULT_KID;

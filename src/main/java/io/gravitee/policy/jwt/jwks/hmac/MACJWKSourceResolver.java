@@ -23,7 +23,6 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
 import io.gravitee.policy.jwt.resolver.SignatureKeyResolver;
-
 import java.util.concurrent.CompletableFuture;
 
 /**

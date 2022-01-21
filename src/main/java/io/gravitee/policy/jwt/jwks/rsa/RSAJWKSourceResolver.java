@@ -25,7 +25,6 @@ import com.nimbusds.jose.proc.SecurityContext;
 import io.gravitee.policy.jwt.jwks.JWKSourceResolver;
 import io.gravitee.policy.jwt.key.PublicKeyHelper;
 import io.gravitee.policy.jwt.resolver.SignatureKeyResolver;
-
 import java.security.interfaces.RSAPublicKey;
 import java.util.concurrent.CompletableFuture;
 
