@@ -65,7 +65,7 @@ policy:
 
 The policy will inspect the JWT:
 
-** header to extract the key id (`kid` attribute) of the public key. If no key id is found then it is set to `default`.
+** header to extract the key id (`kid` attribute) of the public key. If no key id is found then the key selector will use `x5t` field.
 
 ** claims (payload) to extract the issuer (`iss` attribute)
 
