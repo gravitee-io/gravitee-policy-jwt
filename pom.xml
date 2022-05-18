@@ -35,9 +35,10 @@
 
     <properties>
         <gravitee-bom.version>1.1</gravitee-bom.version>
+        <gravitee-common.version>1.26.1</gravitee-common.version>
+        <gravitee-node.version>1.23.0</gravitee-node.version>
         <gravitee-gateway-api.version>1.31.0</gravitee-gateway-api.version>
         <gravitee-policy-api.version>1.6.0</gravitee-policy-api.version>
-        <gravitee-common.version>1.15.5</gravitee-common.version>
         <nimbus-jose-jwt.version>6.3</nimbus-jose-jwt.version>
         <guava.version>26.0-jre</guava.version>
         <json-schema-generator-maven-plugin.version>1.1.0</json-schema-generator-maven-plugin.version>
@@ -81,6 +82,20 @@
             <groupId>io.gravitee.common</groupId>
             <artifactId>gravitee-common</artifactId>
             <version>${gravitee-common.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.gravitee.node</groupId>
+            <artifactId>gravitee-node-api</artifactId>
+            <version>${gravitee-node.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.gravitee.node</groupId>
+            <artifactId>gravitee-node-container</artifactId>
+            <version>${gravitee-node.version}</version>
             <scope>provided</scope>
         </dependency>
 

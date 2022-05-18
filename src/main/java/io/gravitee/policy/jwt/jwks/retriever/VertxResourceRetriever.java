@@ -15,17 +15,15 @@
  */
 package io.gravitee.policy.jwt.jwks.retriever;
 
+import static io.gravitee.common.util.VertxProxyOptionsUtils.*;
+
 import com.nimbusds.jose.util.Resource;
+import io.gravitee.node.container.spring.SpringEnvironmentConfiguration;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
-import io.vertx.core.net.ProxyOptions;
-import io.vertx.core.net.ProxyType;
 import java.net.URL;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +53,16 @@ public class VertxResourceRetriever implements ResourceRetriever {
         HttpClientOptions options = new HttpClientOptions().setConnectTimeout(2000);
 
         if (useSystemProxy) {
-            options.setProxyOptions(getSystemProxyOptions(url));
+            try {
+                setSystemProxy(options, new SpringEnvironmentConfiguration(environment));
+            } catch (Exception e) {
+                LOGGER.warn(
+                    "JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}",
+                    url.toString(),
+                    e.getMessage()
+                );
+                LOGGER.warn("Ignoring system proxy");
+            }
         }
 
         if (HTTPS_SCHEME.equalsIgnoreCase(url.getProtocol())) {
@@ -101,44 +108,5 @@ public class VertxResourceRetriever implements ResourceRetriever {
         // Finally exit chain
         httpClient.close();
         promise.fail(throwable);
-    }
-
-    private ProxyOptions getSystemProxyOptions(URL url) {
-        StringBuilder errors = new StringBuilder();
-        ProxyOptions proxyOptions = new ProxyOptions();
-
-        // System proxy must be well configured. Check that this is the case.
-        if (environment.containsProperty("system.proxy.host")) {
-            proxyOptions.setHost(environment.getProperty("system.proxy.host"));
-        } else {
-            errors.append("'system.proxy.host' ");
-        }
-
-        try {
-            proxyOptions.setPort(Integer.parseInt(Objects.requireNonNull(environment.getProperty("system.proxy.port"))));
-        } catch (Exception e) {
-            errors.append("'system.proxy.port' [").append(environment.getProperty("system.proxy.port")).append("] ");
-        }
-
-        try {
-            proxyOptions.setType(ProxyType.valueOf(environment.getProperty("system.proxy.type")));
-        } catch (Exception e) {
-            errors.append("'system.proxy.type' [").append(environment.getProperty("system.proxy.type")).append("] ");
-        }
-
-        proxyOptions.setUsername(environment.getProperty("system.proxy.username"));
-        proxyOptions.setPassword(environment.getProperty("system.proxy.password"));
-
-        if (errors.length() == 0) {
-            return proxyOptions;
-        } else {
-            LOGGER.warn(
-                "JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}",
-                url.toString(),
-                errors
-            );
-            LOGGER.warn("Ignoring system proxy");
-            return null;
-        }
     }
 }
