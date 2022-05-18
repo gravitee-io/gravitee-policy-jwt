@@ -19,6 +19,18 @@ Some authorization servers use OAuth2 protocol to provide access tokens. These a
 
 - JWT (JSON Web Token) standard RFC: (https://tools.ietf.org/html/rfc7519
 
+
+== Compatibility with APIM
+
+|===
+|Plugin version | APIM version
+
+|2.x and upper                  | 3.18.x to latest
+|1.22.x and upper               | 3.15.x to 3.17.x
+|1.20.x to 1.21.x               | 3.10.x to 3.14.x
+|Up to 1.19.x                   | Up to 3.9.x
+|===
+
 === JWT
 
 A JWT is composed of three parts: a header, a payload and a signature.
