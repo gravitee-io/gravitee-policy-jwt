@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/1.22.0...2.0.0) (2022-05-24)
+
+
+### Code Refactoring
+
+* use common vertx proxy options factory ([92d2da5](https://github.com/gravitee-io/gravitee-policy-jwt/commit/92d2da534641726ace500abc91db718941208461))
+
+
+### BREAKING CHANGES
+
+* this version requires APIM in version 3.18 and upper
+
 # [1.22.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/1.21.0...1.22.0) (2022-01-21)
 
 
