@@ -13,29 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.alg;
+package io.gravitee.policy.jwt.jwk.source;
 
-import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.util.Resource;
+import com.nimbusds.jwt.proc.JWTProcessor;
+import io.reactivex.Single;
 
 /**
- * @author David BRASSELY (david.brassely at graviteesource.com)
+ * {@link ResourceRetriever} allows to retrieve a nimbus {@link Resource} from a location.
+ *
+ * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
  * @author GraviteeSource Team
  */
-public enum Signature {
-    RSA_RS256(JWSAlgorithm.RS256),
-    RSA_RS384(JWSAlgorithm.RS384),
-    RSA_RS512(JWSAlgorithm.RS512),
-    HMAC_HS256(JWSAlgorithm.HS256),
-    HMAC_HS384(JWSAlgorithm.HS384),
-    HMAC_HS512(JWSAlgorithm.HS512);
-
-    private final JWSAlgorithm alg;
-
-    Signature(JWSAlgorithm alg) {
-        this.alg = alg;
-    }
-
-    public JWSAlgorithm getAlg() {
-        return alg;
-    }
+public interface ResourceRetriever {
+    Single<Resource> retrieve(String location);
 }

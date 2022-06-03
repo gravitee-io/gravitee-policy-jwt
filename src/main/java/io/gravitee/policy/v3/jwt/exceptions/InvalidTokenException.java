@@ -13,29 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.alg;
-
-import com.nimbusds.jose.JWSAlgorithm;
+package io.gravitee.policy.v3.jwt.exceptions;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public enum Signature {
-    RSA_RS256(JWSAlgorithm.RS256),
-    RSA_RS384(JWSAlgorithm.RS384),
-    RSA_RS512(JWSAlgorithm.RS512),
-    HMAC_HS256(JWSAlgorithm.HS256),
-    HMAC_HS384(JWSAlgorithm.HS384),
-    HMAC_HS512(JWSAlgorithm.HS512);
+public class InvalidTokenException extends RuntimeException {
 
-    private final JWSAlgorithm alg;
-
-    Signature(JWSAlgorithm alg) {
-        this.alg = alg;
+    public InvalidTokenException(String message) {
+        super(message);
     }
 
-    public JWSAlgorithm getAlg() {
-        return alg;
+    public InvalidTokenException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public InvalidTokenException(Throwable cause) {
+        super(cause);
     }
 }
