@@ -15,590 +15,351 @@
  */
 package io.gravitee.policy.jwt;
 
-import static org.mockito.Matchers.any;
+import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
+import static io.gravitee.policy.jwt.JWTPolicy.*;
+import static io.gravitee.reporter.api.http.SecurityType.JWT;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.proc.BadJOSEException;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimNames;
 import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.http.HttpStatusCode;
-import io.gravitee.common.util.LinkedMultiValueMap;
-import io.gravitee.common.util.MultiValueMap;
-import io.gravitee.el.TemplateEngine;
-import io.gravitee.gateway.api.ExecutionContext;
-import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
+import io.gravitee.common.security.jwt.LazyJWT;
+import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
-import io.gravitee.policy.api.PolicyChain;
-import io.gravitee.policy.api.PolicyResult;
-import io.gravitee.policy.jwt.alg.Signature;
+import io.gravitee.gateway.reactive.api.context.Request;
+import io.gravitee.gateway.reactive.api.context.RequestExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
-import io.gravitee.policy.jwt.resolver.KeyResolver;
+import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.reporter.api.http.Metrics;
-import java.time.Instant;
+import io.reactivex.Completable;
+import io.reactivex.Maybe;
+import io.reactivex.observers.TestObserver;
+import java.text.ParseException;
 import java.util.Collections;
 import java.util.Date;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.List;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.core.env.Environment;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * @author Alexandre FARIA (alexandre82.faria at gmail.com)
- * @author David BRASSELY (david.brassely at graviteesource.com)
+ * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
  * @author GraviteeSource Team
  */
-public abstract class JWTPolicyTest {
+@ExtendWith(MockitoExtension.class)
+class JWTPolicyTest {
 
-    private static final String ISS = "gravitee.authorization.server";
-    private static final String KID = "MAIN";
-
-    @Mock
-    private ExecutionContext executionContext;
-
-    @Mock
-    private Environment environment;
-
-    @Mock
-    private Request request;
-
-    @Mock
-    private Response response;
-
-    @Mock
-    private PolicyChain policyChain;
+    private static final String TOKEN =
+        "eyJraWQiOiJkZWZhdWx0IiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiJ1bml0LXRlc3QiLCJhdWQiOiJ1bml0LXRlc3QiLCJpc3MiOiJodHRwczovL2dyYXZpdGVlLmlvIiwiZXhwIjoyMDU0MjU5MTMzLCJpYXQiOjE2NTQyNDQ3MzN9.Id0kPGSeJ9YKLJzR1Rm2V22MpRyQTnVUEXedyN8N0tk";
+    private static final String STANDARD_SUBJECT = "StandardSubject";
+    private static final String AZP_CLIENT_ID = "azpClientId";
+    private static final String CUSTOM_CLAIM_CLIENT_ID = "ClientIdClaim";
+    private static final String CUSTOM_CLAIM_CLIENT_ID_VALUE = "CustomClaimClientIdValue";
+    private static final String AUDIENCE_CLIENT_ID = "AudienceClientId";
+    private static final String CLIENT_ID = "clientId";
+    private static final String ISSUER = "https://gravitee.io";
+    private static final String MOCK_EXCEPTION = "Mock exception";
+    private static final String MOCK_JOSE_EXCEPTION = "Mock JOSE exception";
+    private static final String CUSTOM_CLAIM_USER = "UserClaim";
+    private static final String CUSTOM_CLAIM_USER_VALUE = "CustomClaimUser";
 
     @Mock
     private JWTPolicyConfiguration configuration;
 
     @Mock
-    TemplateEngine templateEngine;
+    private DefaultJWTProcessorProvider jwtProcessorResolver;
 
-    @Before
-    public void init() {
-        MockitoAnnotations.initMocks(this);
-        when(request.metrics()).thenReturn(Metrics.on(System.currentTimeMillis()).build());
-        when(configuration.getSignature()).thenReturn(getSignature());
+    @Mock
+    private JWTProcessor<SecurityContext> jwtProcessor;
+
+    @Mock
+    private RequestExecutionContext ctx;
+
+    @Mock
+    private Request request;
+
+    private JWTPolicy cut;
+
+    @BeforeEach
+    void init() {
+        cut = new JWTPolicy(configuration);
+        ReflectionTestUtils.setField(cut, "jwtProcessorResolver", jwtProcessorResolver);
     }
 
-    @Test
-    public void test_with_gateway_keys_and_valid_authorization_header() throws Exception {
-        String jwt = getJsonWebToken(7200);
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_gateway_keys_and_valid_lowercase_authorization_header() throws Exception {
-        String jwt = getJsonWebToken(7200);
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_get_client_with_client_id_claim() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id");
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_unsigned_jwt() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-
-        String jwt = sign(builder.build());
-
-        jwt = jwt.substring(0, jwt.lastIndexOf('.') + 1);
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())
-                )
-            );
-        verify(policyChain, never()).doNext(request, response);
-    }
-
-    @Test
-    public void test_get_client_with_aud_claim() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, "my-client-id-from-aud");
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-aud");
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_get_client_with_configuration() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, "my-client-id-from-aud");
-        builder.claim("configuration_client_id", "my-client-id-from-configuration");
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-        when(configuration.getClientIdClaim()).thenReturn("configuration_client_id");
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_get_client_with_configuration_array() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, "my-client-id-from-aud");
-        builder.claim("configuration_client_id", Collections.singletonList("my-client-id-from-configuration"));
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-        when(configuration.getClientIdClaim()).thenReturn("configuration_client_id");
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_get_client_with_aud_array_claim() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.audience(Collections.singletonList("my-client-id-from-aud"));
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-aud");
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_get_client_with_azp_claim() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY, "my-client-id-from-azp");
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-azp");
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_get_client_with_multiple_client_claims() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUDIENCE, new String[] { "my-client-id-from-aud" });
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY, "my-client-id-from-azp");
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-azp");
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_get_client_without_client_claim() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(executionContext, times(1)).setAttribute(JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, null);
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_given_key_and_valid_authorization_header() throws Exception {
-        String jwt = getJsonWebToken(7200);
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
-        when(configuration.getResolverParameter()).thenReturn(getSignatureKey());
-        when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
-        when(templateEngine.getValue(getSignatureKey(), String.class)).thenReturn(getSignatureKey());
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_given_key_using_EL_and_valid_authorization_header() throws Exception {
-        String jwt = getJsonWebToken(7200);
-        final String property = "prop['key']";
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
-        when(configuration.getResolverParameter()).thenReturn(property);
-        when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
-        when(templateEngine.getValue(property, String.class)).thenReturn(getSignatureKey());
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_given_key_but_not_provided() throws Exception {
-        String jwt = getJsonWebToken(7200);
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GIVEN_KEY);
-        when(configuration.getResolverParameter()).thenReturn(null);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
-        verify(policyChain, never()).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_gateway_keys_and_valid_access_token() throws Exception {
-        String jwt = getJsonWebToken(7200);
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        MultiValueMap<String, String> parameters = new LinkedMultiValueMap<>(1);
-        parameters.put("access_token", Collections.singletonList(jwt));
-
-        when(request.headers()).thenReturn(HttpHeaders.create());
-        when(request.parameters()).thenReturn(parameters);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(request, times(2)).parameters();
-        verify(policyChain, times(1)).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_gateway_keys_and_expired_header_token() throws Exception {
-        String jwt = getJsonWebToken(0);
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())
-                )
-            );
-        verify(policyChain, never()).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_gateway_keys_and_unknown_issuer() throws Exception {
-        String jwt = getJsonWebToken(7200, "unknown");
-
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
-        verify(policyChain, never()).doNext(request, response);
-    }
-
-    @Test
-    public void test_not_authentification_scheme() throws Exception {
-        String jwt = getJsonWebToken(7200);
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", jwt);
-        when(request.headers()).thenReturn(headers);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
-    }
-
-    @Test
-    public void test_not_authentification_scheme_supported() throws Exception {
-        String jwt = getJsonWebToken(7200);
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Basic " + jwt);
-        when(request.headers()).thenReturn(headers);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
-    }
-
-    @Test
-    public void test_with_processing_error() throws Exception {
-        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
-
-        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
-        builder.claim(JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");
-        builder.audience(Collections.singletonList("my-client-id-from-aud"));
-
-        String jwt = sign(builder.build());
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
-        when(configuration.getUserClaim()).thenReturn("aud");
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_INVALID_TOKEN_KEY.equals(result.key())
-                )
-            );
-        verify(policyChain, never()).doNext(request, response);
-    }
-
-    @Test
-    public void test_with_jwks_url() throws Exception {
-        String jwksUrl = "https://{#dictionaries['myauthdomains']['test']}.com";
-        String jwt = getJsonWebToken(7200);
-
-        when(executionContext.getTemplateEngine()).thenReturn(templateEngine);
-
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
-        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.JWKS_URL);
-        when(configuration.getResolverParameter()).thenReturn(jwksUrl);
-        when(templateEngine.getValue(jwksUrl, String.class)).thenReturn("https://test.com");
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        // Here we expect that JWKSet resource has not been retrieved and so we finally get a 401.
-        // Note: VertxResourceRetriever is hard to mock and throws an NPE (that's why we get a 401).
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicy.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
-        verify(policyChain, never()).doNext(request, response);
-    }
-
-    private void executePolicy(
-        JWTPolicyConfiguration configuration,
-        Request request,
-        Response response,
-        ExecutionContext executionContext,
-        PolicyChain policyChain
-    ) throws InterruptedException {
-        final CountDownLatch lock = new CountDownLatch(1);
-
-        new JWTPolicy(configuration).onRequest(request, response, executionContext, policyChain);
-
-        lock.await(50, TimeUnit.MILLISECONDS);
-    }
-
-    //PRIVATE tools method for tests
-    /**
-     * Return Json Web Token string value.
-     * @return String
-     * @throws Exception
-     */
-    private String getJsonWebToken(long secondsToAdd) throws Exception {
-        return sign(getJsonWebTokenBuilder(secondsToAdd, null).build());
-    }
-
-    private JWTClaimsSet.Builder getJsonWebTokenBuilder(long secondsToAdd) throws Exception {
-        return getJsonWebTokenBuilder(secondsToAdd, null);
-    }
-
-    /**
-     * Return Json Web Token string value.
-     * @return String
-     * @throws Exception
-     */
-    private String getJsonWebToken(long secondsToAdd, String iss) throws Exception {
-        return sign(getJsonWebTokenBuilder(secondsToAdd, iss).build());
-    }
-
-    private JWTClaimsSet.Builder getJsonWebTokenBuilder(long secondsToAdd, String iss) throws Exception {
-        // Prepare JWT with claims set
-        return new JWTClaimsSet.Builder()
-            .subject("alexluso")
-            .issuer(iss != null ? iss : ISS)
-            .expirationTime(Date.from(Instant.now().plusSeconds(secondsToAdd)));
-    }
-
-    private String sign(JWTClaimsSet claimsSet) throws Exception {
-        return sign(claimsSet, null);
-    }
-
-    private String sign(JWTClaimsSet claimsSet, String kid) throws Exception {
-        JWSSigner signer = getSigner();
-
-        SignedJWT signedJWT = new SignedJWT(
-            new JWSHeader.Builder(getSignature().getAlg()).keyID(kid != null ? kid : KID).build(),
-            claimsSet
+    private static Stream<Arguments> provideClientIdParameters() {
+        return Stream.of(
+            Arguments.of(CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY, AZP_CLIENT_ID, STANDARD_SUBJECT),
+            Arguments.of(CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY, AZP_CLIENT_ID, CUSTOM_CLAIM_USER_VALUE),
+            Arguments.of(CUSTOM_CLAIM_CLIENT_ID, CUSTOM_CLAIM_CLIENT_ID_VALUE, STANDARD_SUBJECT),
+            Arguments.of(JWTClaimNames.AUDIENCE, AUDIENCE_CLIENT_ID, STANDARD_SUBJECT),
+            Arguments.of(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID, STANDARD_SUBJECT)
         );
-
-        signedJWT.sign(signer);
-
-        return signedJWT.serialize();
     }
 
-    abstract Signature getSignature();
+    @ParameterizedTest
+    @MethodSource("provideClientIdParameters")
+    void shouldVerifyTokenWithClientId(String clientIdField, String expectedClientId, String expectedSubject)
+        throws BadJOSEException, ParseException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet.Builder claimsSetBuilder = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .claim(clientIdField, expectedClientId)
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000));
 
-    abstract JWSSigner getSigner() throws Exception;
+        if (STANDARD_SUBJECT.equals(expectedSubject)) {
+            claimsSetBuilder.subject(expectedSubject);
+        } else {
+            when(configuration.getUserClaim()).thenReturn(CUSTOM_CLAIM_USER);
+            claimsSetBuilder.claim(CUSTOM_CLAIM_USER, expectedSubject);
+        }
 
-    abstract String getSignatureKey() throws Exception;
+        if (CUSTOM_CLAIM_CLIENT_ID_VALUE.equals(expectedClientId)) {
+            when(configuration.getClientIdClaim()).thenReturn(CUSTOM_CLAIM_CLIENT_ID);
+        }
+
+        final JWTClaimsSet claimsSet = claimsSetBuilder.build();
+
+        when(ctx.getInternalAttribute(CONTEXT_ATTRIBUTE_TOKEN)).thenReturn(TOKEN);
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(request.metrics()).thenReturn(metrics);
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+
+        obs.assertComplete();
+
+        verifyMetricsAttributesAndHeaders(metrics, headers, expectedClientId, expectedSubject);
+    }
+
+    @Test
+    void shouldVerifyTokenFromRequest() throws BadJOSEException, ParseException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(request.metrics()).thenReturn(metrics);
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verifyMetricsAttributesAndHeaders(metrics, headers, CLIENT_ID, STANDARD_SUBJECT);
+    }
+
+    @Test
+    void shouldVerifyTokenAndExtractClaimsWhenExtractClaimsIsConfigured() throws BadJOSEException, ParseException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
+            .claim("Claim1", "ClaimValue1")
+            .claim("Claim2", "ClaimValue2")
+            .claim("Claim3", "ClaimValue3")
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(ctx.getInternalAttribute(CONTEXT_ATTRIBUTE_TOKEN)).thenReturn(TOKEN);
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(request.metrics()).thenReturn(metrics);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.isExtractClaims()).thenReturn(true);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verifyMetricsAttributesAndHeaders(metrics, headers, CLIENT_ID, STANDARD_SUBJECT);
+        verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claimsSet.getClaims());
+    }
+
+    @Test
+    void shouldErrorWith401MissingTokenInterruptionWhenNoToken() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(Collections.emptyList());
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(ctx)
+            .interruptWith(
+                argThat(failure -> {
+                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                    assertEquals(JWT_MISSING_TOKEN_KEY, failure.key());
+                    assertNull(failure.parameters());
+                    assertNull(failure.contentType());
+
+                    return true;
+                })
+            );
+    }
+
+    @Test
+    void shouldErrorWith401InvaliTokenInterruptionWhenTokenExtractError() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer "));
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(ctx)
+            .interruptWith(
+                argThat(failure -> {
+                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                    assertEquals(JWT_INVALID_TOKEN_KEY, failure.key());
+                    assertNull(failure.parameters());
+                    assertNull(failure.contentType());
+
+                    return true;
+                })
+            );
+    }
+
+    @Test
+    void shouldErrorWith401InvalidTokenInterruptionWhenTokenRejected() throws BadJOSEException, ParseException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+
+        when(ctx.getInternalAttribute(CONTEXT_ATTRIBUTE_TOKEN)).thenReturn(TOKEN);
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(Mockito.<JWT>argThat(jwt -> TOKEN.equals(jwt.getParsedString())), isNull()))
+            .thenThrow(new JOSEException(MOCK_JOSE_EXCEPTION));
+        when(ctx.request()).thenReturn(request);
+        when(request.metrics()).thenReturn(metrics);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(ctx)
+            .interruptWith(
+                argThat(failure -> {
+                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                    assertEquals(JWT_INVALID_TOKEN_KEY, failure.key());
+                    assertNull(failure.parameters());
+                    assertNull(failure.contentType());
+
+                    return true;
+                })
+            );
+
+        verify(metrics).setMessage(MOCK_JOSE_EXCEPTION);
+    }
+
+    @Test
+    void shouldReturnOrder0() {
+        assertEquals(0, cut.order());
+    }
+
+    @Test
+    void shouldReturnJWTPolicyId() {
+        assertEquals("jwt", cut.id());
+    }
+
+    @Test
+    void shouldValidateSubscription() {
+        assertTrue(cut.requireSubscription());
+    }
+
+    @Test
+    void shouldInterruptOnSubscriptionInvalid() {
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+        final TestObserver<Void> obs = cut.onInvalidSubscription(ctx).test();
+
+        obs.assertError(Throwable.class);
+
+        verify(ctx)
+            .interruptWith(
+                argThat(failure -> {
+                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                    assertEquals(OAUTH2_ERROR_ACCESS_DENIED, failure.message());
+                    assertEquals(GATEWAY_OAUTH2_ACCESS_DENIED_KEY, failure.key());
+                    assertNull(failure.parameters());
+                    assertNull(failure.contentType());
+
+                    return true;
+                })
+            );
+    }
+
+    @Test
+    void shouldReturnCanHandleWhenTokenIsPresent() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+
+        final TestObserver<Boolean> obs = cut.support(ctx).test();
+
+        obs.assertResult(true);
+        verify(ctx).setAttribute(eq(CONTEXT_ATTRIBUTE_JWT), Mockito.<LazyJWT>argThat(jwt -> TOKEN.equals(jwt.getToken())));
+    }
+
+    @Test
+    void shouldReturnCannotHandleWhenTokenIsAbsent() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<Boolean> obs = cut.support(ctx).test();
+
+        obs.assertResult(false);
+
+        verify(ctx, times(0)).setAttribute(eq(CONTEXT_ATTRIBUTE_JWT), any());
+    }
+
+    private void verifyMetricsAttributesAndHeaders(Metrics metrics, HttpHeaders headers, String expectedClientId, String expectedSubject) {
+        // Verify context attributes.
+        verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_TOKEN, TOKEN);
+        verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, expectedClientId);
+        verify(ctx).setAttribute(ATTR_USER, expectedSubject);
+
+        // Verify metrics.
+        verify(metrics).setUser(expectedSubject);
+        verify(metrics).setSecurityType(JWT);
+        verify(metrics).setSecurityToken(expectedClientId);
+
+        // Verify request headers.
+        verify(headers).remove(io.vertx.reactivex.core.http.HttpHeaders.AUTHORIZATION);
+    }
 }

@@ -13,29 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.alg;
+package io.gravitee.policy.v3.jwt.resolver;
 
-import com.nimbusds.jose.JWSAlgorithm;
+import io.gravitee.el.TemplateEngine;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public enum Signature {
-    RSA_RS256(JWSAlgorithm.RS256),
-    RSA_RS384(JWSAlgorithm.RS384),
-    RSA_RS512(JWSAlgorithm.RS512),
-    HMAC_HS256(JWSAlgorithm.HS256),
-    HMAC_HS384(JWSAlgorithm.HS384),
-    HMAC_HS512(JWSAlgorithm.HS512);
+public class TemplatableSignatureKeyResolver implements SignatureKeyResolver {
 
-    private final JWSAlgorithm alg;
+    private final TemplateEngine templateEngine;
+    private final SignatureKeyResolver keyResolver;
 
-    Signature(JWSAlgorithm alg) {
-        this.alg = alg;
+    public TemplatableSignatureKeyResolver(TemplateEngine templateEngine, SignatureKeyResolver keyResolver) {
+        this.templateEngine = templateEngine;
+        this.keyResolver = keyResolver;
     }
 
-    public JWSAlgorithm getAlg() {
-        return alg;
+    @Override
+    public String resolve() {
+        String publicKey = keyResolver.resolve();
+        return templateEngine.getValue(publicKey, String.class);
     }
 }

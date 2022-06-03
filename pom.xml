@@ -30,16 +30,16 @@
     <parent>
         <groupId>io.gravitee</groupId>
         <artifactId>gravitee-parent</artifactId>
-        <version>20.0</version>
+        <version>20.2</version>
     </parent>
 
     <properties>
-        <gravitee-bom.version>1.1</gravitee-bom.version>
-        <gravitee-common.version>1.26.1</gravitee-common.version>
+        <gravitee-bom.version>2.1</gravitee-bom.version>
+        <gravitee-gateway-api.version>1.33.0-prototype-reactive-SNAPSHOT</gravitee-gateway-api.version>
+        <gravitee-policy-api.version>1.11.0</gravitee-policy-api.version>
+        <gravitee-common.version>1.27.0-prototype-reactive-SNAPSHOT</gravitee-common.version>
         <gravitee-node.version>1.23.0</gravitee-node.version>
-        <gravitee-gateway-api.version>1.31.0</gravitee-gateway-api.version>
-        <gravitee-policy-api.version>1.6.0</gravitee-policy-api.version>
-        <nimbus-jose-jwt.version>6.3</nimbus-jose-jwt.version>
+        <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
         <guava.version>26.0-jre</guava.version>
         <json-schema-generator-maven-plugin.version>1.1.0</json-schema-generator-maven-plugin.version>
         <json-schema-generator-maven-plugin.outputDirectory>${project.build.directory}/schemas</json-schema-generator-maven-plugin.outputDirectory>
@@ -47,6 +47,8 @@
         <maven-assembly-plugin.version>2.5.5</maven-assembly-plugin.version>
         <!-- Property used by the publication job in CI-->
         <publish-folder-path>graviteeio-apim/plugins/policies</publish-folder-path>
+        <wiremock.version>2.27.2</wiremock.version>
+        <sshj.version>0.33.0</sshj.version>
     </properties>
 
     <dependencyManagement>
@@ -58,6 +60,11 @@
                 <version>${gravitee-bom.version}</version>
                 <scope>import</scope>
                 <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.gravitee.common</groupId>
+                <artifactId>gravitee-common</artifactId>
+                <version>${gravitee-common.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -93,13 +100,6 @@
         </dependency>
 
         <dependency>
-            <groupId>io.gravitee.node</groupId>
-            <artifactId>gravitee-node-container</artifactId>
-            <version>${gravitee-node.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>${nimbus-jose-jwt.version}</version>
@@ -127,6 +127,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-rx-java2</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Jackson dependencies -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -140,24 +146,45 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Test scope -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- Test scope -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.hierynomus</groupId>
+            <artifactId>sshj</artifactId>
+            <version>${sshj.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.tomakehurst</groupId>
+            <artifactId>wiremock</artifactId>
+            <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
