@@ -13,29 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.alg;
+package io.gravitee.policy.v3.jwt.processor;
 
-import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.JWSKeySelector;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
+import io.gravitee.policy.jwt.alg.Signature;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public enum Signature {
-    RSA_RS256(JWSAlgorithm.RS256),
-    RSA_RS384(JWSAlgorithm.RS384),
-    RSA_RS512(JWSAlgorithm.RS512),
-    HMAC_HS256(JWSAlgorithm.HS256),
-    HMAC_HS384(JWSAlgorithm.HS384),
-    HMAC_HS512(JWSAlgorithm.HS512);
+public class JWKSKeyProcessor<C extends SecurityContext> extends AbstractKeyProcessor<C> {
 
-    private final JWSAlgorithm alg;
-
-    Signature(JWSAlgorithm alg) {
-        this.alg = alg;
-    }
-
-    public JWSAlgorithm getAlg() {
-        return alg;
+    @Override
+    JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource, Signature signature) {
+        return new JWSVerificationKeySelector<>(signature.getAlg(), jwkSource);
     }
 }

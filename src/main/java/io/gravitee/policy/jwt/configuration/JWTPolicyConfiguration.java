@@ -17,7 +17,7 @@ package io.gravitee.policy.jwt.configuration;
 
 import io.gravitee.policy.api.PolicyConfiguration;
 import io.gravitee.policy.jwt.alg.Signature;
-import io.gravitee.policy.jwt.resolver.KeyResolver;
+import io.gravitee.policy.v3.jwt.resolver.KeyResolver;
 
 /**
  * @author Alexandre FARIA (alexandre82.faria at gmail.com)
