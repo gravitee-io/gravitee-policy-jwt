@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.0.0...2.1.0) (2022-06-10)
+
+
+### Features
+
+* **jupiter:** move to Jupiter SecurityPolicy ([24bbdac](https://github.com/gravitee-io/gravitee-policy-jwt/commit/24bbdacdc56d9063c3744d9858e2c2dff02c7397))
+
 # [2.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/1.22.0...2.0.0) (2022-05-24)
 
 
