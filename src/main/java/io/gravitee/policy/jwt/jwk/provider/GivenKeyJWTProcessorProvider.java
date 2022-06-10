@@ -23,7 +23,7 @@ import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
-import io.gravitee.gateway.reactive.api.context.RequestExecutionContext;
+import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.NoKidJWSVerificationKeySelector;
 import io.gravitee.policy.jwt.utils.JWKBuilder;

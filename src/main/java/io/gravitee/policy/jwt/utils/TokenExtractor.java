@@ -18,7 +18,7 @@ package io.gravitee.policy.jwt.utils;
 import io.gravitee.common.util.MultiValueMap;
 import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
-import io.gravitee.gateway.reactive.api.context.Request;
+import io.gravitee.gateway.jupiter.api.context.Request;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.util.ObjectUtils;
