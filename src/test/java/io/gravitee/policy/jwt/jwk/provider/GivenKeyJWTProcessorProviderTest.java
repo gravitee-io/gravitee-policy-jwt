@@ -31,6 +31,7 @@ import io.gravitee.policy.jwt.jwk.AbstractJWKTest;
 import io.reactivex.observers.TestObserver;
 import java.security.KeyPair;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -93,6 +94,29 @@ class GivenKeyJWTProcessorProviderTest extends AbstractJWKTest {
 
         when(configuration.getSignature()).thenReturn(signature);
         when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn(pemPublicKey);
+
+        final GivenKeyJWTProcessorProvider cut = new GivenKeyJWTProcessorProvider(configuration);
+        final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
+
+        obs.assertComplete();
+        obs.assertValue(jwtProcessor -> {
+            assertTrue(jwtProcessor instanceof DefaultJWTProcessor);
+            assertNotNull(jwtProcessor.process(jwt, null));
+
+            return true;
+        });
+        obs.assertNoErrors();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideHMACWithOptionalBase64Parameters")
+    void shouldVerifyHMACSignature(Integer keySize, Signature signature, boolean encodeBase64) throws Exception {
+        final byte[] sharedSecret = generateHMACKey(keySize);
+        final String jwt = generateJWT(sharedSecret, signature.getAlg(), "gravitee0.io", "key0");
+
+        when(configuration.getSignature()).thenReturn(signature);
+        when(ctx.getInternalAttribute(RESOLVED_PARAMETER))
+            .thenReturn(encodeBase64 ? Base64.getEncoder().encodeToString(sharedSecret) : new String(sharedSecret));
 
         final GivenKeyJWTProcessorProvider cut = new GivenKeyJWTProcessorProvider(configuration);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
