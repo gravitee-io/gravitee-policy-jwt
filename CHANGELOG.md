@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.1.0...2.1.1) (2022-06-30)
+
+
+### Bug Fixes
+
+* **jupiter:** support plain text hmac key ([8ec1fa9](https://github.com/gravitee-io/gravitee-policy-jwt/commit/8ec1fa91f9919ba502532995a6f12afc4b46a9e6)), closes [gravitee-io/issues#7947](https://github.com/gravitee-io/issues/issues/7947)
+
 # [2.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.0.0...2.1.0) (2022-06-10)
 
 
