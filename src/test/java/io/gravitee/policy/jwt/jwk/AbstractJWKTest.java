@@ -33,6 +33,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.stream.Stream;
 import net.schmizz.sshj.common.Buffer;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.params.provider.Arguments;
 
 /**
@@ -54,6 +55,17 @@ public abstract class AbstractJWKTest {
             Arguments.of(32, Signature.HMAC_HS256),
             Arguments.of(48, Signature.HMAC_HS384),
             Arguments.of(64, Signature.HMAC_HS512)
+        );
+    }
+
+    protected static Stream<Arguments> provideHMACWithOptionalBase64Parameters() {
+        return Stream.of(
+            Arguments.of(32, Signature.HMAC_HS256, false),
+            Arguments.of(32, Signature.HMAC_HS256, true),
+            Arguments.of(48, Signature.HMAC_HS384, false),
+            Arguments.of(48, Signature.HMAC_HS384, true),
+            Arguments.of(64, Signature.HMAC_HS512, false),
+            Arguments.of(64, Signature.HMAC_HS512, true)
         );
     }
 
@@ -132,5 +144,9 @@ public abstract class AbstractJWKTest {
         jwsObject.sign(signer);
 
         return jwsObject.serialize();
+    }
+
+    protected byte[] generateHMACKey(Integer keySize) {
+        return RandomStringUtils.random(keySize).getBytes();
     }
 }

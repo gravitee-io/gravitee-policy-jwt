@@ -68,6 +68,12 @@ public class JWKBuilder {
     }
 
     public static JWK buildHMACKey(String keyId, String keyValue, JWSAlgorithm alg) {
-        return new OctetSequenceKey.Builder(Base64.getDecoder().decode(keyValue)).keyID(keyId).algorithm(alg).build();
+        byte[] key;
+        try {
+            key = Base64.getDecoder().decode(keyValue);
+        } catch (IllegalArgumentException e) {
+            key = keyValue.getBytes();
+        }
+        return new OctetSequenceKey.Builder(key).keyID(keyId).algorithm(alg).build();
     }
 }

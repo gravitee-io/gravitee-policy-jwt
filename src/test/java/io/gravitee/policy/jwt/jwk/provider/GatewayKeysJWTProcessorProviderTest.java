@@ -29,7 +29,6 @@ import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.AbstractJWKTest;
 import io.reactivex.observers.TestObserver;
 import java.security.KeyPair;
-import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -131,9 +130,9 @@ class GatewayKeysJWTProcessorProviderTest extends AbstractJWKTest {
     }
 
     @ParameterizedTest
-    @MethodSource("provideHMACParameters")
-    void shouldVerifyHMACSignature(Integer keySize, Signature signature) throws Exception {
-        final byte[] sharedSecret = generateHMACConfiguration(keySize, 2, 1).get(0);
+    @MethodSource("provideHMACWithOptionalBase64Parameters")
+    void shouldVerifyHMACSignature(Integer keySize, Signature signature, boolean encodeBase64) throws Exception {
+        final byte[] sharedSecret = generateHMACConfiguration(keySize, 2, 1, encodeBase64).get(0);
         final String jwt = generateJWT(sharedSecret, signature.getAlg(), "gravitee0.io", "key0");
 
         environment.withProperty("policy.jwt.issuer.gravitee.io.key1", Base64.getEncoder().encodeToString(sharedSecret));
@@ -154,9 +153,9 @@ class GatewayKeysJWTProcessorProviderTest extends AbstractJWKTest {
     }
 
     @ParameterizedTest
-    @MethodSource("provideHMACParameters")
-    void shouldVerifyWithMultipleIssuersAndMultipleHMACKeys(Integer keySize, Signature signature) throws Exception {
-        List<byte[]> sharedSecrets = generateHMACConfiguration(keySize, 5, 2);
+    @MethodSource("provideHMACWithOptionalBase64Parameters")
+    void shouldVerifyWithMultipleIssuersAndMultipleHMACKeys(Integer keySize, Signature signature, boolean encodeBase64) throws Exception {
+        List<byte[]> sharedSecrets = generateHMACConfiguration(keySize, 5, 2, encodeBase64);
 
         when(configuration.getSignature()).thenReturn(signature);
         when(ctx.getComponent(ConfigurableEnvironment.class)).thenReturn(environment);
@@ -217,20 +216,17 @@ class GatewayKeysJWTProcessorProviderTest extends AbstractJWKTest {
         return rsaKeys;
     }
 
-    private List<byte[]> generateHMACConfiguration(Integer keySize, int nbIssuers, int nbSecretsPerIssuer) {
+    private List<byte[]> generateHMACConfiguration(Integer keySize, int nbIssuers, int nbSecretsPerIssuer, boolean encodeBase64) {
         List<byte[]> sharedSecrets = new ArrayList<>();
-        SecureRandom random;
         byte[] sharedSecret;
 
         for (int i = 0; i < nbIssuers; i++) {
             for (int j = 0; j < nbSecretsPerIssuer; j++) {
-                random = new SecureRandom();
-                sharedSecret = new byte[keySize];
-                random.nextBytes(sharedSecret);
+                sharedSecret = generateHMACKey(keySize);
 
                 environment.withProperty(
                     "policy.jwt.issuer.gravitee" + i + ".io.key" + j,
-                    Base64.getEncoder().encodeToString(sharedSecret)
+                    encodeBase64 ? Base64.getEncoder().encodeToString(sharedSecret) : new String(sharedSecret)
                 );
 
                 sharedSecrets.add(sharedSecret);
