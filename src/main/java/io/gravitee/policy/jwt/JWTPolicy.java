@@ -20,8 +20,8 @@ import static io.gravitee.gateway.api.ExecutionContext.ATTR_API;
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
 import static io.gravitee.reporter.api.http.SecurityType.JWT;
 
+import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
-import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.common.security.jwt.LazyJWT;
 import io.gravitee.gateway.jupiter.api.ExecutionFailure;
 import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
@@ -29,6 +29,7 @@ import io.gravitee.gateway.jupiter.api.context.HttpRequest;
 import io.gravitee.gateway.jupiter.api.context.MessageExecutionContext;
 import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
 import io.gravitee.gateway.jupiter.api.policy.SecurityPolicy;
+import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
@@ -39,6 +40,7 @@ import io.reactivex.Completable;
 import io.reactivex.Maybe;
 import io.reactivex.Single;
 import io.vertx.reactivex.core.http.HttpHeaders;
+import java.text.ParseException;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,10 +53,7 @@ import org.slf4j.MDC;
 public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
 
     public static final String CONTEXT_ATTRIBUTE_JWT = "jwt";
-    public static final String OAUTH2_ERROR_ACCESS_DENIED = "access_denied";
-    public static final String GATEWAY_OAUTH2_ACCESS_DENIED_KEY = "GATEWAY_OAUTH2_ACCESS_DENIED";
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
-    private static final Single<Boolean> TRUE = Single.just(true);
 
     private final JWTProcessorProvider jwtProcessorResolver;
 
@@ -79,16 +78,22 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     }
 
     @Override
-    public Single<Boolean> support(HttpExecutionContext ctx) {
-        final LazyJWT jwtToken = ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT);
-        if (jwtToken != null) {
-            return TRUE;
+    public Maybe<SecurityToken> extractSecurityToken(HttpExecutionContext ctx) {
+        LazyJWT jwtToken = ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT);
+
+        if (jwtToken == null) {
+            jwtToken = TokenExtractor.lookFor(ctx.request()).map(LazyJWT::new).orElse(null);
         }
 
-        final Optional<String> optToken = TokenExtractor.lookFor(ctx.request());
-        optToken.ifPresent(token -> ctx.setAttribute(CONTEXT_ATTRIBUTE_JWT, new LazyJWT(token)));
+        if (jwtToken != null) {
+            ctx.setAttribute(CONTEXT_ATTRIBUTE_JWT, jwtToken);
+            String clientId = getClientId(jwtToken);
+            if (clientId != null) {
+                return Maybe.just(SecurityToken.forClientId(clientId));
+            }
+        }
 
-        return Single.just(optToken.isPresent());
+        return Maybe.empty();
     }
 
     /**
@@ -100,13 +105,6 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     @Override
     public boolean requireSubscription() {
         return true;
-    }
-
-    @Override
-    public Completable onInvalidSubscription(HttpExecutionContext ctx) {
-        return ctx.interruptWith(
-            new ExecutionFailure(HttpStatusCode.UNAUTHORIZED_401).key(GATEWAY_OAUTH2_ACCESS_DENIED_KEY).message(OAUTH2_ERROR_ACCESS_DENIED)
-        );
     }
 
     @Override
@@ -156,17 +154,12 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     }
 
     private Maybe<LazyJWT> extractToken(HttpExecutionContext ctx) {
-        Optional<String> token = Optional.ofNullable(ctx.getInternalAttribute(CONTEXT_ATTRIBUTE_TOKEN));
-
         try {
-            if (token.isEmpty()) {
-                token = TokenExtractor.extract(ctx.request());
-
-                if (token.isEmpty()) {
-                    return interrupt401AsMaybe(ctx, JWT_MISSING_TOKEN_KEY);
-                }
+            Optional<String> token = TokenExtractor.extract(ctx.request());
+            if (token.isPresent()) {
+                return Maybe.just(new LazyJWT(token.get()));
             }
-            return Maybe.just(new LazyJWT(token.get()));
+            return interrupt401AsMaybe(ctx, JWT_MISSING_TOKEN_KEY);
         } catch (TokenExtractor.AuthorizationSchemeException e) {
             return interrupt401AsMaybe(ctx, JWT_INVALID_TOKEN_KEY);
         }
@@ -220,5 +213,17 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
                 }
             }
         }
+    }
+
+    private String getClientId(LazyJWT jwtToken) {
+        try {
+            JWT jwt = jwtToken.getDelegate();
+            if (jwt != null) {
+                return getClientId(jwt.getJWTClaimsSet());
+            }
+        } catch (ParseException e) {
+            log.error("Failed to parse JWT claim set while looking for clientId", e);
+        }
+        return null;
     }
 }
