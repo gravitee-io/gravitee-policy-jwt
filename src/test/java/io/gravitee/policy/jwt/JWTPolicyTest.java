@@ -34,6 +34,7 @@ import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
 import io.gravitee.gateway.jupiter.api.context.Request;
 import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
+import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.reporter.api.http.Metrics;
@@ -65,6 +66,8 @@ class JWTPolicyTest {
 
     private static final String TOKEN =
         "eyJraWQiOiJkZWZhdWx0IiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiJ1bml0LXRlc3QiLCJhdWQiOiJ1bml0LXRlc3QiLCJpc3MiOiJodHRwczovL2dyYXZpdGVlLmlvIiwiZXhwIjoyMDU0MjU5MTMzLCJpYXQiOjE2NTQyNDQ3MzN9.Id0kPGSeJ9YKLJzR1Rm2V22MpRyQTnVUEXedyN8N0tk";
+    private static final String TOKEN_WITHOUT_CLIENT_ID =
+        "eyJraWQiOiJkZWZhdWx0IiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJpc3MiOiJodHRwczovL2dyYXZpdGVlLmlvIiwiZXhwIjoyMDU0MjU5MTMzLCJpYXQiOjE2NTQyNDQ3MzN9.N0RbUB1UYLWOz2aRacZ-nP6mPAi7UJrM13COMmHczgs";
     private static final String STANDARD_SUBJECT = "StandardSubject";
     private static final String AZP_CLIENT_ID = "azpClientId";
     private static final String CUSTOM_CLAIM_CLIENT_ID = "ClientIdClaim";
@@ -113,7 +116,7 @@ class JWTPolicyTest {
     @ParameterizedTest
     @MethodSource("provideClientIdParameters")
     void shouldVerifyTokenWithClientId(String clientIdField, String expectedClientId, String expectedSubject)
-        throws BadJOSEException, ParseException, JOSEException {
+        throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet.Builder claimsSetBuilder = new JWTClaimsSet.Builder()
@@ -134,7 +137,7 @@ class JWTPolicyTest {
 
         final JWTClaimsSet claimsSet = claimsSetBuilder.build();
 
-        when(ctx.getInternalAttribute(CONTEXT_ATTRIBUTE_TOKEN)).thenReturn(TOKEN);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
         when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
         when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
         when(ctx.request()).thenReturn(request);
@@ -186,7 +189,7 @@ class JWTPolicyTest {
             .expirationTime(new Date(System.currentTimeMillis() + 3600000))
             .build();
 
-        when(ctx.getInternalAttribute(CONTEXT_ATTRIBUTE_TOKEN)).thenReturn(TOKEN);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
         when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
         when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
         when(ctx.request()).thenReturn(request);
@@ -254,10 +257,13 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401InvalidTokenInterruptionWhenTokenRejected() throws BadJOSEException, ParseException, JOSEException {
+    void shouldErrorWith401InvalidTokenInterruptionWhenTokenRejected() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
 
-        when(ctx.getInternalAttribute(CONTEXT_ATTRIBUTE_TOKEN)).thenReturn(TOKEN);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(request.headers()).thenReturn(headers);
+
         when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
         when(jwtProcessor.process(Mockito.<JWT>argThat(jwt -> TOKEN.equals(jwt.getParsedString())), isNull()))
             .thenThrow(new JOSEException(MOCK_JOSE_EXCEPTION));
@@ -300,52 +306,44 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldInterruptOnSubscriptionInvalid() {
-        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
-        final TestObserver<Void> obs = cut.onInvalidSubscription(ctx).test();
-
-        obs.assertError(Throwable.class);
-
-        verify(ctx)
-            .interruptWith(
-                argThat(failure -> {
-                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
-                    assertEquals(OAUTH2_ERROR_ACCESS_DENIED, failure.message());
-                    assertEquals(GATEWAY_OAUTH2_ACCESS_DENIED_KEY, failure.key());
-                    assertNull(failure.parameters());
-                    assertNull(failure.contentType());
-
-                    return true;
-                })
-            );
-    }
-
-    @Test
-    void shouldReturnCanHandleWhenTokenIsPresent() {
+    void extractSecurityToken_shouldReturnSecurityToken_whenTokenIsPresent() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);
         when(request.headers()).thenReturn(headers);
         when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
 
-        final TestObserver<Boolean> obs = cut.support(ctx).test();
+        final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
 
-        obs.assertResult(true);
+        obs.assertValue(token ->
+            token.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) && token.getTokenValue().equals("unit-test")
+        );
         verify(ctx).setAttribute(eq(CONTEXT_ATTRIBUTE_JWT), Mockito.<LazyJWT>argThat(jwt -> TOKEN.equals(jwt.getToken())));
     }
 
     @Test
-    void shouldReturnCannotHandleWhenTokenIsAbsent() {
+    void extractSecurityToken_shouldReturnEmpty_whenTokenContainsNoClientId() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN_WITHOUT_CLIENT_ID));
+
+        final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
+
+        obs.assertComplete().assertValueCount(0);
+    }
+
+    @Test
+    void extractSecurityToken_shouldReturnEmpty_whenTokenIsAbsent() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);
         when(request.headers()).thenReturn(headers);
 
-        final TestObserver<Boolean> obs = cut.support(ctx).test();
+        final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
 
-        obs.assertResult(false);
-
-        verify(ctx, times(0)).setAttribute(eq(CONTEXT_ATTRIBUTE_JWT), any());
+        obs.assertComplete().assertValueCount(0);
     }
 
     private void verifyMetricsAttributesAndHeaders(Metrics metrics, HttpHeaders headers, String expectedClientId, String expectedSubject) {
