@@ -18,6 +18,7 @@ package io.gravitee.policy.jwt.utils;
 import io.gravitee.common.util.MultiValueMap;
 import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
+import io.gravitee.gateway.jupiter.api.context.HttpRequest;
 import io.gravitee.gateway.jupiter.api.context.Request;
 import java.util.List;
 import java.util.Optional;
@@ -47,20 +48,20 @@ public class TokenExtractor {
      *
      * @return the jwt token as string, {@link Optional#empty()} if no token has been found.
      * @throws AuthorizationSchemeException in case of malformed Authorization bearer or not supported Authorization scheme.
-     * @see #lookFor(Request)
+     * @see #lookFor(HttpRequest)
      */
-    public static Optional<String> extract(Request request) throws AuthorizationSchemeException {
+    public static Optional<String> extract(HttpRequest request) throws AuthorizationSchemeException {
         return extractFromHeaders(request.headers()).or(() -> extractFromParameters(request.parameters()));
     }
 
     /**
-     * Same as {@link #extract(Request)} but silently capture potential {@link AuthorizationSchemeException} and return empty instead.
+     * Same as {@link #extract(HttpRequest)} but silently capture potential {@link AuthorizationSchemeException} and return empty instead.
      *
      * @param request the request to extract the JWT token from.
      *
      * @return the jwt token as string, {@link Optional#empty()} if no token has been found or is malformed.
      */
-    public static Optional<String> lookFor(Request request) {
+    public static Optional<String> lookFor(HttpRequest request) {
         try {
             return extract(request);
         } catch (AuthorizationSchemeException e) {
@@ -107,7 +108,7 @@ public class TokenExtractor {
      *
      * @param request the request to extract the JWT token from.
      * @return the jwt token as string or <code>null</code> if no token has been found.
-     * @see #extract(Request)
+     * @see #extract(HttpRequest)
      */
     @Deprecated
     public static String extract(io.gravitee.gateway.api.Request request) throws AuthorizationSchemeException {
