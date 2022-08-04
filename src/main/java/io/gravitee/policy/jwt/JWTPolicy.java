@@ -23,9 +23,10 @@ import static io.gravitee.reporter.api.http.SecurityType.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.common.security.jwt.LazyJWT;
-import io.gravitee.gateway.api.buffer.Buffer;
 import io.gravitee.gateway.jupiter.api.ExecutionFailure;
-import io.gravitee.gateway.jupiter.api.context.Request;
+import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
+import io.gravitee.gateway.jupiter.api.context.HttpRequest;
+import io.gravitee.gateway.jupiter.api.context.MessageExecutionContext;
 import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
 import io.gravitee.gateway.jupiter.api.policy.SecurityPolicy;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
@@ -38,7 +39,6 @@ import io.reactivex.Completable;
 import io.reactivex.Maybe;
 import io.reactivex.Single;
 import io.vertx.reactivex.core.http.HttpHeaders;
-import java.util.Locale;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,10 +50,10 @@ import org.slf4j.MDC;
  */
 public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
 
-    private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
     public static final String CONTEXT_ATTRIBUTE_JWT = "jwt";
     public static final String OAUTH2_ERROR_ACCESS_DENIED = "access_denied";
     public static final String GATEWAY_OAUTH2_ACCESS_DENIED_KEY = "GATEWAY_OAUTH2_ACCESS_DENIED";
+    private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
     private static final Single<Boolean> TRUE = Single.just(true);
 
     private final JWTProcessorProvider jwtProcessorResolver;
@@ -79,7 +79,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     }
 
     @Override
-    public Single<Boolean> support(RequestExecutionContext ctx) {
+    public Single<Boolean> support(HttpExecutionContext ctx) {
         final LazyJWT jwtToken = ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT);
         if (jwtToken != null) {
             return TRUE;
@@ -103,7 +103,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     }
 
     @Override
-    public Completable onInvalidSubscription(RequestExecutionContext ctx) {
+    public Completable onInvalidSubscription(HttpExecutionContext ctx) {
         return ctx.interruptWith(
             new ExecutionFailure(HttpStatusCode.UNAUTHORIZED_401).key(GATEWAY_OAUTH2_ACCESS_DENIED_KEY).message(OAUTH2_ERROR_ACCESS_DENIED)
         );
@@ -111,13 +111,22 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
 
     @Override
     public Completable onRequest(RequestExecutionContext ctx) {
+        return handleSecurity(ctx);
+    }
+
+    @Override
+    public Completable onMessageRequest(final MessageExecutionContext ctx) {
+        return handleSecurity(ctx);
+    }
+
+    private Completable handleSecurity(final HttpExecutionContext ctx) {
         return extractToken(ctx)
             .flatMapSingle(jwt -> validateToken(ctx, jwt).doOnSuccess(claims -> setAuthContextInfos(ctx, jwt, claims)))
             .ignoreElement();
     }
 
-    private void setAuthContextInfos(RequestExecutionContext ctx, LazyJWT jwt, JWTClaimsSet claims) {
-        final Request request = ctx.request();
+    private void setAuthContextInfos(HttpExecutionContext ctx, LazyJWT jwt, JWTClaimsSet claims) {
+        final HttpRequest request = ctx.request();
 
         // 3_ Set access_token in context
         ctx.setAttribute(CONTEXT_ATTRIBUTE_TOKEN, jwt.getToken());
@@ -146,7 +155,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
         }
     }
 
-    private Maybe<LazyJWT> extractToken(RequestExecutionContext ctx) {
+    private Maybe<LazyJWT> extractToken(HttpExecutionContext ctx) {
         Optional<String> token = Optional.ofNullable(ctx.getInternalAttribute(CONTEXT_ATTRIBUTE_TOKEN));
 
         try {
@@ -163,7 +172,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
         }
     }
 
-    private Single<JWTClaimsSet> validateToken(RequestExecutionContext ctx, LazyJWT jwt) {
+    private Single<JWTClaimsSet> validateToken(HttpExecutionContext ctx, LazyJWT jwt) {
         return jwtProcessorResolver
             .provide(ctx)
             .flatMapSingle(jwtProcessor -> {
@@ -176,21 +185,21 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
             });
     }
 
-    private <T> Maybe<T> interrupt401AsMaybe(RequestExecutionContext ctx, String key) {
+    private <T> Maybe<T> interrupt401AsMaybe(HttpExecutionContext ctx, String key) {
         return interrupt401(ctx, key).toMaybe();
     }
 
-    private <T> Single<T> interrupt401AsSingle(RequestExecutionContext ctx, String key) {
+    private <T> Single<T> interrupt401AsSingle(HttpExecutionContext ctx, String key) {
         return interrupt401(ctx, key).<T>toMaybe().toSingle();
     }
 
-    private Completable interrupt401(RequestExecutionContext ctx, String key) {
+    private Completable interrupt401(HttpExecutionContext ctx, String key) {
         return ctx.interruptWith(new ExecutionFailure(UNAUTHORIZED_401).key(key).message(UNAUTHORIZED_MESSAGE));
     }
 
-    private void reportError(RequestExecutionContext ctx, Throwable throwable) {
+    private void reportError(HttpExecutionContext ctx, Throwable throwable) {
         if (throwable != null) {
-            final Request request = ctx.request();
+            final HttpRequest request = ctx.request();
             request.metrics().setMessage(throwable.getMessage());
 
             if (log.isDebugEnabled()) {

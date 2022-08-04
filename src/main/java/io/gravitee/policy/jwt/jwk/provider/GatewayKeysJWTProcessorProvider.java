@@ -26,6 +26,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.util.EnvironmentUtils;
+import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
 import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.IssuerAwareJWSKeySelector;
@@ -51,10 +52,9 @@ import org.springframework.core.env.ConfigurableEnvironment;
  */
 class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
 
-    private static final Logger log = LoggerFactory.getLogger(GatewayKeysJWTProcessorProvider.class);
-
-    private static final String DEFAULT_KID = "default";
     protected static final String KEY_PROPERTY_PREFIX = "policy.jwt.issuer";
+    private static final Logger log = LoggerFactory.getLogger(GatewayKeysJWTProcessorProvider.class);
+    private static final String DEFAULT_KID = "default";
     private static final Pattern KEY_PROPERTY_PATTERN = Pattern.compile("^policy\\.jwt\\.issuer\\.(?<iss>.*)\\.(?<kid>.*)$");
 
     private final JWTPolicyConfiguration configuration;
@@ -68,11 +68,11 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
      * Creates the {@link JWTProcessor} with all the keys defined at gateway level and cache it for reuse.
      */
     @Override
-    public Maybe<JWTProcessor<SecurityContext>> provide(RequestExecutionContext ctx) {
+    public Maybe<JWTProcessor<SecurityContext>> provide(HttpExecutionContext ctx) {
         return Maybe.fromCallable(() -> buildJWTProcessor(ctx));
     }
 
-    private JWTProcessor<SecurityContext> buildJWTProcessor(RequestExecutionContext ctx) {
+    private JWTProcessor<SecurityContext> buildJWTProcessor(HttpExecutionContext ctx) {
         final JWSAlgorithm alg = configuration.getSignature().getAlg();
         final Map<String, List<JWK>> jwkByIssuer = loadFromConfiguration(alg, ctx.getComponent(ConfigurableEnvironment.class));
         final Map<String, JWSKeySelector<SecurityContext>> selectors = createJWSKeySelectors(alg, jwkByIssuer);
