@@ -40,6 +40,7 @@
         <gravitee-common.version>1.27.0</gravitee-common.version>
         <gravitee-node.version>1.24.1</gravitee-node.version>
         <gravitee-expression-language.version>1.10.1</gravitee-expression-language.version>
+        <gravitee-apim-gateway-tests-sdk.version>3.19.0-SNAPSHOT</gravitee-apim-gateway-tests-sdk.version>
         <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
         <guava.version>26.0-jre</guava.version>
         <json-schema-generator-maven-plugin.version>1.1.0</json-schema-generator-maven-plugin.version>
@@ -199,6 +200,13 @@
             <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.gravitee.apim.gateway</groupId>
+            <artifactId>gravitee-apim-gateway-tests-sdk</artifactId>
+            <version>${gravitee-apim-gateway-tests-sdk.version}</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
