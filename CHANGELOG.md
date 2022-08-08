@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.1.1...2.2.0) (2022-08-08)
+
+
+### Features
+
+* **sme:** update security policy to be compatible with async reactor ([50f6426](https://github.com/gravitee-io/gravitee-policy-jwt/commit/50f64262a1e81eee3b8774e7a5069583ec87a7ee))
+
 ## [2.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.1.0...2.1.1) (2022-06-30)
 
 
