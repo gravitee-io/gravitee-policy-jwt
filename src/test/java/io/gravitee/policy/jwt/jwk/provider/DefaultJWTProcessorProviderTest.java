@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.el.TemplateEngine;
-import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
+import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.AbstractJWKTest;
 import io.gravitee.policy.v3.jwt.resolver.KeyResolver;
@@ -54,7 +54,7 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
     private JWTPolicyConfiguration configuration;
 
     @Mock
-    private RequestExecutionContext ctx;
+    private HttpExecutionContext ctx;
 
     @Mock
     private TemplateEngine templateEngine;

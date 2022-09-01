@@ -27,7 +27,6 @@ import io.gravitee.gateway.jupiter.api.ExecutionFailure;
 import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
 import io.gravitee.gateway.jupiter.api.context.HttpRequest;
 import io.gravitee.gateway.jupiter.api.context.MessageExecutionContext;
-import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
 import io.gravitee.gateway.jupiter.api.policy.SecurityPolicy;
 import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
@@ -108,12 +107,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     }
 
     @Override
-    public Completable onRequest(RequestExecutionContext ctx) {
-        return handleSecurity(ctx);
-    }
-
-    @Override
-    public Completable onMessageRequest(final MessageExecutionContext ctx) {
+    public Completable onRequest(HttpExecutionContext ctx) {
         return handleSecurity(ctx);
     }
 

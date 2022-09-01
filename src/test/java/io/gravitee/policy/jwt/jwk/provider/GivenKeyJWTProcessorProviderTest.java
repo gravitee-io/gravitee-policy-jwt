@@ -24,7 +24,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
-import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
+import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.AbstractJWKTest;
@@ -50,7 +50,7 @@ class GivenKeyJWTProcessorProviderTest extends AbstractJWKTest {
     private JWTPolicyConfiguration configuration;
 
     @Mock
-    private RequestExecutionContext ctx;
+    private HttpExecutionContext ctx;
 
     @ParameterizedTest
     @MethodSource("provideRSAParameters")
