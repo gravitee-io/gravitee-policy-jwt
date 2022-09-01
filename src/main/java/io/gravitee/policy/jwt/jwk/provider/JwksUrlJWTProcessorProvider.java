@@ -23,7 +23,6 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
-import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
 import io.gravitee.node.api.configuration.Configuration;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;

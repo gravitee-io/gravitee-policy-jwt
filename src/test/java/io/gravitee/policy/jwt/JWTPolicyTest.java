@@ -32,8 +32,8 @@ import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.common.security.jwt.LazyJWT;
 import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
+import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
 import io.gravitee.gateway.jupiter.api.context.Request;
-import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
 import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
@@ -90,7 +90,7 @@ class JWTPolicyTest {
     private JWTProcessor<SecurityContext> jwtProcessor;
 
     @Mock
-    private RequestExecutionContext ctx;
+    private HttpExecutionContext ctx;
 
     @Mock
     private Request request;

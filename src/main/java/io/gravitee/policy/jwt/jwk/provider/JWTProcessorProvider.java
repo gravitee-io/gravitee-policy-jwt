@@ -18,7 +18,6 @@ package io.gravitee.policy.jwt.jwk.provider;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
-import io.gravitee.gateway.jupiter.api.context.RequestExecutionContext;
 import io.reactivex.Maybe;
 
 /**
