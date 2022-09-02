@@ -17,7 +17,6 @@ package io.gravitee.policy.jwt.jwk.provider;
 
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.JWTProcessor;
-import io.gravitee.gateway.jupiter.api.context.ExecutionContext;
 import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.v3.jwt.resolver.KeyResolver;
@@ -34,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class DefaultJWTProcessorProvider implements JWTProcessorProvider {
 
-    static final String RESOLVED_PARAMETER = ExecutionContext.ATTR_INTERNAL_PREFIX + "resolvedParameter";
+    static final String ATTR_INTERNAL_RESOLVED_PARAMETER = "resolvedParameter";
 
     private final String resolverParameter;
     private final Map<String, JWTProcessor<SecurityContext>> jwtProcessors;
@@ -64,7 +63,7 @@ public class DefaultJWTProcessorProvider implements JWTProcessorProvider {
             final String resolvedParameter = ctx.getTemplateEngine().getValue(resolverParameter, String.class);
 
             // Put resolved parameter to be eventually reused by other processor providers and avoid multiple EL evaluations.
-            ctx.putInternalAttribute(RESOLVED_PARAMETER, resolvedParameter);
+            ctx.putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, resolvedParameter);
 
             jwtProcessor = jwtProcessors.get(resolvedParameter);
 

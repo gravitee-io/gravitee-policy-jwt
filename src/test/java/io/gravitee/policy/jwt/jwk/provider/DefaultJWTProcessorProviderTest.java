@@ -15,7 +15,7 @@
  */
 package io.gravitee.policy.jwt.jwk.provider;
 
-import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.RESOLVED_PARAMETER;
+import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.ATTR_INTERNAL_RESOLVED_PARAMETER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
@@ -90,7 +90,7 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
         obs.assertResult(jwtProcessor);
 
         // Check the evaluated EL has been pushed to internal context for eventually reuse.
-        verify(ctx).putInternalAttribute(RESOLVED_PARAMETER, KEY);
+        verify(ctx).putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, KEY);
 
         // Check the JWTProcessor has been put in cache.
         assertEquals(jwtProcessor, cachedProcessors.get(KEY));
@@ -141,7 +141,7 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
         obs.assertResult(jwtProcessor);
 
         // Check the evaluated EL has been pushed to internal context for eventually reuse.
-        verify(ctx).putInternalAttribute(RESOLVED_PARAMETER, KEY);
+        verify(ctx).putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, KEY);
 
         // Check the JWTProcessor has been put in cache with the resolved EL expression.
         assertEquals(jwtProcessor, cachedProcessors.get(KEY));

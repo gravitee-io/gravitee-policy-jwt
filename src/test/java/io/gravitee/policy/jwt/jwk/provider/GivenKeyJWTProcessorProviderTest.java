@@ -15,7 +15,7 @@
  */
 package io.gravitee.policy.jwt.jwk.provider;
 
-import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.RESOLVED_PARAMETER;
+import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.ATTR_INTERNAL_RESOLVED_PARAMETER;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
@@ -65,7 +65,7 @@ class GivenKeyJWTProcessorProviderTest extends AbstractJWKTest {
         final String jwt = generateJWT(rsaKey, "gravitee.io", "key1");
 
         when(configuration.getSignature()).thenReturn(signature);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn(sshPublicKey);
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(sshPublicKey);
 
         final GivenKeyJWTProcessorProvider cut = new GivenKeyJWTProcessorProvider(configuration);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
@@ -93,7 +93,7 @@ class GivenKeyJWTProcessorProviderTest extends AbstractJWKTest {
         final String jwt = generateJWT(rsaKey, "gravitee.io", "key1");
 
         when(configuration.getSignature()).thenReturn(signature);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn(pemPublicKey);
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(pemPublicKey);
 
         final GivenKeyJWTProcessorProvider cut = new GivenKeyJWTProcessorProvider(configuration);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
@@ -115,7 +115,7 @@ class GivenKeyJWTProcessorProviderTest extends AbstractJWKTest {
         final String jwt = generateJWT(sharedSecret, signature.getAlg(), "gravitee0.io", "key0");
 
         when(configuration.getSignature()).thenReturn(signature);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER))
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER))
             .thenReturn(encodeBase64 ? Base64.getEncoder().encodeToString(sharedSecret) : new String(sharedSecret));
 
         final GivenKeyJWTProcessorProvider cut = new GivenKeyJWTProcessorProvider(configuration);
@@ -134,7 +134,7 @@ class GivenKeyJWTProcessorProviderTest extends AbstractJWKTest {
     @Test
     void shouldIgnoreAndLogInvalidKey() {
         when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn("invalid");
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn("invalid");
 
         final GivenKeyJWTProcessorProvider cut = new GivenKeyJWTProcessorProvider(configuration);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
