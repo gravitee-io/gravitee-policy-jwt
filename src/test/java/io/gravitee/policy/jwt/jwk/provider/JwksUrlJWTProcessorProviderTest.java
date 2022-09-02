@@ -15,7 +15,7 @@
  */
 package io.gravitee.policy.jwt.jwk.provider;
 
-import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.RESOLVED_PARAMETER;
+import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.ATTR_INTERNAL_RESOLVED_PARAMETER;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
@@ -79,7 +79,7 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         when(resourceRetriever.retrieve(jwksUrl))
             .thenReturn(Single.just(new Resource(jwkSet.toPublicJWKSet().toString(), "application/json")));
         when(configuration.getSignature()).thenReturn(signature);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn(jwksUrl);
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
         ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
@@ -106,7 +106,7 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         when(resourceRetriever.retrieve(jwksUrl))
             .thenReturn(Single.just(new Resource(jwkSet.toPublicJWKSet().toString(), "application/json")));
         when(configuration.getSignature()).thenReturn(signature);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn(jwksUrl);
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
         ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
@@ -132,7 +132,7 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
 
         when(resourceRetriever.retrieve(jwksUrl)).thenReturn(Single.just(new Resource(jwkSet.toString(false), "application/json")));
         when(configuration.getSignature()).thenReturn(signature);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn(jwksUrl);
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
         ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
@@ -158,7 +158,7 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         when(resourceRetriever.retrieve(jwksUrl))
             .thenReturn(Single.just(new Resource(jwkSet.toPublicJWKSet().toString(), "application/json")));
         when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn(jwksUrl);
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
         ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
@@ -178,7 +178,7 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
     void shouldErrorWhenErrorOccurredWhenRetrievingJWKS() throws Exception {
         when(resourceRetriever.retrieve(JWKS_URL)).thenReturn(Single.error(new RuntimeException(MOCK_EXCEPTION)));
         when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
-        when(ctx.getInternalAttribute(RESOLVED_PARAMETER)).thenReturn(JWKS_URL);
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(JWKS_URL);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
         ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);

@@ -15,7 +15,7 @@
  */
 package io.gravitee.policy.jwt.jwk.provider;
 
-import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.RESOLVED_PARAMETER;
+import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.ATTR_INTERNAL_RESOLVED_PARAMETER;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -54,7 +54,7 @@ class GivenKeyJWTProcessorProvider implements JWTProcessorProvider {
      */
     @Override
     public Maybe<JWTProcessor<SecurityContext>> provide(HttpExecutionContext ctx) {
-        return Maybe.fromCallable(() -> buildJWTProcessor(ctx.getInternalAttribute(RESOLVED_PARAMETER)));
+        return Maybe.fromCallable(() -> buildJWTProcessor(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)));
     }
 
     private JWTProcessor<SecurityContext> buildJWTProcessor(String keyValue) {
