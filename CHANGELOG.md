@@ -1,3 +1,15 @@
+# [2.4.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.3.0...2.4.0) (2022-09-05)
+
+
+### Bug Fixes
+
+* plan selection for v3 engine ([82d4a49](https://github.com/gravitee-io/gravitee-policy-jwt/commit/82d4a49c89ba418d24e7b6a90ad4f641a204dcab))
+
+
+### Features
+
+* improve execution context structure ([1b5a166](https://github.com/gravitee-io/gravitee-policy-jwt/commit/1b5a166a252011ee1066ad61901c7c9d5938b586)), closes [gravitee-io/issues#8386](https://github.com/gravitee-io/issues/issues/8386)
+
 # [2.3.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.2.0...2.3.0) (2022-08-16)
 
 
