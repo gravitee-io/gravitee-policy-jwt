@@ -31,11 +31,11 @@ import org.mockito.stubbing.OngoingStubbing;
 /**
  * @author GraviteeSource Team
  */
-@Disabled("Temporary disabled to make build pass and waiting for a new version of tests-sdk")
 public class JwtPolicyV3IntegrationTest extends JwtPolicyIntegrationTest {
 
     @Override
     protected void configureGateway(GatewayConfigurationBuilder gatewayConfigurationBuilder) {
+        super.configureGateway(gatewayConfigurationBuilder);
         gatewayConfigurationBuilder.set("api.jupiterMode.enabled", "false");
     }
 

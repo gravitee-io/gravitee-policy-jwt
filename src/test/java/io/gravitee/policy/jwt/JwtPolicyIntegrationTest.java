@@ -37,6 +37,7 @@ import io.gravitee.apim.gateway.tests.sdk.configuration.GatewayConfigurationBuil
 import io.gravitee.definition.model.Api;
 import io.gravitee.definition.model.ExecutionMode;
 import io.gravitee.definition.model.Plan;
+import io.gravitee.gateway.api.service.ApiKey;
 import io.gravitee.gateway.api.service.Subscription;
 import io.gravitee.gateway.api.service.SubscriptionService;
 import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
@@ -60,7 +61,6 @@ import org.mockito.stubbing.OngoingStubbing;
  */
 @GatewayTest
 @DeployApi("/apis/jwt.json")
-@Disabled("Temporary disabled to make build pass and waiting for a new version of tests-sdk")
 public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTPolicyConfiguration> {
 
     private static final String CLIENT_ID = "my-test-client-id";
