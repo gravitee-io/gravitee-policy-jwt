@@ -52,7 +52,8 @@ public class JwtPolicyV3IntegrationTest extends JwtPolicyIntegrationTest {
      */
     @Override
     protected OngoingStubbing<Optional<Subscription>> whenSearchingSubscription(String api, String clientId, String plan) {
-        return when(getBean(SubscriptionService.class).getByApiAndClientIdAndPlan(api, clientId, plan));
+        // FIXME: Use plan instead of `null` to properly handle plan selection in multi-plan context
+        return when(getBean(SubscriptionService.class).getByApiAndClientIdAndPlan(api, clientId, null));
     }
 
     /**
