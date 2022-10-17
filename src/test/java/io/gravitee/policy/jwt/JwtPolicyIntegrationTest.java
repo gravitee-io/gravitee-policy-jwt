@@ -18,6 +18,7 @@ package io.gravitee.policy.jwt;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static io.gravitee.policy.jwt.alg.Signature.HMAC_HS256;
 import static io.gravitee.policy.v3.jwt.resolver.KeyResolver.GIVEN_KEY;
+import static io.vertx.core.http.HttpMethod.GET;
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -37,21 +38,19 @@ import io.gravitee.apim.gateway.tests.sdk.configuration.GatewayConfigurationBuil
 import io.gravitee.definition.model.Api;
 import io.gravitee.definition.model.ExecutionMode;
 import io.gravitee.definition.model.Plan;
-import io.gravitee.gateway.api.service.ApiKey;
 import io.gravitee.gateway.api.service.Subscription;
 import io.gravitee.gateway.api.service.SubscriptionService;
 import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
-import io.reactivex.rxjava3.observers.TestObserver;
-import io.vertx.rxjava3.core.buffer.Buffer;
-import io.vertx.rxjava3.ext.web.client.HttpResponse;
-import io.vertx.rxjava3.ext.web.client.WebClient;
+import io.reactivex.rxjava3.core.Single;
+import io.vertx.rxjava3.core.http.HttpClient;
+import io.vertx.rxjava3.core.http.HttpClientRequest;
+import io.vertx.rxjava3.core.http.HttpClientResponse;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Optional;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.stubbing.OngoingStubbing;
@@ -109,43 +108,43 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
 
     @Test
     @DisplayName("Should receive 401 - Unauthorized when calling without any Authorization Header")
-    void shouldGet401_ifNoToken(WebClient client) throws InterruptedException {
+    void shouldGet401_ifNoToken(HttpClient httpClient) throws InterruptedException {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
-        final TestObserver<HttpResponse<Buffer>> obs = client.get("/test").rxSend().test();
+        Single<HttpClientResponse> httpClientResponse = httpClient.rxRequest(GET, "/test").flatMap(HttpClientRequest::rxSend);
 
-        assert401unauthorized(obs);
+        assert401unauthorized(httpClientResponse);
     }
 
     @Test
     @DisplayName("Should receive 401 - Unauthorized when calling with a wrong Authorization Header")
-    void shouldGet401_ifWrongToken(WebClient client) throws InterruptedException {
+    void shouldGet401_ifWrongToken(HttpClient httpClient) throws InterruptedException {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
-        final TestObserver<HttpResponse<Buffer>> obs = client
-            .get("/test")
-            .putHeader("Authorization", "Bearer this_is_wrong")
-            .rxSend()
-            .test();
+        Single<HttpClientResponse> httpClientResponse = httpClient
+            .rxRequest(GET, "/test")
+            .flatMap(request -> request.putHeader("Authorization", "Bearer this_is_wrong").rxSend());
 
-        assert401unauthorized(obs);
+        assert401unauthorized(httpClientResponse);
     }
 
     @Test
     @DisplayName("Should receive 401 - Unauthorized when calling with an expired token")
-    void shouldGet401_ifExpiredToken(WebClient client) throws Exception {
+    void shouldGet401_ifExpiredToken(HttpClient httpClient) throws Exception {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
         String jwtToken = getJsonWebToken(-50);
 
-        final TestObserver<HttpResponse<Buffer>> obs = client.get("/test").putHeader("Authorization", "Bearer " + jwtToken).rxSend().test();
+        Single<HttpClientResponse> httpClientResponse = httpClient
+            .rxRequest(GET, "/test")
+            .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).rxSend());
 
-        assert401unauthorized(obs);
+        assert401unauthorized(httpClientResponse);
     }
 
     @Test
     @DisplayName("Should receive 401 - Unauthorized when calling with an valid token, but no subscription")
-    void shouldGet401_ifNoSubscription(WebClient client) throws Exception {
+    void shouldGet401_ifNoSubscription(HttpClient httpClient) throws Exception {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
         String jwtToken = getJsonWebToken(5000);
@@ -153,14 +152,16 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
         // no subscription found
         whenSearchingSubscription(API_ID, CLIENT_ID, PLAN_ID).thenReturn(Optional.empty());
 
-        final TestObserver<HttpResponse<Buffer>> obs = client.get("/test").putHeader("Authorization", "Bearer " + jwtToken).rxSend().test();
+        Single<HttpClientResponse> httpClientResponse = httpClient
+            .rxRequest(GET, "/test")
+            .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).rxSend());
 
-        assert401unauthorized(obs);
+        assert401unauthorized(httpClientResponse);
     }
 
     @Test
     @DisplayName("Should receive 401 - Unauthorized when calling with an valid token, but subscription is expired")
-    void shouldGet401_ifSubscriptionExpired(WebClient client) throws Exception {
+    void shouldGet401_ifSubscriptionExpired(HttpClient httpClient) throws Exception {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
         String jwtToken = getJsonWebToken(5000);
@@ -168,14 +169,16 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
         // subscription found is expired
         whenSearchingSubscription(API_ID, CLIENT_ID, PLAN_ID).thenReturn(Optional.of(fakeSubscriptionFromCache(true)));
 
-        final TestObserver<HttpResponse<Buffer>> obs = client.get("/test").putHeader("Authorization", "Bearer " + jwtToken).rxSend().test();
+        Single<HttpClientResponse> httpClientResponse = httpClient
+            .rxRequest(GET, "/test")
+            .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).rxSend());
 
-        assert401unauthorized(obs);
+        assert401unauthorized(httpClientResponse);
     }
 
     @Test
     @DisplayName("Should access API with correct Authorization header and a valid subscription")
-    void shouldAccessApiWithValidTokenAndSubscription(WebClient client) throws Exception {
+    void shouldAccessApiWithValidTokenAndSubscription(HttpClient httpClient) throws Exception {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
         String jwtToken = getJsonWebToken(5000);
@@ -183,13 +186,18 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
         // subscription found is valid
         whenSearchingSubscription(API_ID, CLIENT_ID, PLAN_ID).thenReturn(Optional.of(fakeSubscriptionFromCache(false)));
 
-        final TestObserver<HttpResponse<Buffer>> obs = client.get("/test").putHeader("Authorization", "Bearer " + jwtToken).rxSend().test();
-
-        awaitTerminalEvent(obs)
-            .assertComplete()
-            .assertValue(response -> {
+        httpClient
+            .rxRequest(GET, "/test")
+            .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).rxSend())
+            .flatMapPublisher(response -> {
                 assertThat(response.statusCode()).isEqualTo(200);
-                assertThat(response.bodyAsString()).isEqualTo("response from backend");
+                return response.toFlowable();
+            })
+            .test()
+            .await()
+            .assertComplete()
+            .assertValue(body -> {
+                assertThat(body.toString()).isEqualTo("response from backend");
                 return true;
             })
             .assertNoErrors();
@@ -222,16 +230,20 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
         return signedJWT.serialize();
     }
 
-    private void assert401unauthorized(TestObserver<HttpResponse<Buffer>> obs) throws InterruptedException {
-        awaitTerminalEvent(obs)
-            .assertComplete()
-            .assertValue(response -> {
+    private void assert401unauthorized(Single<HttpClientResponse> httpClientResponse) throws InterruptedException {
+        httpClientResponse
+            .flatMapPublisher(response -> {
                 assertThat(response.statusCode()).isEqualTo(401);
-                assertUnauthorizedResponseBody(response.bodyAsString());
+                return response.toFlowable();
+            })
+            .test()
+            .await()
+            .assertComplete()
+            .assertValue(body -> {
+                assertUnauthorizedResponseBody(body.toString());
                 return true;
             })
             .assertNoErrors();
-
         wiremock.verify(0, getRequestedFor(urlPathEqualTo("/team")));
     }
 
