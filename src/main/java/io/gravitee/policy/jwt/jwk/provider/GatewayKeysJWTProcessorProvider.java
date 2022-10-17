@@ -31,7 +31,7 @@ import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.IssuerAwareJWSKeySelector;
 import io.gravitee.policy.jwt.jwk.selector.NoKidJWSVerificationKeySelector;
 import io.gravitee.policy.jwt.utils.JWKBuilder;
-import io.reactivex.Maybe;
+import io.reactivex.rxjava3.core.Maybe;
 import java.security.KeyException;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.List;

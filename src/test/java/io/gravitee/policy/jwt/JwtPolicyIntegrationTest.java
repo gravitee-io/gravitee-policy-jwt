@@ -42,10 +42,10 @@ import io.gravitee.gateway.api.service.Subscription;
 import io.gravitee.gateway.api.service.SubscriptionService;
 import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
-import io.reactivex.observers.TestObserver;
-import io.vertx.reactivex.core.buffer.Buffer;
-import io.vertx.reactivex.ext.web.client.HttpResponse;
-import io.vertx.reactivex.ext.web.client.WebClient;
+import io.reactivex.rxjava3.observers.TestObserver;
+import io.vertx.rxjava3.core.buffer.Buffer;
+import io.vertx.rxjava3.ext.web.client.HttpResponse;
+import io.vertx.rxjava3.ext.web.client.WebClient;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Collections;
@@ -109,7 +109,7 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
 
     @Test
     @DisplayName("Should receive 401 - Unauthorized when calling without any Authorization Header")
-    void shouldGet401_ifNoToken(WebClient client) {
+    void shouldGet401_ifNoToken(WebClient client) throws InterruptedException {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
         final TestObserver<HttpResponse<Buffer>> obs = client.get("/test").rxSend().test();
@@ -119,7 +119,7 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
 
     @Test
     @DisplayName("Should receive 401 - Unauthorized when calling with a wrong Authorization Header")
-    void shouldGet401_ifWrongToken(WebClient client) {
+    void shouldGet401_ifWrongToken(WebClient client) throws InterruptedException {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
         final TestObserver<HttpResponse<Buffer>> obs = client
@@ -222,7 +222,7 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
         return signedJWT.serialize();
     }
 
-    private void assert401unauthorized(TestObserver<HttpResponse<Buffer>> obs) {
+    private void assert401unauthorized(TestObserver<HttpResponse<Buffer>> obs) throws InterruptedException {
         awaitTerminalEvent(obs)
             .assertComplete()
             .assertValue(response -> {

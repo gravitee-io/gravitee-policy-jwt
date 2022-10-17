@@ -17,7 +17,7 @@ package io.gravitee.policy.jwt.jwk.source;
 
 import com.nimbusds.jose.util.Resource;
 import com.nimbusds.jwt.proc.JWTProcessor;
-import io.reactivex.Single;
+import io.reactivex.rxjava3.core.Single;
 
 /**
  * {@link ResourceRetriever} allows to retrieve a nimbus {@link Resource} from a location.
