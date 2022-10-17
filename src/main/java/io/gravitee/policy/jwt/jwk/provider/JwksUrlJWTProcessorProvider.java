@@ -28,8 +28,8 @@ import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
 import io.gravitee.policy.jwt.jwk.source.ResourceRetriever;
 import io.gravitee.policy.jwt.jwk.source.VertxResourceRetriever;
-import io.reactivex.Maybe;
-import io.vertx.reactivex.core.Vertx;
+import io.reactivex.rxjava3.core.Maybe;
+import io.vertx.rxjava3.core.Vertx;
 import java.time.Duration;
 
 /**

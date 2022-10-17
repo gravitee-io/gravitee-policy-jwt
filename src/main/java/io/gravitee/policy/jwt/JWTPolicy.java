@@ -35,10 +35,10 @@ import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
 import io.gravitee.policy.v3.jwt.JWTPolicyV3;
 import io.gravitee.reporter.api.http.Metrics;
-import io.reactivex.Completable;
-import io.reactivex.Maybe;
-import io.reactivex.Single;
-import io.vertx.reactivex.core.http.HttpHeaders;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
+import io.vertx.rxjava3.core.http.HttpHeaders;
 import java.text.ParseException;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -169,7 +169,8 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
                     reportError(ctx, throwable);
                     return interrupt401AsSingle(ctx, JWT_INVALID_TOKEN_KEY);
                 }
-            });
+            })
+            .toSingle();
     }
 
     private <T> Maybe<T> interrupt401AsMaybe(HttpExecutionContext ctx, String key) {

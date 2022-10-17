@@ -38,9 +38,9 @@ import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.reporter.api.http.Metrics;
-import io.reactivex.Completable;
-import io.reactivex.Maybe;
-import io.reactivex.observers.TestObserver;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.observers.TestObserver;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.Date;
@@ -358,6 +358,6 @@ class JWTPolicyTest {
         verify(metrics).setSecurityToken(expectedClientId);
 
         // Verify request headers.
-        verify(headers).remove(io.vertx.reactivex.core.http.HttpHeaders.AUTHORIZATION);
+        verify(headers).remove(io.vertx.rxjava3.core.http.HttpHeaders.AUTHORIZATION);
     }
 }
