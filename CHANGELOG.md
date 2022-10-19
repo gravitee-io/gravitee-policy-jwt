@@ -1,3 +1,15 @@
+# [3.0.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.4.0...3.0.0-alpha.1) (2022-10-19)
+
+
+### chore
+
+* bump to rxJava3 ([a69c5b4](https://github.com/gravitee-io/gravitee-policy-jwt/commit/a69c5b47b3a0e846d27e00382b8989856755cfdc))
+
+
+### BREAKING CHANGES
+
+* rxJava3 required
+
 # [2.4.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.3.0...2.4.0) (2022-09-05)
 
 
