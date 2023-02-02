@@ -37,7 +37,7 @@ import io.gravitee.gateway.jupiter.api.context.Request;
 import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
-import io.gravitee.reporter.api.http.Metrics;
+import io.gravitee.reporter.api.v4.metric.Metrics;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.observers.TestObserver;
@@ -141,7 +141,7 @@ class JWTPolicyTest {
         when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
         when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
         when(ctx.request()).thenReturn(request);
-        when(request.metrics()).thenReturn(metrics);
+        when(ctx.metrics()).thenReturn(metrics);
         when(request.headers()).thenReturn(headers);
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
@@ -166,7 +166,7 @@ class JWTPolicyTest {
         when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
         when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
         when(ctx.request()).thenReturn(request);
-        when(request.metrics()).thenReturn(metrics);
+        when(ctx.metrics()).thenReturn(metrics);
         when(request.headers()).thenReturn(headers);
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
@@ -193,7 +193,7 @@ class JWTPolicyTest {
         when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
         when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
         when(ctx.request()).thenReturn(request);
-        when(request.metrics()).thenReturn(metrics);
+        when(ctx.metrics()).thenReturn(metrics);
         when(request.headers()).thenReturn(headers);
         when(configuration.isExtractClaims()).thenReturn(true);
 
@@ -268,7 +268,7 @@ class JWTPolicyTest {
         when(jwtProcessor.process(Mockito.<JWT>argThat(jwt -> TOKEN.equals(jwt.getParsedString())), isNull()))
             .thenThrow(new JOSEException(MOCK_JOSE_EXCEPTION));
         when(ctx.request()).thenReturn(request);
-        when(request.metrics()).thenReturn(metrics);
+        when(ctx.metrics()).thenReturn(metrics);
         when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
@@ -287,7 +287,7 @@ class JWTPolicyTest {
                 })
             );
 
-        verify(metrics).setMessage(MOCK_JOSE_EXCEPTION);
+        verify(metrics).setErrorMessage(MOCK_JOSE_EXCEPTION);
     }
 
     @Test
