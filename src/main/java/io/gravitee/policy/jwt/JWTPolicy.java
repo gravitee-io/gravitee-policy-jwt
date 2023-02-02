@@ -26,7 +26,6 @@ import io.gravitee.common.security.jwt.LazyJWT;
 import io.gravitee.gateway.jupiter.api.ExecutionFailure;
 import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
 import io.gravitee.gateway.jupiter.api.context.HttpRequest;
-import io.gravitee.gateway.jupiter.api.context.MessageExecutionContext;
 import io.gravitee.gateway.jupiter.api.policy.SecurityPolicy;
 import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
@@ -34,7 +33,7 @@ import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
 import io.gravitee.policy.v3.jwt.JWTPolicyV3;
-import io.gravitee.reporter.api.http.Metrics;
+import io.gravitee.reporter.api.v4.metric.Metrics;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
@@ -133,7 +132,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
             user = claims.getSubject();
         }
         ctx.setAttribute(ATTR_USER, user);
-        final Metrics metrics = request.metrics();
+        Metrics metrics = ctx.metrics();
         metrics.setUser(user);
         metrics.setSecurityType(JWT);
         metrics.setSecurityToken(clientId);
@@ -188,7 +187,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     private void reportError(HttpExecutionContext ctx, Throwable throwable) {
         if (throwable != null) {
             final HttpRequest request = ctx.request();
-            request.metrics().setMessage(throwable.getMessage());
+            ctx.metrics().setErrorMessage(throwable.getMessage());
 
             if (log.isDebugEnabled()) {
                 try {
