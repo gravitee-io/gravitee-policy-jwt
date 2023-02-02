@@ -1,3 +1,10 @@
+## [3.0.1-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.0.0...3.0.1-alpha.1) (2023-02-02)
+
+
+### Bug Fixes
+
+* bump version of gateway api ([ae0bdad](https://github.com/gravitee-io/gravitee-policy-jwt/commit/ae0bdadaba7adc9c1469d7a2c2d48f64237ff170))
+
 # [3.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/2.4.0...3.0.0) (2022-12-09)
 
 
