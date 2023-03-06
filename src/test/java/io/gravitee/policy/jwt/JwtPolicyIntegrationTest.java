@@ -40,7 +40,7 @@ import io.gravitee.definition.model.ExecutionMode;
 import io.gravitee.definition.model.Plan;
 import io.gravitee.gateway.api.service.Subscription;
 import io.gravitee.gateway.api.service.SubscriptionService;
-import io.gravitee.gateway.jupiter.api.policy.SecurityToken;
+import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.rxjava3.core.http.HttpClient;

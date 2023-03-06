@@ -35,11 +35,11 @@
 
     <properties>
         <gravitee-bom.version>2.7</gravitee-bom.version>
-        <gravitee-gateway-api.version>2.1.0-alpha.11</gravitee-gateway-api.version>
+        <gravitee-gateway-api.version>2.1.0-alpha.18</gravitee-gateway-api.version>
         <gravitee-reporter-api.version>1.25.0-alpha.4</gravitee-reporter-api.version>
         <gravitee-policy-api.version>1.11.0</gravitee-policy-api.version>
         <gravitee-common.version>2.0.0</gravitee-common.version>
-        <gravitee-expression-language.version>2.0.1</gravitee-expression-language.version>
+        <gravitee-expression-language.version>2.1.0-alpha.1</gravitee-expression-language.version>
         <gravitee-apim-gateway-tests-sdk.version>3.21.0-SNAPSHOT</gravitee-apim-gateway-tests-sdk.version>
         <gravitee-node.version>2.0.1</gravitee-node.version>
         <gravitee-plugin.version>1.24.1</gravitee-plugin.version>

@@ -17,7 +17,7 @@ package io.gravitee.policy.jwt.jwk.provider;
 
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.JWTProcessor;
-import io.gravitee.gateway.jupiter.api.context.HttpExecutionContext;
+import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.v3.jwt.resolver.KeyResolver;
 import io.reactivex.rxjava3.core.Maybe;
