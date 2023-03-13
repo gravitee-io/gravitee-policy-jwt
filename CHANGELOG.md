@@ -1,3 +1,10 @@
+# [3.1.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.0.1-alpha.1...3.1.0-alpha.1) (2023-03-13)
+
+
+### Features
+
+* rename 'jupiter' package in 'reactive' ([aaae6c5](https://github.com/gravitee-io/gravitee-policy-jwt/commit/aaae6c5802e4b1a652d630f398adcdd2c34f2b58))
+
 ## [3.0.1-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.0.0...3.0.1-alpha.1) (2023-02-02)
 
 
