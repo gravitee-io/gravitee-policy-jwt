@@ -1,3 +1,16 @@
+# [3.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.0.0...3.1.0) (2023-03-17)
+
+
+### Bug Fixes
+
+* bump version of gateway api ([d062a55](https://github.com/gravitee-io/gravitee-policy-jwt/commit/d062a557795f4e3b279351599e1c591a51d25b1b))
+* **deps:** upgrade gravitee-bom & alpha version ([b2da107](https://github.com/gravitee-io/gravitee-policy-jwt/commit/b2da107c0998bd54be9294ff134e59f7cdd853db))
+
+
+### Features
+
+* rename 'jupiter' package in 'reactive' ([2af6540](https://github.com/gravitee-io/gravitee-policy-jwt/commit/2af6540ff562c27ea64670051ef4f667eef12d42))
+
 # [3.1.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.0.1-alpha.1...3.1.0-alpha.1) (2023-03-13)
 
 
