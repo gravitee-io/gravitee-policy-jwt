@@ -22,7 +22,7 @@
 
     <groupId>io.gravitee.policy</groupId>
     <artifactId>gravitee-policy-jwt</artifactId>
-    <version>3.1.0</version>
+    <version>3.1.1</version>
 
     <name>Gravitee.io APIM - Policy - JWT</name>
     <description>Description of the JWT Gravitee Policy</description>
