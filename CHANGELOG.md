@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.1.1...3.2.0) (2023-05-29)
+
+
+### Features
+
+* provide execution phase in manifest ([92b15d9](https://github.com/gravitee-io/gravitee-policy-jwt/commit/92b15d97862e10dbbc43b421af34735fe2e86b8c))
+
 ## [3.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.1.0...3.1.1) (2023-04-18)
 
 
