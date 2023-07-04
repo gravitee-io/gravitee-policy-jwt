@@ -60,7 +60,7 @@ import org.mockito.stubbing.OngoingStubbing;
  */
 @GatewayTest
 @DeployApi("/apis/jwt.json")
-public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTPolicyConfiguration> {
+public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTPolicyConfiguration> {
 
     private static final String CLIENT_ID = "my-test-client-id";
     private static final String JWT_SECRET;
@@ -72,12 +72,6 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
         byte[] sharedSecret = new byte[32];
         random.nextBytes(sharedSecret);
         JWT_SECRET = new String(sharedSecret);
-    }
-
-    @Override
-    protected void configureGateway(GatewayConfigurationBuilder gatewayConfigurationBuilder) {
-        super.configureGateway(gatewayConfigurationBuilder);
-        gatewayConfigurationBuilder.set("api.jupiterMode.enabled", "true");
     }
 
     /**
@@ -103,7 +97,6 @@ public class JwtPolicyIntegrationTest extends AbstractPolicyTest<JWTPolicy, JWTP
         }
 
         api.setPlans(Collections.singletonList(jwtPlan));
-        api.setExecutionMode(ExecutionMode.JUPITER);
     }
 
     @Test
