@@ -1,3 +1,15 @@
+# [4.0.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.2.0...4.0.0-alpha.1) (2023-07-04)
+
+
+### Bug Fixes
+
+* bump dependencies versions ([0d3e4dd](https://github.com/gravitee-io/gravitee-policy-jwt/commit/0d3e4dd782cb13bb4b6f4c6b0f56d5ad9444a6b5))
+
+
+### BREAKING CHANGES
+
+* use apim version 4
+
 # [3.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.1.1...3.2.0) (2023-05-29)
 
 
