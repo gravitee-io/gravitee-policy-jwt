@@ -1,3 +1,10 @@
+# [4.0.0-alpha.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.0-alpha.1...4.0.0-alpha.2) (2023-07-05)
+
+
+### Bug Fixes
+
+* simplify unauthorized message ([087383c](https://github.com/gravitee-io/gravitee-policy-jwt/commit/087383ce88e4c1fc810479b3506e7e7b849647f2))
+
 # [4.0.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.2.0...4.0.0-alpha.1) (2023-07-04)
 
 
