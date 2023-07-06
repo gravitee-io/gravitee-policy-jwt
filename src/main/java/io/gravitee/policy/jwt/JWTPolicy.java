@@ -80,7 +80,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
         LazyJWT jwtToken = ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT);
 
         if (jwtToken == null) {
-            jwtToken = TokenExtractor.lookFor(ctx.request()).map(LazyJWT::new).orElse(null);
+            jwtToken = TokenExtractor.extract(ctx.request()).map(LazyJWT::new).orElse(null);
         }
 
         if (jwtToken != null) {
@@ -89,6 +89,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
             if (clientId != null) {
                 return Maybe.just(SecurityToken.forClientId(clientId));
             }
+            return Maybe.just(SecurityToken.invalid(SecurityToken.TokenType.CLIENT_ID));
         }
 
         return Maybe.empty();
@@ -147,15 +148,15 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     }
 
     private Maybe<LazyJWT> extractToken(HttpExecutionContext ctx) {
-        try {
-            Optional<String> token = TokenExtractor.extract(ctx.request());
-            if (token.isPresent()) {
-                return Maybe.just(new LazyJWT(token.get()));
-            }
+        Optional<String> token = TokenExtractor.extract(ctx.request());
+        if (token.isEmpty()) {
             return interrupt401AsMaybe(ctx, JWT_MISSING_TOKEN_KEY);
-        } catch (TokenExtractor.AuthorizationSchemeException e) {
+        }
+        String tokenValue = token.get();
+        if (tokenValue.isEmpty()) {
             return interrupt401AsMaybe(ctx, JWT_INVALID_TOKEN_KEY);
         }
+        return Maybe.just(new LazyJWT(token.get()));
     }
 
     private Single<JWTClaimsSet> validateToken(HttpExecutionContext ctx, LazyJWT jwt) {

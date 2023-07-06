@@ -15,14 +15,14 @@
  */
 package io.gravitee.policy.jwt.utils;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 import io.gravitee.common.util.LinkedMultiValueMap;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.http.HttpHeaders;
-import io.gravitee.policy.jwt.utils.TokenExtractor;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayNameGeneration;
+import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -33,13 +33,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @author GraviteeSource Team
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 public class TokenExtractorTest {
 
     @Mock
     private Request request;
 
     @Test
-    void shouldNotExtract_noAuthorizationHeader() throws TokenExtractor.AuthorizationSchemeException {
+    void should_not_extract_with__no_authorization_header() {
         when(request.headers()).thenReturn(HttpHeaders.create());
         when(request.parameters()).thenReturn(new LinkedMultiValueMap<>());
 
@@ -49,41 +50,27 @@ public class TokenExtractorTest {
     }
 
     @Test
-    void shouldNotExtract_unknownAuthorizationHeader() {
+    void should_not_extract_with_unknown_authorization_header() {
         String jwt = "dummy-token";
 
         HttpHeaders headers = HttpHeaders.create().set("Authorization", "Basic " + jwt);
         when(request.headers()).thenReturn(headers);
 
-        assertThrows(
-            TokenExtractor.AuthorizationSchemeException.class,
-            () -> {
-                String token = TokenExtractor.extract(request);
-
-                Assertions.assertNull(token);
-            }
-        );
+        String token = TokenExtractor.extract(request);
+        Assertions.assertNull(token);
     }
 
     @Test
-    void shouldNotExtract_bearerAuthorizationHeader_noValue() throws TokenExtractor.AuthorizationSchemeException {
-        String jwt = "dummy-token";
-
+    void should_extract_with_authorization_header_and_empty_bearer() {
         HttpHeaders headers = HttpHeaders.create().set("Authorization", TokenExtractor.BEARER);
         when(request.headers()).thenReturn(headers);
 
-        assertThrows(
-            TokenExtractor.AuthorizationSchemeException.class,
-            () -> {
-                String token = TokenExtractor.extract(request);
-
-                Assertions.assertNull(token);
-            }
-        );
+        String token = TokenExtractor.extract(request);
+        Assertions.assertNotNull(token);
     }
 
     @Test
-    void shouldExtract_fromHeader() throws TokenExtractor.AuthorizationSchemeException {
+    void should_extract_with_authorization_header_and_bearer() {
         String jwt = "dummy-token";
 
         HttpHeaders headers = HttpHeaders.create().set("Authorization", TokenExtractor.BEARER + ' ' + jwt);
@@ -96,7 +83,7 @@ public class TokenExtractorTest {
     }
 
     @Test
-    void shouldExtract_fromInsensitiveHeader() throws TokenExtractor.AuthorizationSchemeException {
+    void should_extract_from_insensitive_header() {
         String jwt = "dummy-token";
 
         HttpHeaders headers = HttpHeaders.create().set("Authorization", "bearer " + jwt);
@@ -109,7 +96,7 @@ public class TokenExtractorTest {
     }
 
     @Test
-    void shouldExtract_fromQueryParameter() throws TokenExtractor.AuthorizationSchemeException {
+    void should_extract_from_query_parameter() {
         String jwt = "dummy-token";
 
         when(request.headers()).thenReturn(HttpHeaders.create());

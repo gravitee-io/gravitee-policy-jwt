@@ -16,10 +16,27 @@
 package io.gravitee.policy.jwt;
 
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
-import static io.gravitee.policy.jwt.JWTPolicy.*;
+import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_AUTHORIZED_PARTY;
+import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_CLIENT_ID;
+import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_JWT;
+import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_JWT_CLAIMS;
+import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID;
+import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_TOKEN;
+import static io.gravitee.policy.jwt.JWTPolicy.JWT_INVALID_TOKEN_KEY;
+import static io.gravitee.policy.jwt.JWTPolicy.JWT_MISSING_TOKEN_KEY;
+import static io.gravitee.policy.jwt.JWTPolicy.UNAUTHORIZED_MESSAGE;
 import static io.gravitee.reporter.api.http.SecurityType.JWT;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.argThat;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.proc.BadJOSEException;
@@ -205,6 +222,30 @@ class JWTPolicyTest {
     }
 
     @Test
+    void shouldErrorWith401MissingTokenInterruptionWhenNoAuthorizationHeader() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(ctx)
+            .interruptWith(
+                argThat(failure -> {
+                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                    assertEquals(JWT_MISSING_TOKEN_KEY, failure.key());
+                    assertNull(failure.parameters());
+                    assertNull(failure.contentType());
+
+                    return true;
+                })
+            );
+    }
+
+    @Test
     void shouldErrorWith401MissingTokenInterruptionWhenNoToken() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
@@ -231,7 +272,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401InvaliTokenInterruptionWhenTokenExtractError() {
+    void shouldErrorWith401InvaliTokenInterruptionWhenTokenEmpty() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer "));
@@ -322,7 +363,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void extractSecurityToken_shouldReturnEmpty_whenTokenContainsNoClientId() {
+    void extractSecurityToken_shouldReturnInvalidSecurityToken_whenTokenContainsNoClientId() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);
@@ -331,7 +372,14 @@ class JWTPolicyTest {
 
         final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
 
-        obs.assertComplete().assertValueCount(0);
+        obs
+            .assertComplete()
+            .assertValueCount(1)
+            .assertValue(securityToken -> {
+                assertThat(securityToken.getTokenType()).isEqualTo(SecurityToken.TokenType.CLIENT_ID.name());
+                assertThat(securityToken.isInvalid()).isTrue();
+                return true;
+            });
     }
 
     @Test

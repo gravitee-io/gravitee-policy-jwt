@@ -47,60 +47,9 @@ public class TokenExtractor {
      * @param request the request to extract the JWT token from.
      *
      * @return the jwt token as string, {@link Optional#empty()} if no token has been found.
-     * @throws AuthorizationSchemeException in case of malformed Authorization bearer or not supported Authorization scheme.
-     * @see #lookFor(HttpRequest)
      */
-    public static Optional<String> extract(HttpRequest request) throws AuthorizationSchemeException {
+    public static Optional<String> extract(HttpRequest request) {
         return extractFromHeaders(request.headers()).or(() -> extractFromParameters(request.parameters()));
-    }
-
-    /**
-     * Same as {@link #extract(HttpRequest)} but silently capture potential {@link AuthorizationSchemeException} and return empty instead.
-     *
-     * @param request the request to extract the JWT token from.
-     *
-     * @return the jwt token as string, {@link Optional#empty()} if no token has been found or is malformed.
-     */
-    public static Optional<String> lookFor(HttpRequest request) {
-        try {
-            return extract(request);
-        } catch (AuthorizationSchemeException e) {
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<String> extractFromHeaders(HttpHeaders headers) throws AuthorizationSchemeException {
-        if (headers != null) {
-            List<String> authorizationHeaders = headers.getAll(HttpHeaderNames.AUTHORIZATION);
-
-            if (!ObjectUtils.isEmpty(authorizationHeaders)) {
-                Optional<String> authorizationBearerHeader = authorizationHeaders
-                    .stream()
-                    .filter(h -> StringUtils.startsWithIgnoreCase(h, BEARER))
-                    .findFirst();
-
-                if (authorizationBearerHeader.isPresent()) {
-                    String authToken = authorizationBearerHeader.get().substring(BEARER.length()).trim();
-                    if (!authToken.isEmpty()) {
-                        return Optional.of(authToken);
-                    } else {
-                        throw new AuthorizationSchemeException("Authorization scheme is not supported for JWT");
-                    }
-                } else {
-                    throw new AuthorizationSchemeException("Authorization scheme not found");
-                }
-            }
-        }
-
-        return Optional.empty();
-    }
-
-    private static Optional<String> extractFromParameters(MultiValueMap<String, String> parameters) {
-        if (parameters != null) {
-            return Optional.ofNullable(parameters.getFirst(TokenExtractor.ACCESS_TOKEN));
-        }
-
-        return Optional.empty();
     }
 
     /**
@@ -111,19 +60,33 @@ public class TokenExtractor {
      * @see #extract(HttpRequest)
      */
     @Deprecated
-    public static String extract(io.gravitee.gateway.api.Request request) throws AuthorizationSchemeException {
+    public static String extract(io.gravitee.gateway.api.Request request) {
         return extractFromHeaders(request.headers()).or(() -> extractFromParameters(request.parameters())).orElse(null);
     }
 
-    /**
-     * @author Guillaume Gillon (guillaume.gillon at outlook.com)
-     */
-    public static class AuthorizationSchemeException extends Exception {
+    private static Optional<String> extractFromHeaders(HttpHeaders headers) {
+        if (headers != null) {
+            List<String> authorizationHeaders = headers.getAll(HttpHeaderNames.AUTHORIZATION);
 
-        private static final long serialVersionUID = 2790902079107614511L;
+            if (!ObjectUtils.isEmpty(authorizationHeaders)) {
+                Optional<String> authorizationBearerHeader = authorizationHeaders
+                    .stream()
+                    .filter(h -> StringUtils.startsWithIgnoreCase(h, BEARER))
+                    .findFirst();
 
-        public AuthorizationSchemeException(String message) {
-            super(message);
+                if (authorizationBearerHeader.isPresent()) {
+                    return Optional.of(authorizationBearerHeader.get().substring(BEARER.length()).trim());
+                }
+            }
         }
+        return Optional.empty();
+    }
+
+    private static Optional<String> extractFromParameters(MultiValueMap<String, String> parameters) {
+        if (parameters != null) {
+            return Optional.ofNullable(parameters.getFirst(TokenExtractor.ACCESS_TOKEN));
+        }
+
+        return Optional.empty();
     }
 }

@@ -455,10 +455,40 @@ public abstract class JWTPolicyV3Test {
     }
 
     @Test
+    void test_not_authentification_empty_bearer() throws Exception {
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer");
+        when(request.headers()).thenReturn(headers);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+                )
+            );
+    }
+
+    @Test
     void test_not_authentification_scheme_supported() throws Exception {
         String jwt = getJsonWebToken(7200);
 
         HttpHeaders headers = HttpHeaders.create().set("Authorization", "Basic " + jwt);
+        when(request.headers()).thenReturn(headers);
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(policyChain, times(1))
+            .failWith(
+                argThat(result ->
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+                )
+            );
+    }
+
+    @Test
+    void test_not_authorization_header() throws Exception {
+        HttpHeaders headers = HttpHeaders.create();
         when(request.headers()).thenReturn(headers);
 
         executePolicy(configuration, request, response, executionContext, policyChain);
