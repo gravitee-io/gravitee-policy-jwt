@@ -110,6 +110,18 @@ public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTes
     }
 
     @Test
+    @DisplayName("Should receive 401 - Unauthorized when calling with a empty Authorization Header")
+    void shouldGet401_ifEmptyToken(HttpClient httpClient) throws InterruptedException {
+        wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
+
+        Single<HttpClientResponse> httpClientResponse = httpClient
+            .rxRequest(GET, "/test")
+            .flatMap(request -> request.putHeader("Authorization", "Bearer").rxSend());
+
+        assert401unauthorized(httpClientResponse);
+    }
+
+    @Test
     @DisplayName("Should receive 401 - Unauthorized when calling with a wrong Authorization Header")
     void shouldGet401_ifWrongToken(HttpClient httpClient) throws InterruptedException {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
