@@ -1,3 +1,10 @@
+# [4.0.0-alpha.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.0-alpha.2...4.0.0-alpha.3) (2023-07-06)
+
+
+### Bug Fixes
+
+* properly handle token extraction ([702458b](https://github.com/gravitee-io/gravitee-policy-jwt/commit/702458bb45c1fc083977e5b5f32bb036e5560062))
+
 # [4.0.0-alpha.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.0-alpha.1...4.0.0-alpha.2) (2023-07-05)
 
 
