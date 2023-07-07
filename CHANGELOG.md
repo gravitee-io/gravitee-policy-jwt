@@ -1,3 +1,10 @@
+# [4.0.0-alpha.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.0-alpha.3...4.0.0-alpha.4) (2023-07-07)
+
+
+### Bug Fixes
+
+* bump `gravitee-parent` to fix release on Maven Central ([e16c40a](https://github.com/gravitee-io/gravitee-policy-jwt/commit/e16c40a22ca97828c7803dfbda6dd2d0e2819f3c))
+
 # [4.0.0-alpha.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.0-alpha.2...4.0.0-alpha.3) (2023-07-06)
 
 
