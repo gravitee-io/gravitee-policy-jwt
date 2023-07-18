@@ -15,9 +15,6 @@
  */
 package io.gravitee.policy.jwt.utils;
 
-import com.nimbusds.jose.util.X509CertUtils;
-import io.gravitee.policy.jwt.utils.PublicKeyHelper;
-import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

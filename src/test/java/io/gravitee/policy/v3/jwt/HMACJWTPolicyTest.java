@@ -19,7 +19,6 @@ import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import io.gravitee.policy.jwt.alg.Signature;
-import io.gravitee.policy.v3.jwt.JWTPolicyV3Test;
 import java.security.SecureRandom;
 
 /**

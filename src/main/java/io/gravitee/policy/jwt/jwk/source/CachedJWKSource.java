@@ -20,7 +20,6 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jwt.proc.JWTProcessor;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
