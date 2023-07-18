@@ -15,19 +15,23 @@
  */
 package io.gravitee.policy.v3.jwt.jwks.retriever;
 
-import static io.gravitee.common.util.VertxProxyOptionsUtils.*;
+import static io.gravitee.common.util.VertxProxyOptionsUtils.setSystemProxy;
 
 import com.nimbusds.jose.util.Resource;
 import io.gravitee.node.api.configuration.Configuration;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.*;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.RequestOptions;
 import java.net.URL;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)

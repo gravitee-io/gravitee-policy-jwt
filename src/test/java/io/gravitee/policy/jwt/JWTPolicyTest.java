@@ -169,7 +169,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldVerifyTokenFromRequest() throws BadJOSEException, ParseException, JOSEException {
+    void shouldVerifyTokenFromRequest() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -193,7 +193,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldVerifyTokenAndExtractClaimsWhenExtractClaimsIsConfigured() throws BadJOSEException, ParseException, JOSEException {
+    void shouldVerifyTokenAndExtractClaimsWhenExtractClaimsIsConfigured() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()

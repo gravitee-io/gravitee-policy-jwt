@@ -25,8 +25,6 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jwt.JWTClaimsSet;
-import java.util.Set;
 
 /**
  * Specific implementation of {@link JWSKeySelector} that disable matching of kid and allows matching JWT with a given key that does not define key id.

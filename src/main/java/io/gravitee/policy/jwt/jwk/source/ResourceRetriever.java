@@ -16,7 +16,6 @@
 package io.gravitee.policy.jwt.jwk.source;
 
 import com.nimbusds.jose.util.Resource;
-import com.nimbusds.jwt.proc.JWTProcessor;
 import io.reactivex.rxjava3.core.Single;
 
 /**
