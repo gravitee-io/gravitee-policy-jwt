@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (C) 2015 The Gravitee team (http://gravitee.io)
+    Copyright © 2015 The Gravitee team (http://gravitee.io)
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
 
-            http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,7 +30,7 @@
     <parent>
         <groupId>io.gravitee</groupId>
         <artifactId>gravitee-parent</artifactId>
-        <version>21.0.1</version>
+        <version>22.0.2</version>
     </parent>
 
     <properties>
@@ -46,9 +46,8 @@
         <guava.version>31.1-jre</guava.version>
 
         <maven-plugin-assembly.version>3.6.0</maven-plugin-assembly.version>
-        <maven-plugin-prettier.version>0.19</maven-plugin-prettier.version>
-        <maven-plugin-prettier.prettierjava.version>1.6.2</maven-plugin-prettier.prettierjava.version>
         <maven-plugin-properties.version>1.1.0</maven-plugin-properties.version>
+
         <!-- Property used by the publication job in CI-->
         <publish-folder-path>graviteeio-apim/plugins/policies</publish-folder-path>
     </properties>
@@ -237,28 +236,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.8</version>
+                <version>${maven-javadoc-plugin.version}</version>
                 <configuration>
                     <additionalJOption>-Xdoclint:none</additionalJOption>
                     <source>8</source>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>com.hubspot.maven.plugins</groupId>
-                <artifactId>prettier-maven-plugin</artifactId>
-                <version>${maven-plugin-prettier.version}</version>
-                <configuration>
-                    <prettierJavaVersion>${maven-plugin-prettier.prettierjava.version}</prettierJavaVersion>
-                    <skip>${skip.validation}</skip>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
