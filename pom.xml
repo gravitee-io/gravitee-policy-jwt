@@ -34,15 +34,15 @@
     </parent>
 
     <properties>
-        <gravitee-bom.version>5.0.0</gravitee-bom.version>
-        <gravitee-gateway-api.version>3.0.0-alpha.9</gravitee-gateway-api.version>
+        <gravitee-bom.version>6.0.3</gravitee-bom.version>
+        <gravitee-gateway-api.version>3.0.0</gravitee-gateway-api.version>
         <gravitee-policy-api.version>1.11.0</gravitee-policy-api.version>
-        <gravitee-node.version>3.1.0-alpha.10</gravitee-node.version>
+        <gravitee-node.version>3.1.0</gravitee-node.version>
         <gravitee-common.version>2.1.1</gravitee-common.version>
         <gravitee-apim.version>4.0.0-SNAPSHOT</gravitee-apim.version>
 
         <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
-        <sshj.version>0.33.0</sshj.version>
+        <sshj.version>0.35.0</sshj.version>
         <guava.version>31.1-jre</guava.version>
 
         <maven-plugin-assembly.version>3.6.0</maven-plugin-assembly.version>
