@@ -1,3 +1,24 @@
+# [4.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.2.0...4.0.0) (2023-07-18)
+
+
+### Bug Fixes
+
+* bump `gravitee-parent` to fix release on Maven Central ([e16c40a](https://github.com/gravitee-io/gravitee-policy-jwt/commit/e16c40a22ca97828c7803dfbda6dd2d0e2819f3c))
+* bump dependencies versions ([0d3e4dd](https://github.com/gravitee-io/gravitee-policy-jwt/commit/0d3e4dd782cb13bb4b6f4c6b0f56d5ad9444a6b5))
+* properly handle token extraction ([702458b](https://github.com/gravitee-io/gravitee-policy-jwt/commit/702458bb45c1fc083977e5b5f32bb036e5560062))
+* simplify unauthorized message ([087383c](https://github.com/gravitee-io/gravitee-policy-jwt/commit/087383ce88e4c1fc810479b3506e7e7b849647f2))
+
+
+### chore
+
+* **deps:** update gravitee-parent ([7f93871](https://github.com/gravitee-io/gravitee-policy-jwt/commit/7f93871cd891085da1763eb12dd5f92b7673497e))
+
+
+### BREAKING CHANGES
+
+* **deps:** require Java17
+* use apim version 4
+
 # [4.0.0-alpha.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.0-alpha.3...4.0.0-alpha.4) (2023-07-07)
 
 
