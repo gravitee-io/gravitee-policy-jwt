@@ -1,3 +1,10 @@
+## [4.0.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.0...4.0.1) (2023-07-20)
+
+
+### Bug Fixes
+
+* update policy description ([214983d](https://github.com/gravitee-io/gravitee-policy-jwt/commit/214983d64b5a50bfcefeb2291f958951072a770d))
+
 # [4.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/3.2.0...4.0.0) (2023-07-18)
 
 
