@@ -58,6 +58,36 @@ Both the header and payload are encoded with Base64, so anyone can read the cont
 |===
 
 
+=== Specific configuration for Confirmation Method validation
+
+|===
+|Property |Required |Description |Type| Default
+
+.^|confirmationMethodValidation.ignoreMissing
+^.^|-
+|Will ignore CNF validation if the token doesn't contain any CNF information.
+^.^|boolean
+^.^|false
+
+.^|confirmationMethodValidation.certificateBoundThumbprint.enabled
+^.^|-
+|Will validate the certificate thumbprint extracted from the access_token with the one provided by the client.
+^.^|boolean
+^.^|false
+
+.^|confirmationMethodValidation.certificateBoundThumbprint.extractCertificateFromHeader
+^.^|-
+|Enabled to extract the client certificate from request header. Necessary when the M-TLS connection is handled by a proxy.
+^.^|boolean
+^.^|false
+
+.^|confirmationMethodValidation.certificateBoundThumbprint.headerName
+^.^|-
+|Name of the header where to find the client certificate.
+^.^|string
+^.^|ssl-client-cert
+|===
+
 To validate the token signature, the policy needs to use the associated Authorization Servers public key.
 
 The policy prompts you to choose between three (`GIVEN_KEY`, `GIVEN_ISSUER`, `GATEWAY_ISSUER`) methods to retrieve the required public key.
@@ -100,6 +130,7 @@ You can override this behavior by providing a custom `clientIdClaim` in the conf
 |A map of claims registered in the JWT token body, used for extracting data from it. Only if `extractClaims` is enabled in the policy configuration.
 
 |===
+
 
 == Example
 

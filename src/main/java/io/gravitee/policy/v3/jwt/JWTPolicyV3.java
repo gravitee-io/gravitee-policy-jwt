@@ -21,6 +21,7 @@ import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
 import com.nimbusds.jwt.JWTClaimsSet;
 import io.gravitee.common.http.HttpHeaders;
 import io.gravitee.common.http.HttpStatusCode;
+import io.gravitee.common.security.CertificateUtils;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.Response;
@@ -31,21 +32,36 @@ import io.gravitee.policy.api.annotations.OnRequest;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
+import io.gravitee.policy.v3.jwt.exceptions.InvalidCertificateThumbprintException;
 import io.gravitee.policy.v3.jwt.exceptions.InvalidTokenException;
 import io.gravitee.policy.v3.jwt.jwks.URLJWKSourceResolver;
 import io.gravitee.policy.v3.jwt.jwks.hmac.MACJWKSourceResolver;
 import io.gravitee.policy.v3.jwt.jwks.retriever.VertxResourceRetriever;
 import io.gravitee.policy.v3.jwt.jwks.rsa.RSAJWKSourceResolver;
-import io.gravitee.policy.v3.jwt.processor.*;
-import io.gravitee.policy.v3.jwt.resolver.*;
+import io.gravitee.policy.v3.jwt.processor.AbstractKeyProcessor;
+import io.gravitee.policy.v3.jwt.processor.HMACKeyProcessor;
+import io.gravitee.policy.v3.jwt.processor.JWKSKeyProcessor;
+import io.gravitee.policy.v3.jwt.processor.NoAlgorithmRSAKeyProcessor;
+import io.gravitee.policy.v3.jwt.processor.RSAKeyProcessor;
+import io.gravitee.policy.v3.jwt.resolver.GatewaySignatureKeyResolver;
+import io.gravitee.policy.v3.jwt.resolver.KeyResolver;
+import io.gravitee.policy.v3.jwt.resolver.SignatureKeyResolver;
+import io.gravitee.policy.v3.jwt.resolver.TemplatableSignatureKeyResolver;
+import io.gravitee.policy.v3.jwt.resolver.UserDefinedSignatureKeyResolver;
 import io.vertx.core.Vertx;
+import java.security.cert.X509Certificate;
+import java.text.ParseException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import javax.net.ssl.SSLSession;
+import org.checkerframework.checker.units.qual.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.core.env.Environment;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -69,6 +85,9 @@ public class JWTPolicyV3 {
 
     public static final String JWT_MISSING_TOKEN_KEY = "JWT_MISSING_TOKEN";
     public static final String JWT_INVALID_TOKEN_KEY = "JWT_INVALID_TOKEN";
+    public static final String JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT = "JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT";
+    public static final String CLAIMS_CNF = "cnf";
+    public static final String CLAIMS_CNF_X5T = "x5t#S256";
 
     /**
      * Error message format
@@ -101,10 +120,18 @@ public class JWTPolicyV3 {
                     final String api = String.valueOf(executionContext.getAttribute(ATTR_API));
                     MDC.put("api", api);
                     if (throwable != null) {
+                        String key = JWT_INVALID_TOKEN_KEY;
                         if (throwable.getCause() instanceof InvalidTokenException) {
                             LOGGER.debug(
                                 String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
                                 throwable.getCause()
+                            );
+                            request.metrics().setMessage(throwable.getCause().getCause().getMessage());
+                        } else if (throwable instanceof InvalidCertificateThumbprintException) {
+                            key = JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT;
+                            LOGGER.debug(
+                                String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
+                                throwable
                             );
                             request.metrics().setMessage(throwable.getCause().getCause().getMessage());
                         } else {
@@ -115,9 +142,7 @@ public class JWTPolicyV3 {
                             request.metrics().setMessage(throwable.getCause().getMessage());
                         }
                         MDC.remove("api");
-                        policyChain.failWith(
-                            PolicyResult.failure(JWT_INVALID_TOKEN_KEY, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE)
-                        );
+                        policyChain.failWith(PolicyResult.failure(key, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
                     } else {
                         try {
                             // 3_ Set access_token in context
@@ -267,6 +292,63 @@ public class JWTPolicyV3 {
             );
         }
 
-        return keyProcessor.process(signature, token);
+        CompletableFuture<JWTClaimsSet> process = keyProcessor.process(signature, token);
+        return process.thenApply(jwtClaimsSet -> {
+            // Validate confirmation method
+            JWTPolicyConfiguration.ConfirmationMethodValidation confirmationMethodValidation =
+                configuration.getConfirmationMethodValidation();
+            if (
+                confirmationMethodValidation != null &&
+                confirmationMethodValidation.getCertificateBoundThumbprint().isEnabled() &&
+                !isValidCertificateThumbprint(
+                    jwtClaimsSet,
+                    executionContext.request().sslSession(),
+                    executionContext.request().headers(),
+                    confirmationMethodValidation.isIgnoreMissing(),
+                    confirmationMethodValidation.getCertificateBoundThumbprint()
+                )
+            ) {
+                throw new InvalidCertificateThumbprintException("Confirmation method validation failed");
+            }
+            return jwtClaimsSet;
+        });
+    }
+
+    protected static boolean isValidCertificateThumbprint(
+        final JWTClaimsSet jwtClaimsSet,
+        final SSLSession sslSession,
+        final io.gravitee.gateway.api.http.HttpHeaders headers,
+        final boolean ignoreMissingCnf,
+        final JWTPolicyConfiguration.CertificateBoundThumbprint certificateBoundThumbprint
+    ) {
+        try {
+            String tokenThumbprint = Optional
+                .ofNullable(jwtClaimsSet.getJSONObjectClaim(CLAIMS_CNF))
+                .map(cnf -> cnf.get(CLAIMS_CNF_X5T))
+                .map(Object::toString)
+                .orElse(null);
+
+            // Ignore empty configuration method
+            if (!StringUtils.hasText(tokenThumbprint) && ignoreMissingCnf) {
+                return true;
+            } else if (!StringUtils.hasText(tokenThumbprint) && !ignoreMissingCnf) {
+                return false;
+            }
+
+            // Compute client certificate thumbprint
+            Optional<X509Certificate> clientCertificate;
+            if (certificateBoundThumbprint.isExtractCertificateFromHeader()) {
+                clientCertificate = CertificateUtils.extractCertificate(headers, certificateBoundThumbprint.getHeaderName());
+            } else {
+                clientCertificate = CertificateUtils.extractPeerCertificate(sslSession);
+            }
+            return clientCertificate
+                .map(x509Certificate -> CertificateUtils.generateThumbprint(x509Certificate, "SHA-256"))
+                .map(tokenThumbprint::equals)
+                .orElse(false);
+        } catch (ParseException e) {
+            LOGGER.debug("Unable to valid certificate thumbprint", e);
+            return false;
+        }
     }
 }
