@@ -86,6 +86,43 @@
             "title": "Client ID claim",
             "description": "Claim where the client ID can be extracted. Configuring this field will override the standard behavior.",
             "type": "string"
+        },
+        "confirmationMethodValidation": {
+            "type": "object",
+            "title": "Confirmation Method Validation",
+            "properties": {
+                "ignoreMissing": {
+                    "title": "Ignore missing CNF",
+                    "description": "Will ignore CNF validation if the token doesn't contain any CNF information. Default is false.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "certificateBoundThumbprint": {
+                    "type": "object",
+                    "title": "Certificate Bound thumbprint (x5t#S256)",
+                    "properties": {
+                        "enabled": {
+                            "title": "Enable certificate bound thumbprint validation",
+                            "description": "Will validate the certificate thumbprint extracted from the access_token with the one provided by the client. The default is false.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "extractCertificateFromHeader": {
+                            "title": "Extract client certificate from headers",
+                            "description": "Enabled to extract the client certificate from request header. Necessary when the M-TLS connection is handled by a proxy.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "headerName": {
+                            "title": "Header name",
+                            "description": "Name of the header where to find the client certificate.",
+                            "type": "string",
+                            "default": "ssl-client-cert"
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
         }
     },
     "required": ["signature", "publicKeyResolver"],

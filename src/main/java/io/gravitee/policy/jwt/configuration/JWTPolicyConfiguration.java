@@ -18,12 +18,20 @@ package io.gravitee.policy.jwt.configuration;
 import io.gravitee.policy.api.PolicyConfiguration;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.v3.jwt.resolver.KeyResolver;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * @author Alexandre FARIA (alexandre82.faria at gmail.com)
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
 public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     //settings attributes
@@ -35,69 +43,26 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private String userClaim;
     private String clientIdClaim;
     private boolean useSystemProxy;
+    private ConfirmationMethodValidation confirmationMethodValidation = new ConfirmationMethodValidation();
 
-    //getter and setters
-    public KeyResolver getPublicKeyResolver() {
-        return publicKeyResolver;
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Getter
+    @Setter
+    public static class ConfirmationMethodValidation {
+
+        private boolean ignoreMissing = false;
+        private CertificateBoundThumbprint certificateBoundThumbprint = new CertificateBoundThumbprint();
     }
 
-    public void setPublicKeyResolver(KeyResolver publicKeyResolver) {
-        this.publicKeyResolver = publicKeyResolver;
-    }
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Getter
+    @Setter
+    public static class CertificateBoundThumbprint {
 
-    public String getResolverParameter() {
-        return resolverParameter;
-    }
-
-    public void setResolverParameter(String givenKey) {
-        this.resolverParameter = givenKey;
-    }
-
-    public boolean isExtractClaims() {
-        return extractClaims;
-    }
-
-    public void setExtractClaims(boolean extractClaims) {
-        this.extractClaims = extractClaims;
-    }
-
-    public Signature getSignature() {
-        return signature;
-    }
-
-    public void setSignature(Signature signature) {
-        this.signature = signature;
-    }
-
-    public boolean isPropagateAuthHeader() {
-        return propagateAuthHeader;
-    }
-
-    public void setPropagateAuthHeader(boolean propagateAuthHeader) {
-        this.propagateAuthHeader = propagateAuthHeader;
-    }
-
-    public String getUserClaim() {
-        return userClaim;
-    }
-
-    public void setUserClaim(String userClaim) {
-        this.userClaim = userClaim;
-    }
-
-    public String getClientIdClaim() {
-        return clientIdClaim;
-    }
-
-    public void setClientIdClaim(String clientIdClaim) {
-        this.clientIdClaim = clientIdClaim;
-    }
-
-    public boolean isUseSystemProxy() {
-        return useSystemProxy;
-    }
-
-    public void setUseSystemProxy(boolean useSystemProxy) {
-        this.useSystemProxy = useSystemProxy;
+        private boolean enabled = false;
+        private boolean extractCertificateFromHeader = false;
+        private String headerName = "ssl-client-cert";
     }
 }

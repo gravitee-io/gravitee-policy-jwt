@@ -39,6 +39,7 @@ import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.rxjava3.core.http.HttpHeaders;
 import java.text.ParseException;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,12 +164,32 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
         return jwtProcessorResolver
             .provide(ctx)
             .flatMapSingle(jwtProcessor -> {
+                JWTClaimsSet jwtClaimsSet;
+                // Validate JWT
                 try {
-                    return Single.just(jwtProcessor.process(jwt.getDelegate(), null));
-                } catch (Throwable throwable) {
-                    reportError(ctx, throwable);
+                    jwtClaimsSet = jwtProcessor.process(jwt.getDelegate(), null);
+                } catch (Exception exception) {
+                    reportError(ctx, exception);
                     return interrupt401AsSingle(ctx, JWT_INVALID_TOKEN_KEY);
                 }
+
+                // Validate confirmation method
+                JWTPolicyConfiguration.ConfirmationMethodValidation confirmationMethodValidation =
+                    configuration.getConfirmationMethodValidation();
+                if (confirmationMethodValidation != null && confirmationMethodValidation.getCertificateBoundThumbprint().isEnabled()) {
+                    if (
+                        !isValidCertificateThumbprint(
+                            jwtClaimsSet,
+                            ctx.request().sslSession(),
+                            ctx.request().headers(),
+                            confirmationMethodValidation.isIgnoreMissing(),
+                            confirmationMethodValidation.getCertificateBoundThumbprint()
+                        )
+                    ) {
+                        return interrupt401AsSingle(ctx, JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT);
+                    }
+                }
+                return Single.just(jwtClaimsSet);
             })
             .toSingle();
     }
