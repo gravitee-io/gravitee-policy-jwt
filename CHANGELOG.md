@@ -1,3 +1,10 @@
+# [4.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.1...4.1.0) (2023-09-05)
+
+
+### Features
+
+* add new option allowing to check confirmation method ([3db2346](https://github.com/gravitee-io/gravitee-policy-jwt/commit/3db23464134d46d806308271f5090e19278e050c)), closes [x5t#S256](https://github.com/x5t/issues/S256)
+
 ## [4.0.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.0...4.0.1) (2023-07-20)
 
 
