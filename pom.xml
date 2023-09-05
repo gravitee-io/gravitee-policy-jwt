@@ -38,7 +38,7 @@
         <gravitee-gateway-api.version>3.0.0</gravitee-gateway-api.version>
         <gravitee-policy-api.version>1.11.0</gravitee-policy-api.version>
         <gravitee-node.version>3.1.0</gravitee-node.version>
-        <gravitee-common.version>3.2.0</gravitee-common.version>
+        <gravitee-common.version>3.3.3</gravitee-common.version>
         <gravitee-apim.version>4.1.0-SNAPSHOT</gravitee-apim.version>
 
         <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
