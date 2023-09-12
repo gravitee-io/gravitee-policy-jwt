@@ -1,3 +1,10 @@
+## [4.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.0...4.1.1) (2023-09-12)
+
+
+### Bug Fixes
+
+* bump gravitee common version ([5040027](https://github.com/gravitee-io/gravitee-policy-jwt/commit/504002776dc9d0e80e448d498c5a90033c6ca794))
+
 # [4.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.0.1...4.1.0) (2023-09-05)
 
 
