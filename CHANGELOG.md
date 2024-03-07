@@ -1,3 +1,10 @@
+## [4.1.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.1...4.1.2) (2024-03-07)
+
+
+### Bug Fixes
+
+* **deps:** update bcprov-jdk15on to bcprov-jdk18on and bcpkix-jdk15on to bcpkix-jdk18on ([337dee2](https://github.com/gravitee-io/gravitee-policy-jwt/commit/337dee2e04e6eb747dca93752c650598933865a1))
+
 ## [4.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.0...4.1.1) (2023-09-12)
 
 
