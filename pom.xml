@@ -41,7 +41,7 @@
         <gravitee-common.version>3.3.3</gravitee-common.version>
         <gravitee-apim.version>4.1.0-SNAPSHOT</gravitee-apim.version>
 
-        <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
+        <nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
         <sshj.version>0.35.0</sshj.version>
         <guava.version>31.1-jre</guava.version>
 
