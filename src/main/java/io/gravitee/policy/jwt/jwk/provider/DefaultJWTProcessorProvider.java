@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Default processor provider that can be used by the policy to select the right {@link JWTProcessor}
+ * Default processor provider that can be used by the policy to select the right {@link com.nimbusds.jwt.proc.JWTProcessor}
  * Internally, relies on different {@link JWTProcessorProvider} and act as a cache to avoid useless recreation and allow subsequent reuse.
  *
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
@@ -36,13 +36,15 @@ public class DefaultJWTProcessorProvider implements JWTProcessorProvider {
     static final String ATTR_INTERNAL_RESOLVED_PARAMETER = "resolvedParameter";
 
     private final String resolverParameter;
+    private final KeyResolver publicKeyResolver;
     private final Map<String, JWTProcessor<SecurityContext>> jwtProcessors;
     private final JWTProcessorProvider jwtProcessorProvider;
 
     public DefaultJWTProcessorProvider(final JWTPolicyConfiguration configuration) {
-        this.resolverParameter = configuration.getResolverParameter();
         this.jwtProcessors = new ConcurrentHashMap<>();
+        this.publicKeyResolver = configuration.getPublicKeyResolver();
         this.jwtProcessorProvider = initJWTProcessorResolver(configuration);
+        this.resolverParameter = initResolverParameter(configuration);
     }
 
     @Override
@@ -59,20 +61,26 @@ public class DefaultJWTProcessorProvider implements JWTProcessorProvider {
                 return Maybe.just(jwtProcessor);
             }
 
-            // Resolver parameter is probably an EL expression, evaluate and try to hit the cache again.
-            final String resolvedParameter = ctx.getTemplateEngine().getValue(resolverParameter, String.class);
+            // EL evaluation is not allowed for GATEWAY_KEYS.
+            if (publicKeyResolver != KeyResolver.GATEWAY_KEYS) {
+                // Resolver parameter is probably an EL expression, evaluate and try to hit the cache again.
+                final String resolvedParameter = ctx.getTemplateEngine().getValue(resolverParameter, String.class);
 
-            // Put resolved parameter to be eventually reused by other processor providers and avoid multiple EL evaluations.
-            ctx.putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, resolvedParameter);
+                // Put resolved parameter to be eventually reused by other processor providers and avoid multiple EL evaluations.
+                ctx.putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, resolvedParameter);
 
-            jwtProcessor = jwtProcessors.get(resolvedParameter);
+                jwtProcessor = jwtProcessors.get(resolvedParameter);
 
-            if (jwtProcessor != null) {
-                return Maybe.just(jwtProcessor);
+                if (jwtProcessor != null) {
+                    return Maybe.just(jwtProcessor);
+                }
+
+                // JWTProcessor is not cached yet, create it.
+                return jwtProcessorProvider.provide(ctx).doOnSuccess(p -> jwtProcessors.put(resolvedParameter, p));
+            } else {
+                // JWTProcessor is not cached yet, create it.
+                return jwtProcessorProvider.provide(ctx).doOnSuccess(p -> jwtProcessors.put(resolverParameter, p));
             }
-
-            // JWTProcessor is not cached yet, create it.
-            return jwtProcessorProvider.provide(ctx).doOnSuccess(p -> jwtProcessors.put(resolvedParameter, p));
         });
     }
 
@@ -90,6 +98,24 @@ public class DefaultJWTProcessorProvider implements JWTProcessorProvider {
                 return new JwksUrlJWTProcessorProvider(configuration);
             case GATEWAY_KEYS:
                 return new GatewayKeysJWTProcessorProvider(configuration);
+            default:
+                throw new IllegalArgumentException("Unsupported key resolver " + publicKeyResolver);
+        }
+    }
+
+    private String initResolverParameter(JWTPolicyConfiguration configuration) {
+        final KeyResolver publicKeyResolver = configuration.getPublicKeyResolver();
+
+        if (publicKeyResolver == null) {
+            return null;
+        }
+
+        switch (publicKeyResolver) {
+            case GIVEN_KEY:
+            case JWKS_URL:
+                return configuration.getResolverParameter();
+            case GATEWAY_KEYS:
+                return KeyResolver.GATEWAY_KEYS.name();
             default:
                 throw new IllegalArgumentException("Unsupported key resolver " + publicKeyResolver);
         }
