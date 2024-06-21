@@ -72,10 +72,12 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
     void shouldProvideDependingOnConfiguredKeyResolver(KeyResolver keyResolver, Class<JWTProcessorProvider> providerClass) {
         final JWTProcessor<SecurityContext> jwtProcessor = mock(JWTProcessor.class);
 
+        if (keyResolver != KeyResolver.GATEWAY_KEYS) {
+            when(configuration.getResolverParameter()).thenReturn(KEY);
+            when(templateEngine.getValue(KEY, String.class)).thenReturn(KEY);
+            when(ctx.getTemplateEngine()).thenReturn(templateEngine);
+        }
         when(configuration.getPublicKeyResolver()).thenReturn(keyResolver);
-        when(configuration.getResolverParameter()).thenReturn(KEY);
-        when(ctx.getTemplateEngine()).thenReturn(templateEngine);
-        when(templateEngine.getValue(KEY, String.class)).thenReturn(KEY);
 
         final DefaultJWTProcessorProvider cut = new DefaultJWTProcessorProvider(configuration);
 
@@ -89,11 +91,16 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
         obs.assertResult(jwtProcessor);
 
-        // Check the evaluated EL has been pushed to internal context for eventually reuse.
-        verify(ctx).putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, KEY);
+        if (keyResolver != KeyResolver.GATEWAY_KEYS) {
+            // Check the evaluated EL has been pushed to internal context for eventually reuse.
+            verify(ctx).putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, KEY);
 
-        // Check the JWTProcessor has been put in cache.
-        assertEquals(jwtProcessor, cachedProcessors.get(KEY));
+            // Check the JWTProcessor has been put in cache.
+            assertEquals(jwtProcessor, cachedProcessors.get(KEY));
+        } else {
+            // Check the JWTProcessor has been put in cache.
+            assertEquals(jwtProcessor, cachedProcessors.get(KeyResolver.GATEWAY_KEYS.name()));
+        }
     }
 
     @ParameterizedTest
@@ -101,15 +108,21 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
     void shouldHitTheCacheWhenAlreadyProvided(KeyResolver keyResolver) {
         final JWTProcessor<SecurityContext> jwtProcessor = mock(JWTProcessor.class);
 
+        if (keyResolver != KeyResolver.GATEWAY_KEYS) {
+            when(configuration.getResolverParameter()).thenReturn(KEY);
+        }
         when(configuration.getPublicKeyResolver()).thenReturn(keyResolver);
-        when(configuration.getResolverParameter()).thenReturn(KEY);
 
         final DefaultJWTProcessorProvider cut = new DefaultJWTProcessorProvider(configuration);
 
         final JWTProcessorProvider jwtProcessorProvider = spyJWTProcessorProvider(cut);
         final Map<String, JWTProcessor<SecurityContext>> cachedProcessors = spyJWTProcessors(cut);
 
-        cachedProcessors.put(KEY, jwtProcessor);
+        if (keyResolver == KeyResolver.GATEWAY_KEYS) {
+            cachedProcessors.put(KeyResolver.GATEWAY_KEYS.name(), jwtProcessor);
+        } else {
+            cachedProcessors.put(KEY, jwtProcessor);
+        }
 
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
         obs.assertResult(jwtProcessor);
@@ -123,10 +136,12 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
     void shouldPutInCacheWithResolvedParameterWhenElExpression(KeyResolver keyResolver, Class<JWTProcessorProvider> providerClass) {
         final JWTProcessor<SecurityContext> jwtProcessor = mock(JWTProcessor.class);
 
+        if (keyResolver != KeyResolver.GATEWAY_KEYS) {
+            when(configuration.getResolverParameter()).thenReturn(EL_EXPRESSION);
+            when(templateEngine.getValue(EL_EXPRESSION, String.class)).thenReturn(KEY);
+            when(ctx.getTemplateEngine()).thenReturn(templateEngine);
+        }
         when(configuration.getPublicKeyResolver()).thenReturn(keyResolver);
-        when(configuration.getResolverParameter()).thenReturn(EL_EXPRESSION);
-        when(ctx.getTemplateEngine()).thenReturn(templateEngine);
-        when(templateEngine.getValue(EL_EXPRESSION, String.class)).thenReturn(KEY);
 
         final DefaultJWTProcessorProvider cut = new DefaultJWTProcessorProvider(configuration);
 
@@ -140,11 +155,16 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
         obs.assertResult(jwtProcessor);
 
-        // Check the evaluated EL has been pushed to internal context for eventually reuse.
-        verify(ctx).putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, KEY);
+        if (keyResolver != KeyResolver.GATEWAY_KEYS) {
+            // Check the evaluated EL has been pushed to internal context for eventually reuse.
+            verify(ctx).putInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER, KEY);
 
-        // Check the JWTProcessor has been put in cache with the resolved EL expression.
-        assertEquals(jwtProcessor, cachedProcessors.get(KEY));
+            // Check the JWTProcessor has been put in cache with the resolved EL expression.
+            assertEquals(jwtProcessor, cachedProcessors.get(KEY));
+        } else {
+            // Check the JWTProcessor has been put in cache.
+            assertEquals(jwtProcessor, cachedProcessors.get(KeyResolver.GATEWAY_KEYS.name()));
+        }
     }
 
     @ParameterizedTest
@@ -152,24 +172,34 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
     void shouldHitTheCacheWithResolvedParameterWhenElExpression(KeyResolver keyResolver, Class<JWTProcessorProvider> providerClass) {
         final JWTProcessor<SecurityContext> jwtProcessor = mock(JWTProcessor.class);
 
+        if (keyResolver != KeyResolver.GATEWAY_KEYS) {
+            when(configuration.getResolverParameter()).thenReturn(EL_EXPRESSION);
+            when(templateEngine.getValue(EL_EXPRESSION, String.class)).thenReturn(KEY);
+            when(ctx.getTemplateEngine()).thenReturn(templateEngine);
+        }
         when(configuration.getPublicKeyResolver()).thenReturn(keyResolver);
-        when(configuration.getResolverParameter()).thenReturn(EL_EXPRESSION);
-        when(ctx.getTemplateEngine()).thenReturn(templateEngine);
-        when(templateEngine.getValue(EL_EXPRESSION, String.class)).thenReturn(KEY);
 
         final DefaultJWTProcessorProvider cut = new DefaultJWTProcessorProvider(configuration);
 
         final JWTProcessorProvider jwtProcessorProvider = spyJWTProcessorProvider(cut);
         final Map<String, JWTProcessor<SecurityContext>> cachedProcessors = spyJWTProcessors(cut);
 
-        cachedProcessors.put(KEY, jwtProcessor);
+        if (keyResolver == KeyResolver.GATEWAY_KEYS) {
+            cachedProcessors.put(KeyResolver.GATEWAY_KEYS.name(), jwtProcessor);
+        } else {
+            cachedProcessors.put(KEY, jwtProcessor);
+        }
 
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
         obs.assertResult(jwtProcessor);
 
-        // Check cache tried with non resolved expression then resolved.
-        verify(cachedProcessors).get(EL_EXPRESSION);
-        verify(cachedProcessors).get(KEY);
+        if (keyResolver != KeyResolver.GATEWAY_KEYS) {
+            // Check cache tried with non resolved expression then resolved.
+            verify(cachedProcessors).get(EL_EXPRESSION);
+            verify(cachedProcessors).get(KEY);
+        } else {
+            verify(cachedProcessors).get(KeyResolver.GATEWAY_KEYS.name());
+        }
         verifyNoInteractions(jwtProcessorProvider);
     }
 
