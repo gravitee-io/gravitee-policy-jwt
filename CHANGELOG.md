@@ -1,3 +1,10 @@
+## [4.1.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.2...4.1.3) (2024-06-26)
+
+
+### Bug Fixes
+
+* **gateway-keys:** when using gateway keys resolverParameter should be ignored ([ce04d1b](https://github.com/gravitee-io/gravitee-policy-jwt/commit/ce04d1b6af1dab317830311cbdf184ef5f7967ac))
+
 ## [4.1.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.1...4.1.2) (2024-03-07)
 
 
