@@ -36,8 +36,8 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.stream.Stream;
 import net.schmizz.sshj.common.Buffer;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.params.provider.Arguments;
+import wiremock.org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
