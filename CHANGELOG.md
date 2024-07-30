@@ -1,3 +1,10 @@
+## [4.1.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.3...4.1.4) (2024-07-30)
+
+
+### Bug Fixes
+
+* **dependency:** VertxProxyOptionsUtils was moved to gravitee-node ([12f4e2a](https://github.com/gravitee-io/gravitee-policy-jwt/commit/12f4e2a29670a5cc588c06dd92aae5b73a998d29))
+
 ## [4.1.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.2...4.1.3) (2024-06-26)
 
 
