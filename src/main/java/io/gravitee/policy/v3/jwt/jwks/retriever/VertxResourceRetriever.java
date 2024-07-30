@@ -15,10 +15,9 @@
  */
 package io.gravitee.policy.v3.jwt.jwks.retriever;
 
-import static io.gravitee.common.util.VertxProxyOptionsUtils.setSystemProxy;
-
 import com.nimbusds.jose.util.Resource;
 import io.gravitee.node.api.configuration.Configuration;
+import io.gravitee.node.vertx.proxy.VertxProxyOptionsUtils;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -58,7 +57,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
 
         if (useSystemProxy) {
             try {
-                setSystemProxy(options, configuration);
+                options.setProxyOptions(VertxProxyOptionsUtils.buildProxyOptions(configuration));
             } catch (Exception e) {
                 LOGGER.warn(
                     "JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}",
