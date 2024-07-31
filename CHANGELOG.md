@@ -1,3 +1,15 @@
+# [5.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.5...5.0.0) (2024-07-31)
+
+
+### chore
+
+* **deps:** bump dependencies ([124d55a](https://github.com/gravitee-io/gravitee-policy-jwt/commit/124d55abdf053b47f00a41addcd0c661232c061a))
+
+
+### BREAKING CHANGES
+
+* **deps:** require APIM 4.4.x
+
 ## [4.1.5](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.4...4.1.5) (2024-07-31)
 
 
