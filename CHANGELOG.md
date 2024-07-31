@@ -1,3 +1,10 @@
+## [4.1.5](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.4...4.1.5) (2024-07-31)
+
+
+### Bug Fixes
+
+* Revert do not use 4.1.4 with version lower or equal to 4.3.x => 4.1.x ([67d2208](https://github.com/gravitee-io/gravitee-policy-jwt/commit/67d22089b2601ddea8de0eaaac7c71b9dc9cd45c))
+
 ## [4.1.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.3...4.1.4) (2024-07-30)
 
 
