@@ -24,10 +24,10 @@ import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import io.gravitee.common.security.jwt.LazyJWT;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
-import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
-import io.gravitee.gateway.reactive.api.context.HttpRequest;
-import io.gravitee.gateway.reactive.api.policy.SecurityPolicy;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
+import io.gravitee.gateway.reactive.api.policy.http.HttpSecurityPolicy;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
@@ -39,7 +39,6 @@ import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.rxjava3.core.http.HttpHeaders;
 import java.text.ParseException;
-import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +48,7 @@ import org.slf4j.MDC;
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
+public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy {
 
     public static final String CONTEXT_ATTRIBUTE_JWT = "jwt";
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
@@ -77,7 +76,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     }
 
     @Override
-    public Maybe<SecurityToken> extractSecurityToken(HttpExecutionContext ctx) {
+    public Maybe<SecurityToken> extractSecurityToken(HttpPlainExecutionContext ctx) {
         LazyJWT jwtToken = ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT);
 
         if (jwtToken == null) {
@@ -108,18 +107,18 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
     }
 
     @Override
-    public Completable onRequest(HttpExecutionContext ctx) {
+    public Completable onRequest(HttpPlainExecutionContext ctx) {
         return handleSecurity(ctx);
     }
 
-    private Completable handleSecurity(final HttpExecutionContext ctx) {
+    private Completable handleSecurity(final HttpPlainExecutionContext ctx) {
         return extractToken(ctx)
             .flatMapSingle(jwt -> validateToken(ctx, jwt).doOnSuccess(claims -> setAuthContextInfos(ctx, jwt, claims)))
             .ignoreElement();
     }
 
-    private void setAuthContextInfos(HttpExecutionContext ctx, LazyJWT jwt, JWTClaimsSet claims) {
-        final HttpRequest request = ctx.request();
+    private void setAuthContextInfos(HttpPlainExecutionContext ctx, LazyJWT jwt, JWTClaimsSet claims) {
+        final HttpPlainRequest request = ctx.request();
 
         // 3_ Set access_token in context
         ctx.setAttribute(CONTEXT_ATTRIBUTE_TOKEN, jwt.getToken());
@@ -148,7 +147,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
         }
     }
 
-    private Maybe<LazyJWT> extractToken(HttpExecutionContext ctx) {
+    private Maybe<LazyJWT> extractToken(HttpPlainExecutionContext ctx) {
         Optional<String> token = TokenExtractor.extract(ctx.request());
         if (token.isEmpty()) {
             return interrupt401AsMaybe(ctx, JWT_MISSING_TOKEN_KEY);
@@ -160,7 +159,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
         return Maybe.just(new LazyJWT(token.get()));
     }
 
-    private Single<JWTClaimsSet> validateToken(HttpExecutionContext ctx, LazyJWT jwt) {
+    private Single<JWTClaimsSet> validateToken(HttpPlainExecutionContext ctx, LazyJWT jwt) {
         return jwtProcessorResolver
             .provide(ctx)
             .flatMapSingle(jwtProcessor -> {
@@ -180,7 +179,7 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
                     if (
                         !isValidCertificateThumbprint(
                             jwtClaimsSet,
-                            ctx.request().sslSession(),
+                            ctx.request().tlsSession(),
                             ctx.request().headers(),
                             confirmationMethodValidation.isIgnoreMissing(),
                             confirmationMethodValidation.getCertificateBoundThumbprint()
@@ -194,21 +193,21 @@ public class JWTPolicy extends JWTPolicyV3 implements SecurityPolicy {
             .toSingle();
     }
 
-    private <T> Maybe<T> interrupt401AsMaybe(HttpExecutionContext ctx, String key) {
+    private <T> Maybe<T> interrupt401AsMaybe(HttpPlainExecutionContext ctx, String key) {
         return interrupt401(ctx, key).toMaybe();
     }
 
-    private <T> Single<T> interrupt401AsSingle(HttpExecutionContext ctx, String key) {
+    private <T> Single<T> interrupt401AsSingle(HttpPlainExecutionContext ctx, String key) {
         return interrupt401(ctx, key).<T>toMaybe().toSingle();
     }
 
-    private Completable interrupt401(HttpExecutionContext ctx, String key) {
+    private Completable interrupt401(HttpPlainExecutionContext ctx, String key) {
         return ctx.interruptWith(new ExecutionFailure(UNAUTHORIZED_401).key(key).message(UNAUTHORIZED_MESSAGE));
     }
 
-    private void reportError(HttpExecutionContext ctx, Throwable throwable) {
+    private void reportError(HttpPlainExecutionContext ctx, Throwable throwable) {
         if (throwable != null) {
-            final HttpRequest request = ctx.request();
+            final HttpPlainRequest request = ctx.request();
             ctx.metrics().setErrorMessage(throwable.getMessage());
 
             if (log.isDebugEnabled()) {
