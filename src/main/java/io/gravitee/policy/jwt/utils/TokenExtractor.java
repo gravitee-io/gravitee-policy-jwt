@@ -16,10 +16,10 @@
 package io.gravitee.policy.jwt.utils;
 
 import io.gravitee.common.util.MultiValueMap;
+import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
-import io.gravitee.gateway.reactive.api.context.HttpRequest;
-import io.gravitee.gateway.reactive.api.context.Request;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.util.ObjectUtils;
@@ -48,7 +48,7 @@ public class TokenExtractor {
      *
      * @return the jwt token as string, {@link Optional#empty()} if no token has been found.
      */
-    public static Optional<String> extract(HttpRequest request) {
+    public static Optional<String> extract(HttpPlainRequest request) {
         return extractFromHeaders(request.headers()).or(() -> extractFromParameters(request.parameters()));
     }
 
@@ -57,7 +57,7 @@ public class TokenExtractor {
      *
      * @param request the request to extract the JWT token from.
      * @return the jwt token as string or <code>null</code> if no token has been found.
-     * @see #extract(HttpRequest)
+     * @see #extract(HttpPlainRequest)
      */
     @Deprecated
     public static String extract(io.gravitee.gateway.api.Request request) {

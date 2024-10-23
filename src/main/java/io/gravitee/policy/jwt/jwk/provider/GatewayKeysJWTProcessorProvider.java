@@ -26,7 +26,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.util.EnvironmentUtils;
-import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
+import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.IssuerAwareJWSKeySelector;
 import io.gravitee.policy.jwt.jwk.selector.NoKidJWSVerificationKeySelector;
@@ -69,11 +69,11 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
      * Creates the {@link JWTProcessor} with all the keys defined at gateway level and cache it for reuse.
      */
     @Override
-    public Maybe<JWTProcessor<SecurityContext>> provide(HttpExecutionContext ctx) {
+    public Maybe<JWTProcessor<SecurityContext>> provide(BaseExecutionContext ctx) {
         return Maybe.fromCallable(() -> buildJWTProcessor(ctx));
     }
 
-    private JWTProcessor<SecurityContext> buildJWTProcessor(HttpExecutionContext ctx) {
+    private JWTProcessor<SecurityContext> buildJWTProcessor(BaseExecutionContext ctx) {
         final JWSAlgorithm alg = configuration.getSignature().getAlg();
         final Map<String, List<JWK>> jwkByIssuer = loadFromConfiguration(alg, ctx.getComponent(ConfigurableEnvironment.class));
         final Map<String, JWSKeySelector<SecurityContext>> selectors = createJWSKeySelectors(alg, jwkByIssuer);

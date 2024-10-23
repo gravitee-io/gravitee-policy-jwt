@@ -23,7 +23,7 @@ import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
-import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
+import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.NoKidJWSVerificationKeySelector;
 import io.gravitee.policy.jwt.utils.JWKBuilder;
@@ -53,7 +53,7 @@ class GivenKeyJWTProcessorProvider implements JWTProcessorProvider {
      * Creates the {@link JWTProcessor} with the given key defined at the policy configuration level and cache it for reuse.
      */
     @Override
-    public Maybe<JWTProcessor<SecurityContext>> provide(HttpExecutionContext ctx) {
+    public Maybe<JWTProcessor<SecurityContext>> provide(BaseExecutionContext ctx) {
         return Maybe.fromCallable(() -> buildJWTProcessor(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)));
     }
 

@@ -17,7 +17,7 @@ package io.gravitee.policy.jwt.jwk.provider;
 
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.JWTProcessor;
-import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
+import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.reactivex.rxjava3.core.Maybe;
 
 /**
@@ -34,5 +34,5 @@ public interface JWTProcessorProvider {
      * @param ctx the current execution context.
      * @return a {@link Maybe} containing an {@link JWTProcessor}.
      */
-    Maybe<JWTProcessor<SecurityContext>> provide(final HttpExecutionContext ctx);
+    Maybe<JWTProcessor<SecurityContext>> provide(final BaseExecutionContext ctx);
 }

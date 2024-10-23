@@ -22,7 +22,7 @@ import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
-import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
+import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.node.api.configuration.Configuration;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
@@ -59,11 +59,11 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
      * @see JWKSUrlJWKSourceResolver
      */
     @Override
-    public Maybe<JWTProcessor<SecurityContext>> provide(HttpExecutionContext ctx) {
+    public Maybe<JWTProcessor<SecurityContext>> provide(BaseExecutionContext ctx) {
         return Maybe.defer(() -> buildJWTProcessor(ctx, ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)));
     }
 
-    private Maybe<JWTProcessor<SecurityContext>> buildJWTProcessor(HttpExecutionContext ctx, String url) {
+    private Maybe<JWTProcessor<SecurityContext>> buildJWTProcessor(BaseExecutionContext ctx, String url) {
         // Create a source resolver to resolve the Json Web Keystore from an url.
         final JWKSUrlJWKSourceResolver<SecurityContext> sourceResolver = new JWKSUrlJWKSourceResolver<>(
             url,
@@ -85,7 +85,7 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
         return sourceResolver.initialize().andThen(Maybe.just(jwtProcessor));
     }
 
-    private ResourceRetriever getResourceRetriever(HttpExecutionContext ctx) {
+    private ResourceRetriever getResourceRetriever(BaseExecutionContext ctx) {
         if (resourceRetriever == null) {
             resourceRetriever =
                 new VertxResourceRetriever(
