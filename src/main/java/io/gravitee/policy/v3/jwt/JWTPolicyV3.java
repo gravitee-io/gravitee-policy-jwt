@@ -36,6 +36,7 @@ import io.gravitee.policy.v3.jwt.exceptions.InvalidCertificateThumbprintExceptio
 import io.gravitee.policy.v3.jwt.exceptions.InvalidTokenException;
 import io.gravitee.policy.v3.jwt.jwks.URLJWKSourceResolver;
 import io.gravitee.policy.v3.jwt.jwks.hmac.MACJWKSourceResolver;
+import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.gravitee.policy.v3.jwt.jwks.retriever.VertxResourceRetriever;
 import io.gravitee.policy.v3.jwt.jwks.rsa.RSAJWKSourceResolver;
 import io.gravitee.policy.v3.jwt.processor.AbstractKeyProcessor;
@@ -286,7 +287,12 @@ public class JWTPolicyV3 {
                     new VertxResourceRetriever(
                         executionContext.getComponent(Vertx.class),
                         executionContext.getComponent(Configuration.class),
-                        configuration.isUseSystemProxy()
+                        RetrieveOptions
+                            .builder()
+                            .connectTimeout(configuration.getConnectTimeout())
+                            .requestTimeout(configuration.getRequestTimeout())
+                            .useSystemProxy(configuration.isUseSystemProxy())
+                            .build()
                     )
                 )
             );
