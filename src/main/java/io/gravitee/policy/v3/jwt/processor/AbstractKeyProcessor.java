@@ -48,6 +48,9 @@ public abstract class AbstractKeyProcessor<C extends SecurityContext> implements
         return jwkSourceResolver
             .resolve()
             .thenCompose(jwkSource -> {
+                if (jwkSource == null) {
+                    return CompletableFuture.failedFuture(new IllegalStateException("could not resolve jwk source"));
+                }
                 ConfigurableJWTProcessor<C> jwtProcessor = new DefaultJWTProcessor<>();
                 jwtProcessor.setJWTClaimsSetVerifier(claimsVerifier);
                 jwtProcessor.setJWSKeySelector(jwsKeySelector(jwkSource, signature));
