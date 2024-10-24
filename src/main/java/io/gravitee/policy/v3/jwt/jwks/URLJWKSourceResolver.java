@@ -64,9 +64,10 @@ public class URLJWKSourceResolver<C extends SecurityContext> implements JWKSourc
             .thenCompose(this::readJwkSourceFromResource)
             .exceptionally(ex -> {
                 if (cachedJWKSource != null) {
-                    LOGGER.warn("Failed to retreive JWKS from URL {}. Using old cached JWKS", jwksUrl, ex);
+                    LOGGER.warn("Failed to retrieve JWKS from URL {}. Using old cached JWKS", jwksUrl, ex);
                     return cachedJWKSource.getJwkSource();
                 }
+                LOGGER.error("Failed to retrieve JWKS from URL, returning null", ex);
                 return null;
             });
     }
