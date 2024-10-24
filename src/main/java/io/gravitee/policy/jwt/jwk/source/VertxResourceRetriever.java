@@ -18,6 +18,7 @@ package io.gravitee.policy.jwt.jwk.source;
 import com.nimbusds.jose.util.Resource;
 import io.gravitee.common.util.VertxProxyOptionsUtils;
 import io.gravitee.node.api.configuration.Configuration;
+import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpHeaders;
@@ -38,16 +39,19 @@ public class VertxResourceRetriever implements ResourceRetriever {
 
     private static final Logger log = LoggerFactory.getLogger(VertxResourceRetriever.class);
     private static final String HTTPS_SCHEME = "https";
-    protected static final int DEFAULT_TIMEOUT = 2000;
 
     private final Vertx vertx;
     private final Configuration configuration;
     private final boolean useSystemProxy;
+    private final int connectTimeout;
+    private final long requestTimeout;
 
-    public VertxResourceRetriever(final Vertx vertx, Configuration configuration, boolean useSystemProxy) {
+    public VertxResourceRetriever(final Vertx vertx, Configuration configuration, RetrieveOptions options) {
         this.vertx = vertx;
         this.configuration = configuration;
-        this.useSystemProxy = useSystemProxy;
+        this.useSystemProxy = options.isUseSystemProxy();
+        this.connectTimeout = options.getConnectTimeout();
+        this.requestTimeout = options.getRequestTimeout();
     }
 
     public Single<Resource> retrieve(String url) {
@@ -61,10 +65,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
 
         HttpClient httpClient = buildHttpClient(finalURL);
 
-        final RequestOptions requestOptions = new RequestOptions()
-            .setMethod(HttpMethod.GET)
-            .setAbsoluteURI(url)
-            .setTimeout(DEFAULT_TIMEOUT);
+        final RequestOptions requestOptions = new RequestOptions().setMethod(HttpMethod.GET).setAbsoluteURI(url).setTimeout(requestTimeout);
 
         return httpClient
             .rxRequest(requestOptions)
@@ -80,7 +81,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
     }
 
     private HttpClient buildHttpClient(URL url) {
-        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(DEFAULT_TIMEOUT);
+        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(connectTimeout);
 
         if (useSystemProxy) {
             try {
