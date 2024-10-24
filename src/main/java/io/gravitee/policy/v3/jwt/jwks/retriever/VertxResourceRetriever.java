@@ -28,6 +28,7 @@ import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.RequestOptions;
 import java.net.URL;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,15 +46,20 @@ public class VertxResourceRetriever implements ResourceRetriever {
     private final Configuration configuration;
     private final boolean useSystemProxy;
 
-    public VertxResourceRetriever(final Vertx vertx, Configuration configuration, boolean useSystemProxy) {
+    private final int connectTimeout;
+    private final long requestTimeout;
+
+    public VertxResourceRetriever(final Vertx vertx, Configuration configuration, RetrieveOptions options) {
         this.vertx = vertx;
         this.configuration = configuration;
-        this.useSystemProxy = useSystemProxy;
+        this.useSystemProxy = options.isUseSystemProxy();
+        this.connectTimeout = options.getConnectTimeout();
+        this.requestTimeout = options.getRequestTimeout();
     }
 
     @Override
     public CompletableFuture<Resource> retrieve(URL url) {
-        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(2000);
+        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(connectTimeout);
 
         if (useSystemProxy) {
             try {
@@ -79,7 +85,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
         final RequestOptions requestOptions = new RequestOptions()
             .setMethod(HttpMethod.GET)
             .setAbsoluteURI(url.toString())
-            .setTimeout(2000L);
+            .setTimeout(requestTimeout);
 
         final Future<HttpClientRequest> futureRequest = httpClient.request(requestOptions);
 

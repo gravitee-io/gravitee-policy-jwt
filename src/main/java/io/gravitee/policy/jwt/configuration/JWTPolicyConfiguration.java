@@ -43,6 +43,8 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private String userClaim;
     private String clientIdClaim;
     private boolean useSystemProxy;
+    private Integer connectTimeout = 2000;
+    private Long requestTimeout = 2000L;
     private ConfirmationMethodValidation confirmationMethodValidation = new ConfirmationMethodValidation();
 
     @NoArgsConstructor
