@@ -28,6 +28,7 @@ import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
 import io.gravitee.policy.jwt.jwk.source.ResourceRetriever;
 import io.gravitee.policy.jwt.jwk.source.VertxResourceRetriever;
+import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.reactivex.rxjava3.core.Maybe;
 import io.vertx.rxjava3.core.Vertx;
 import java.time.Duration;
@@ -90,7 +91,12 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
                 new VertxResourceRetriever(
                     ctx.getComponent(Vertx.class),
                     ctx.getComponent(Configuration.class),
-                    configuration.isUseSystemProxy()
+                    RetrieveOptions
+                        .builder()
+                        .connectTimeout(configuration.getConnectTimeout())
+                        .requestTimeout(configuration.getRequestTimeout())
+                        .useSystemProxy(configuration.isUseSystemProxy())
+                        .build()
                 );
         }
 

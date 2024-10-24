@@ -35,6 +35,8 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private String userClaim;
     private String clientIdClaim;
     private boolean useSystemProxy;
+    private Integer connectTimeout;
+    private Long requestTimeout;
 
     //getter and setters
     public KeyResolver getPublicKeyResolver() {
@@ -99,5 +101,21 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
 
     public void setUseSystemProxy(boolean useSystemProxy) {
         this.useSystemProxy = useSystemProxy;
+    }
+
+    public Integer getConnectTimeout() {
+        return connectTimeout;
+    }
+
+    public void setConnectTimeout(Integer connectTimeout) {
+        this.connectTimeout = connectTimeout;
+    }
+
+    public Long getRequestTimeout() {
+        return requestTimeout;
+    }
+
+    public void setRequestTimeout(Long requestTimeout) {
+        this.requestTimeout = requestTimeout;
     }
 }
