@@ -58,6 +58,18 @@
                 "expression-language": true
             }
         },
+        "connectTimeout": {
+            "title": "JWKS URL connect timeout",
+            "description": "Only applies when the resolver is JWKS_URL",
+            "type": "integer",
+            "default": 2000
+        },
+        "requestTimeout": {
+            "title": "JWKS URL request timeout",
+            "description": "Only applies when the resolver is JWKS_URL",
+            "type": "integer",
+            "default": 2000
+        },
         "useSystemProxy": {
             "title": "Use system proxy",
             "description": "Use system proxy (make sense only when resolver is set to JWKS_URL)",
