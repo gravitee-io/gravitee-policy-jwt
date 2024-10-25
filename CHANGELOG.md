@@ -1,3 +1,10 @@
+# [4.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.5...4.2.0) (2024-10-25)
+
+
+### Features
+
+* make jwks url timeouts configurable ([c942866](https://github.com/gravitee-io/gravitee-policy-jwt/commit/c9428665f60e78d3125f71034f298f9df1c71997))
+
 ## [4.1.5](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.4...4.1.5) (2024-07-31)
 
 
