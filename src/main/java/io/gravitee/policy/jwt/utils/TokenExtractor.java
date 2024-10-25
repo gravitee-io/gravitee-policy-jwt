@@ -19,9 +19,15 @@ import io.gravitee.common.util.MultiValueMap;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
+import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
+import io.gravitee.gateway.reactive.api.context.kafka.KafkaConnectionContext;
 import java.util.List;
 import java.util.Optional;
+import javax.security.auth.callback.Callback;
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerExtensionsValidatorCallback;
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerValidatorCallback;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
@@ -36,6 +42,43 @@ public class TokenExtractor {
     static final String ACCESS_TOKEN = "access_token";
 
     /**
+     * Extract an access token from a {@link BaseExecutionContext}.
+     * If no access token has been found, an {@link Optional#empty()} is returned.
+     *
+     * @param ctx the execution context to extract the access token from.
+     *
+     * @return the access token as string, {@link Optional#empty()} if no token has been found.
+     */
+    public static Optional<String> extract(BaseExecutionContext ctx) {
+        if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+            return extract(httpPlainExecutionContext.request());
+        }
+        KafkaConnectionContext kafkaConnectionContext = (KafkaConnectionContext) ctx;
+        return extract(kafkaConnectionContext.callbacks());
+    }
+
+    /**
+     * Extract an access token from a {@link javax.security.auth.callback.Callback} array.
+     * If no access token has been found, an {@link Optional#empty()} is returned.
+     *
+     * @param callbacks the callbacks to extract the access token from.
+     *
+     * @return the access token as string, {@link Optional#empty()} if no token has been found.
+     */
+    private static Optional<String> extract(Callback[] callbacks) {
+        for (Callback callback : callbacks) {
+            if (callback instanceof OAuthBearerValidatorCallback oAuthCallback) {
+                String token = oAuthCallback.tokenValue();
+                return Optional.of(token);
+            } else if (callback instanceof OAuthBearerExtensionsValidatorCallback oAuthCallback) {
+                String token = oAuthCallback.token().value();
+                return Optional.of(token);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
      * Extract a jwt token from a {@link Request} headers or parameters.
      * <ul>
      *     <li>Get the first <code>Authorization</code> bearer header</li>
@@ -48,7 +91,7 @@ public class TokenExtractor {
      *
      * @return the jwt token as string, {@link Optional#empty()} if no token has been found.
      */
-    public static Optional<String> extract(HttpPlainRequest request) {
+    private static Optional<String> extract(HttpPlainRequest request) {
         return extractFromHeaders(request.headers()).or(() -> extractFromParameters(request.parameters()));
     }
 

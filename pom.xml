@@ -88,7 +88,7 @@
 
         <!--
             nimbus-jose-jwt is kept at version 9.15.2 on purpose because 9.25.4 introduced a breaking change in the way empty signatures are handled
-            https://bitbucket.org/connect2id/nimbus-jose-jwt/src/94a2e4d11ce322966d30a551a2d482936b588c87/CHANGELOG.txt#lines-1477:1481 
+            https://bitbucket.org/connect2id/nimbus-jose-jwt/src/94a2e4d11ce322966d30a551a2d482936b588c87/CHANGELOG.txt#lines-1477:1481
         -->
         <dependency>
             <groupId>com.nimbusds</groupId>
@@ -140,6 +140,12 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
             <scope>provided</scope>
         </dependency>
 
