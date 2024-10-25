@@ -18,11 +18,24 @@ package io.gravitee.policy.jwt.utils;
 import static org.mockito.Mockito.when;
 
 import io.gravitee.common.util.LinkedMultiValueMap;
-import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.http.HttpHeaders;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
+import io.gravitee.gateway.reactive.api.context.kafka.KafkaConnectionContext;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.NameCallback;
+import org.apache.kafka.common.security.auth.SaslExtensions;
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerExtensionsValidatorCallback;
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken;
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerValidatorCallback;
+import org.apache.kafka.common.security.oauthbearer.internals.secured.BasicOAuthBearerToken;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -36,78 +49,151 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 public class TokenExtractorTest {
 
-    @Mock
-    private Request request;
+    @Nested
+    class WithHttpExecutionContext {
 
-    @Test
-    void should_not_extract_with__no_authorization_header() {
-        when(request.headers()).thenReturn(HttpHeaders.create());
-        when(request.parameters()).thenReturn(new LinkedMultiValueMap<>());
+        @Mock
+        private HttpPlainRequest request;
 
-        String token = TokenExtractor.extract(request);
+        @Mock
+        private HttpPlainExecutionContext ctx;
 
-        Assertions.assertNull(token);
+        @Test
+        void should_not_extract_with__no_authorization_header() {
+            when(request.headers()).thenReturn(HttpHeaders.create());
+            when(request.parameters()).thenReturn(new LinkedMultiValueMap<>());
+
+            when(ctx.request()).thenReturn(request);
+
+            Optional<String> token = TokenExtractor.extract(ctx);
+
+            Assertions.assertTrue(token.isEmpty());
+        }
+
+        @Test
+        void should_not_extract_with_unknown_authorization_header() {
+            String jwt = "dummy-token";
+
+            HttpHeaders headers = HttpHeaders.create().set("Authorization", "Basic " + jwt);
+            when(request.headers()).thenReturn(headers);
+
+            when(ctx.request()).thenReturn(request);
+
+            Optional<String> token = TokenExtractor.extract(ctx);
+
+            Assertions.assertTrue(token.isEmpty());
+        }
+
+        @Test
+        void should_extract_with_authorization_header_and_empty_bearer() {
+            HttpHeaders headers = HttpHeaders.create().set("Authorization", TokenExtractor.BEARER);
+            when(request.headers()).thenReturn(headers);
+
+            when(ctx.request()).thenReturn(request);
+
+            Optional<String> token = TokenExtractor.extract(ctx);
+
+            Assertions.assertTrue(token.isPresent());
+        }
+
+        @Test
+        void should_extract_with_authorization_header_and_bearer() {
+            String jwt = "dummy-token";
+
+            HttpHeaders headers = HttpHeaders.create().set("Authorization", TokenExtractor.BEARER + ' ' + jwt);
+            when(request.headers()).thenReturn(headers);
+
+            when(ctx.request()).thenReturn(request);
+
+            Optional<String> token = TokenExtractor.extract(ctx);
+
+            Assertions.assertTrue(token.isPresent());
+            Assertions.assertEquals(jwt, token.get());
+        }
+
+        @Test
+        void should_extract_from_insensitive_header() {
+            String jwt = "dummy-token";
+
+            HttpHeaders headers = HttpHeaders.create().set("Authorization", "bearer " + jwt);
+            when(request.headers()).thenReturn(headers);
+
+            when(ctx.request()).thenReturn(request);
+
+            Optional<String> token = TokenExtractor.extract(ctx);
+
+            Assertions.assertTrue(token.isPresent());
+            Assertions.assertEquals(jwt, token.get());
+        }
+
+        @Test
+        void should_extract_from_query_parameter() {
+            String jwt = "dummy-token";
+
+            when(request.headers()).thenReturn(HttpHeaders.create());
+
+            LinkedMultiValueMap<String, String> parameters = new LinkedMultiValueMap<>();
+            parameters.add(TokenExtractor.ACCESS_TOKEN, jwt);
+            when(request.parameters()).thenReturn(parameters);
+
+            when(ctx.request()).thenReturn(request);
+
+            Optional<String> token = TokenExtractor.extract(ctx);
+
+            Assertions.assertTrue(token.isPresent());
+            Assertions.assertEquals(jwt, token.get());
+        }
     }
 
-    @Test
-    void should_not_extract_with_unknown_authorization_header() {
-        String jwt = "dummy-token";
+    @Nested
+    class WithKafkaConnectionContext {
 
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Basic " + jwt);
-        when(request.headers()).thenReturn(headers);
+        @Mock
+        private KafkaConnectionContext ctx;
 
-        String token = TokenExtractor.extract(request);
-        Assertions.assertNull(token);
-    }
+        @Test
+        void should_not_extract_with__no_callback() {
+            when(ctx.callbacks()).thenReturn(new Callback[] {});
 
-    @Test
-    void should_extract_with_authorization_header_and_empty_bearer() {
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", TokenExtractor.BEARER);
-        when(request.headers()).thenReturn(headers);
+            Optional<String> token = TokenExtractor.extract(ctx);
 
-        String token = TokenExtractor.extract(request);
-        Assertions.assertNotNull(token);
-    }
+            Assertions.assertTrue(token.isEmpty());
+        }
 
-    @Test
-    void should_extract_with_authorization_header_and_bearer() {
-        String jwt = "dummy-token";
+        @Test
+        void should_extract_with_OAuthBearerValidatorCallback() {
+            String jwt = "dummy-token";
 
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", TokenExtractor.BEARER + ' ' + jwt);
-        when(request.headers()).thenReturn(headers);
+            OAuthBearerValidatorCallback oauthCallback = new OAuthBearerValidatorCallback(jwt);
+            when(ctx.callbacks()).thenReturn(new Callback[] { oauthCallback });
 
-        String token = TokenExtractor.extract(request);
+            Optional<String> token = TokenExtractor.extract(ctx);
 
-        Assertions.assertNotNull(token);
-        Assertions.assertEquals(jwt, token);
-    }
+            Assertions.assertTrue(token.isPresent());
+            Assertions.assertEquals(jwt, token.get());
+        }
 
-    @Test
-    void should_extract_from_insensitive_header() {
-        String jwt = "dummy-token";
+        @Test
+        void should_extract_with_OAuthBearerExtensionsValidatorCallback() {
+            String jwt = "dummy-token";
 
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "bearer " + jwt);
-        when(request.headers()).thenReturn(headers);
+            OAuthBearerToken oAuthBearerToken = new BasicOAuthBearerToken(
+                jwt,
+                Set.of(),
+                Long.MAX_VALUE,
+                "user",
+                System.currentTimeMillis()
+            );
+            OAuthBearerExtensionsValidatorCallback oauthCallback = new OAuthBearerExtensionsValidatorCallback(
+                oAuthBearerToken,
+                new SaslExtensions(Map.of())
+            );
+            when(ctx.callbacks()).thenReturn(new Callback[] { oauthCallback });
 
-        String token = TokenExtractor.extract(request);
+            Optional<String> token = TokenExtractor.extract(ctx);
 
-        Assertions.assertNotNull(token);
-        Assertions.assertEquals(jwt, token);
-    }
-
-    @Test
-    void should_extract_from_query_parameter() {
-        String jwt = "dummy-token";
-
-        when(request.headers()).thenReturn(HttpHeaders.create());
-
-        LinkedMultiValueMap<String, String> parameters = new LinkedMultiValueMap<>();
-        parameters.add(TokenExtractor.ACCESS_TOKEN, jwt);
-        when(request.parameters()).thenReturn(parameters);
-
-        String token = TokenExtractor.extract(request);
-
-        Assertions.assertNotNull(token);
-        Assertions.assertEquals(jwt, token);
+            Assertions.assertTrue(token.isPresent());
+            Assertions.assertEquals(jwt, token.get());
+        }
     }
 }

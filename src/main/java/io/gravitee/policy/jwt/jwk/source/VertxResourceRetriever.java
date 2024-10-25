@@ -67,7 +67,10 @@ public class VertxResourceRetriever implements ResourceRetriever {
 
         HttpClient httpClient = buildHttpClient(finalURL);
 
-        final RequestOptions requestOptions = new RequestOptions().setMethod(HttpMethod.GET).setAbsoluteURI(url).setTimeout(requestTimeout);
+        final RequestOptions requestOptions = new RequestOptions()
+            .setMethod(HttpMethod.GET)
+            .setAbsoluteURI(finalURL)
+            .setTimeout(requestTimeout);
 
         return httpClient
             .rxRequest(requestOptions)
