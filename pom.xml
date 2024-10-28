@@ -46,7 +46,7 @@
         <sshj.version>0.39.0</sshj.version>
         <guava.version>31.1-jre</guava.version>
 
-        <maven-plugin-assembly.version>3.6.0</maven-plugin-assembly.version>
+        <maven-plugin-assembly.version>3.7.1</maven-plugin-assembly.version>
         <maven-plugin-properties.version>1.1.0</maven-plugin-properties.version>
 
         <!-- Property used by the publication job in CI-->
