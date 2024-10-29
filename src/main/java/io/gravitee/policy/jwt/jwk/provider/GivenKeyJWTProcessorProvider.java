@@ -27,6 +27,7 @@ import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.NoKidJWSVerificationKeySelector;
 import io.gravitee.policy.jwt.utils.JWKBuilder;
+import io.gravitee.policy.jwt.utils.TokenTypeVerifierFactory;
 import io.reactivex.rxjava3.core.Maybe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +71,8 @@ class GivenKeyJWTProcessorProvider implements JWTProcessorProvider {
         } catch (Throwable throwable) {
             log.warn("Error occurred when loading key. Key will be ignored.", throwable);
         }
+
+        jwtProcessor.setJWSTypeVerifier(TokenTypeVerifierFactory.build(configuration.getTokenTypValidation()));
 
         return jwtProcessor;
     }

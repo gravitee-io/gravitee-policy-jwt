@@ -31,6 +31,7 @@ import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.IssuerAwareJWSKeySelector;
 import io.gravitee.policy.jwt.jwk.selector.NoKidJWSVerificationKeySelector;
 import io.gravitee.policy.jwt.utils.JWKBuilder;
+import io.gravitee.policy.jwt.utils.TokenTypeVerifierFactory;
 import io.reactivex.rxjava3.core.Maybe;
 import java.security.KeyException;
 import java.util.AbstractMap.SimpleEntry;
@@ -80,6 +81,8 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
 
         DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
         jwtProcessor.setJWTClaimsSetAwareJWSKeySelector(new IssuerAwareJWSKeySelector(DEFAULT_KID, selectors));
+
+        jwtProcessor.setJWSTypeVerifier(TokenTypeVerifierFactory.build(configuration.getTokenTypValidation()));
 
         return jwtProcessor;
     }

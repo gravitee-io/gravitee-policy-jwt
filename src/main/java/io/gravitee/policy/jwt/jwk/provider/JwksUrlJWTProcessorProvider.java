@@ -28,6 +28,7 @@ import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
 import io.gravitee.policy.jwt.jwk.source.ResourceRetriever;
 import io.gravitee.policy.jwt.jwk.source.VertxResourceRetriever;
+import io.gravitee.policy.jwt.utils.TokenTypeVerifierFactory;
 import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.reactivex.rxjava3.core.Maybe;
 import io.vertx.rxjava3.core.Vertx;
@@ -80,6 +81,8 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
         // Create a jwt processor with the given selector.
         final DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
         jwtProcessor.setJWSKeySelector(selector);
+
+        jwtProcessor.setJWSTypeVerifier(TokenTypeVerifierFactory.build(configuration.getTokenTypValidation()));
 
         // Initialize the Json Web Keystore before returning the jwt processor.
         return sourceResolver.initialize().andThen(Maybe.just(jwtProcessor));
