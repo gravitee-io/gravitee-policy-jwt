@@ -135,6 +135,41 @@
                 }
             },
             "additionalProperties": false
+        },
+        "tokenTypValidation": {
+            "title": "Token Type Validation",
+            "description": "Define the token type to validate",
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "title": "Enable token type validation",
+                    "description": "Will validate the token type extracted from the access_token with the one provided by the client. The default is false.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "ignoreMissing": {
+                    "title": "Ignore missing token type",
+                    "description": "Will ignore token type validation if the token doesn't contain any token type information. Default is false.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "expectedValues": {
+                    "title": "Expected values",
+                    "description": "List of expected token types. If the token type is not in the list, the validation will fail.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": ["JWT"]
+                },
+                "ignoreCase": {
+                    "title": "Ignore case",
+                    "description": "Will ignore the case of the token type when comparing the expected values. Default is false.",
+                    "type": "boolean",
+                    "default": false
+                }
+            },
+            "additionalProperties": false
         }
     },
     "required": ["signature", "publicKeyResolver"],

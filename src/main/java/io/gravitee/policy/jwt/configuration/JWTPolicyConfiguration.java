@@ -18,6 +18,7 @@ package io.gravitee.policy.jwt.configuration;
 import io.gravitee.policy.api.PolicyConfiguration;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.v3.jwt.resolver.KeyResolver;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -46,6 +47,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private Integer connectTimeout = 2000;
     private Long requestTimeout = 2000L;
     private ConfirmationMethodValidation confirmationMethodValidation = new ConfirmationMethodValidation();
+    private TokenTypValidation tokenTypValidation = new TokenTypValidation();
 
     @NoArgsConstructor
     @AllArgsConstructor
@@ -66,5 +68,17 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
         private boolean enabled = false;
         private boolean extractCertificateFromHeader = false;
         private String headerName = "ssl-client-cert";
+    }
+
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Getter
+    @Setter
+    public static class TokenTypValidation {
+
+        private boolean enabled = false;
+        private boolean ignoreMissing = false;
+        private List<String> expectedValues = List.of("JWT");
+        private boolean ignoreCase = false;
     }
 }
