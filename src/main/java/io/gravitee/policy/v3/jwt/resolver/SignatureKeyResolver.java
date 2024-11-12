@@ -15,10 +15,12 @@
  */
 package io.gravitee.policy.v3.jwt.resolver;
 
+import java.text.ParseException;
+
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
 public interface SignatureKeyResolver {
-    String resolve();
+    String resolve() throws ParseException;
 }

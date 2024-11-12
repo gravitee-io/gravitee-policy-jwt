@@ -23,6 +23,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.gravitee.policy.v3.jwt.jwks.JWKSourceResolver;
 import io.gravitee.policy.v3.jwt.resolver.SignatureKeyResolver;
+import java.text.ParseException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -37,7 +38,7 @@ public class MACJWKSourceResolver<C extends SecurityContext> implements JWKSourc
         this.jwk = new OctetSequenceKey.Builder(secretKey.getBytes()).build();
     }
 
-    public MACJWKSourceResolver(SignatureKeyResolver publicKeyResolver) {
+    public MACJWKSourceResolver(SignatureKeyResolver publicKeyResolver) throws ParseException {
         this(publicKeyResolver.resolve());
     }
 

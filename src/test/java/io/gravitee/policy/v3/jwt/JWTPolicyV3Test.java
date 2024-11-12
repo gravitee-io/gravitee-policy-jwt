@@ -140,7 +140,6 @@ public abstract class JWTPolicyV3Test {
     @Test
     void test_unsigned_jwt() throws Exception {
         when(executionContext.getComponent(Environment.class)).thenReturn(environment);
-        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
 
         JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
         builder.claim(JWTPolicyV3.CONTEXT_ATTRIBUTE_CLIENT_ID, "my-client-id");

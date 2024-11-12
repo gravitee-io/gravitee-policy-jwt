@@ -140,7 +140,9 @@ public class JWTPolicyV3 {
                                 String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
                                 throwable.getCause()
                             );
-                            request.metrics().setMessage(throwable.getCause().getMessage());
+                            request
+                                .metrics()
+                                .setMessage(throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage());
                         }
                         MDC.remove("api");
                         policyChain.failWith(PolicyResult.failure(key, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
@@ -237,87 +239,91 @@ public class JWTPolicyV3 {
     }
 
     private CompletableFuture<JWTClaimsSet> validate(ExecutionContext executionContext, String token) throws Exception {
-        final Signature signature = configuration.getSignature();
+        try {
+            final Signature signature = configuration.getSignature();
 
-        AbstractKeyProcessor keyProcessor = null;
+            AbstractKeyProcessor keyProcessor = null;
 
-        if (configuration.getPublicKeyResolver() != KeyResolver.JWKS_URL) {
-            SignatureKeyResolver signatureKeyResolver;
-            switch (configuration.getPublicKeyResolver()) {
-                case GIVEN_KEY:
-                    signatureKeyResolver =
-                        new TemplatableSignatureKeyResolver(
-                            executionContext.getTemplateEngine(),
-                            new UserDefinedSignatureKeyResolver(configuration.getResolverParameter())
-                        );
-                    break;
-                case GATEWAY_KEYS:
-                    signatureKeyResolver = new GatewaySignatureKeyResolver(executionContext.getComponent(Environment.class), token);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unexpected signature key resolver");
-            }
-
-            if (signature != null) {
-                switch (signature) {
-                    case RSA_RS256:
-                    case RSA_RS384:
-                    case RSA_RS512:
-                        keyProcessor = new RSAKeyProcessor();
-                        keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
+            if (configuration.getPublicKeyResolver() != KeyResolver.JWKS_URL) {
+                SignatureKeyResolver signatureKeyResolver;
+                switch (configuration.getPublicKeyResolver()) {
+                    case GIVEN_KEY:
+                        signatureKeyResolver =
+                            new TemplatableSignatureKeyResolver(
+                                executionContext.getTemplateEngine(),
+                                new UserDefinedSignatureKeyResolver(configuration.getResolverParameter())
+                            );
                         break;
-                    case HMAC_HS256:
-                    case HMAC_HS384:
-                    case HMAC_HS512:
-                        keyProcessor = new HMACKeyProcessor();
-                        keyProcessor.setJwkSourceResolver(new MACJWKSourceResolver(signatureKeyResolver));
+                    case GATEWAY_KEYS:
+                        signatureKeyResolver = new GatewaySignatureKeyResolver(executionContext.getComponent(Environment.class), token);
                         break;
+                    default:
+                        throw new IllegalArgumentException("Unexpected signature key resolver");
+                }
+
+                if (signature != null) {
+                    switch (signature) {
+                        case RSA_RS256:
+                        case RSA_RS384:
+                        case RSA_RS512:
+                            keyProcessor = new RSAKeyProcessor();
+                            keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
+                            break;
+                        case HMAC_HS256:
+                        case HMAC_HS384:
+                        case HMAC_HS512:
+                            keyProcessor = new HMACKeyProcessor();
+                            keyProcessor.setJwkSourceResolver(new MACJWKSourceResolver(signatureKeyResolver));
+                            break;
+                    }
+                } else {
+                    // For backward compatibility
+                    keyProcessor = new NoAlgorithmRSAKeyProcessor();
+                    keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
                 }
             } else {
-                // For backward compatibility
-                keyProcessor = new NoAlgorithmRSAKeyProcessor();
-                keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
-            }
-        } else {
-            keyProcessor = new JWKSKeyProcessor();
-            keyProcessor.setJwkSourceResolver(
-                new URLJWKSourceResolver(
-                    executionContext.getTemplateEngine(),
-                    configuration.getResolverParameter(),
-                    new VertxResourceRetriever(
-                        executionContext.getComponent(Vertx.class),
-                        executionContext.getComponent(Configuration.class),
-                        RetrieveOptions
-                            .builder()
-                            .connectTimeout(configuration.getConnectTimeout())
-                            .requestTimeout(configuration.getRequestTimeout())
-                            .useSystemProxy(configuration.isUseSystemProxy())
-                            .build()
+                keyProcessor = new JWKSKeyProcessor();
+                keyProcessor.setJwkSourceResolver(
+                    new URLJWKSourceResolver(
+                        executionContext.getTemplateEngine(),
+                        configuration.getResolverParameter(),
+                        new VertxResourceRetriever(
+                            executionContext.getComponent(Vertx.class),
+                            executionContext.getComponent(Configuration.class),
+                            RetrieveOptions
+                                .builder()
+                                .connectTimeout(configuration.getConnectTimeout())
+                                .requestTimeout(configuration.getRequestTimeout())
+                                .useSystemProxy(configuration.isUseSystemProxy())
+                                .build()
+                        )
                     )
-                )
-            );
-        }
-
-        CompletableFuture<JWTClaimsSet> process = keyProcessor.process(signature, token);
-        return process.thenApply(jwtClaimsSet -> {
-            // Validate confirmation method
-            JWTPolicyConfiguration.ConfirmationMethodValidation confirmationMethodValidation =
-                configuration.getConfirmationMethodValidation();
-            if (
-                confirmationMethodValidation != null &&
-                confirmationMethodValidation.getCertificateBoundThumbprint().isEnabled() &&
-                !isValidCertificateThumbprint(
-                    jwtClaimsSet,
-                    executionContext.request().sslSession(),
-                    executionContext.request().headers(),
-                    confirmationMethodValidation.isIgnoreMissing(),
-                    confirmationMethodValidation.getCertificateBoundThumbprint()
-                )
-            ) {
-                throw new InvalidCertificateThumbprintException("Confirmation method validation failed");
+                );
             }
-            return jwtClaimsSet;
-        });
+
+            CompletableFuture<JWTClaimsSet> process = keyProcessor.process(signature, token);
+            return process.thenApply(jwtClaimsSet -> {
+                // Validate confirmation method
+                JWTPolicyConfiguration.ConfirmationMethodValidation confirmationMethodValidation =
+                    configuration.getConfirmationMethodValidation();
+                if (
+                    confirmationMethodValidation != null &&
+                    confirmationMethodValidation.getCertificateBoundThumbprint().isEnabled() &&
+                    !isValidCertificateThumbprint(
+                        jwtClaimsSet,
+                        executionContext.request().sslSession(),
+                        executionContext.request().headers(),
+                        confirmationMethodValidation.isIgnoreMissing(),
+                        confirmationMethodValidation.getCertificateBoundThumbprint()
+                    )
+                ) {
+                    throw new InvalidCertificateThumbprintException("Confirmation method validation failed");
+                }
+                return jwtClaimsSet;
+            });
+        } catch (ParseException pe) {
+            return CompletableFuture.failedFuture(new InvalidTokenException(pe));
+        }
     }
 
     protected static boolean isValidCertificateThumbprint(
