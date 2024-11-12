@@ -1,3 +1,25 @@
+# [6.0.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.1.0...6.0.0-alpha.1) (2024-11-12)
+
+
+### Bug Fixes
+
+* use provided version of nimbus lib ([7063db4](https://github.com/gravitee-io/gravitee-policy-jwt/commit/7063db42c55cd6bd8a3021502f0bfaf03ce02f12))
+
+
+### Code Refactoring
+
+* use new HttpSecurityPolicy and BaseExecutionContext interface ([8f6270f](https://github.com/gravitee-io/gravitee-policy-jwt/commit/8f6270f8f22e06c972c141d12c28433b5da2f34e))
+
+
+### Features
+
+* implement kafka security policy ([f1db2f1](https://github.com/gravitee-io/gravitee-policy-jwt/commit/f1db2f1818a8cc60f8dfeace66a2c5a8d57bd600))
+
+
+### BREAKING CHANGES
+
+* requires APIM 4.6+
+
 # [5.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.0.0...5.1.0) (2024-10-25)
 
 
