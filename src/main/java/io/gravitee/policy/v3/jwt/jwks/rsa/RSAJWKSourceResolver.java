@@ -26,6 +26,7 @@ import io.gravitee.policy.jwt.utils.PublicKeyHelper;
 import io.gravitee.policy.v3.jwt.jwks.JWKSourceResolver;
 import io.gravitee.policy.v3.jwt.resolver.SignatureKeyResolver;
 import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -53,7 +54,7 @@ public class RSAJWKSourceResolver<C extends SecurityContext> implements JWKSourc
         this.jwk = new RSAKey.Builder(rsaPublicKey).build();
     }
 
-    public RSAJWKSourceResolver(SignatureKeyResolver publicKeyResolver) {
+    public RSAJWKSourceResolver(SignatureKeyResolver publicKeyResolver) throws ParseException {
         this(publicKeyResolver.resolve());
     }
 
