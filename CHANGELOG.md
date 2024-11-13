@@ -1,3 +1,10 @@
+# [6.0.0-alpha.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.1...6.0.0-alpha.2) (2024-11-13)
+
+
+### Features
+
+* support custom token type header ([d08e658](https://github.com/gravitee-io/gravitee-policy-jwt/commit/d08e65834b2eaf111dc9bdeeaa54223160a10fa4))
+
 # [6.0.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.1.0...6.0.0-alpha.1) (2024-11-12)
 
 
