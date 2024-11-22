@@ -134,7 +134,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                                 extractedToken,
                                 Set.of(), // Scopes are fully managed by Gravitee, it is useless to extract & provide them to the Kafka security context.
                                 (expirationTime == null ? Long.MAX_VALUE : expirationTime.getTime()),
-                                user,
+                                user != null ? user : "unknown",
                                 (issueTime == null ? null : issueTime.getTime())
                             );
 
@@ -142,7 +142,17 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                         }
                     }
                 })
-            );
+            )
+            .onErrorResumeNext(throwable -> {
+                Callback[] callbacks = ctx.callbacks();
+                for (Callback callback : callbacks) {
+                    if (callback instanceof OAuthBearerValidatorCallback oauthCallback) {
+                        oauthCallback.error("invalid_token", null, null);
+                    }
+                }
+
+                return Completable.complete();
+            });
     }
 
     private Maybe<SecurityToken> getSecurityTokenFromContext(BaseExecutionContext ctx) {
