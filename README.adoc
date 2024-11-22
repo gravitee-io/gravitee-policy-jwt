@@ -25,12 +25,13 @@ Some authorization servers use OAuth2 protocol to provide access tokens. These a
 |===
 |Plugin version | APIM version
 
-|Up to 1.19.x        | Up to 3.9.x
-|1.20.x to 1.21.x    | 3.10.x to 3.14.x
-|1.22.x              | 3.15.x to 3.17.x
-|2.x                 | 3.18.x to 3.20
+|6.x                 | 4.6.x to latest
+|5.x                 | 4.4.x to 4.5.x
 |4.x                 | 4.0.x to 4.3.x
-|5.x                 | 4.4.x to latest
+|2.x                 | 3.18.x to 3.20
+|1.22.x              | 3.15.x to 3.17.x
+|1.20.x to 1.21.x    | 3.10.x to 3.14.x
+|Up to 1.19.x        | Up to 3.9.x
 |===
 
 === JWT
