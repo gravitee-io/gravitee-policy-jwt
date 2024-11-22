@@ -1,3 +1,10 @@
+# [6.0.0-alpha.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.2...6.0.0-alpha.3) (2024-11-22)
+
+
+### Bug Fixes
+
+* invoke callback and complete on auth failure ([3f64243](https://github.com/gravitee-io/gravitee-policy-jwt/commit/3f64243e2455609057d4b947c11c623c2cefdf07))
+
 # [6.0.0-alpha.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.1...6.0.0-alpha.2) (2024-11-13)
 
 
