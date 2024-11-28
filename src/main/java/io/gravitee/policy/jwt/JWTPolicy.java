@@ -52,6 +52,7 @@ import org.apache.kafka.common.security.oauthbearer.internals.secured.BasicOAuth
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.core.env.Environment;
 
 /**
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
@@ -60,6 +61,10 @@ import org.slf4j.MDC;
 public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaSecurityPolicy {
 
     public static final String CONTEXT_ATTRIBUTE_JWT = "jwt";
+
+    private static final String KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME = "kafka.oauthbearer.maxTokenLifetime";
+    private static final long DEFAULT_MAX_TOKEN_LIFETIME_MS = 60 * 60 * 1000L; // 1 hour
+
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
 
     private final JWTProcessorProvider jwtProcessorResolver;
@@ -130,10 +135,17 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                             Date expirationTime = jwtClaimsSet.getExpirationTime();
                             Date issueTime = jwtClaimsSet.getIssueTime();
 
+                            Environment environment = ctx.getComponent(Environment.class);
+                            long maxTokenLifetime = environment.getProperty(
+                                KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME,
+                                Long.class,
+                                DEFAULT_MAX_TOKEN_LIFETIME_MS
+                            );
+
                             OAuthBearerToken token = new BasicOAuthBearerToken(
                                 extractedToken,
                                 Set.of(), // Scopes are fully managed by Gravitee, it is useless to extract & provide them to the Kafka security context.
-                                (expirationTime == null ? Long.MAX_VALUE : expirationTime.getTime()),
+                                (expirationTime == null ? maxTokenLifetime : Math.min(maxTokenLifetime, expirationTime.getTime())),
                                 user != null ? user : "unknown",
                                 (issueTime == null ? null : issueTime.getTime())
                             );
