@@ -1,3 +1,10 @@
+# [6.0.0-alpha.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.3...6.0.0-alpha.4) (2024-11-29)
+
+
+### Features
+
+* set a max value for kafka token lifetime ([9195623](https://github.com/gravitee-io/gravitee-policy-jwt/commit/9195623d3e7d3a0f2863ad0837f8cfcdb6295ea3))
+
 # [6.0.0-alpha.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.2...6.0.0-alpha.3) (2024-11-22)
 
 
