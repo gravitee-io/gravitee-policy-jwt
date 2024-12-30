@@ -1,3 +1,15 @@
+# [6.0.0-alpha.5](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.4...6.0.0-alpha.5) (2024-12-30)
+
+
+### Bug Fixes
+
+* **deps:** bump apim version ([7999be1](https://github.com/gravitee-io/gravitee-policy-jwt/commit/7999be10ad558c09feda4c2446ba72de081afaa5))
+
+
+### Features
+
+* support custom token type header ([47e1918](https://github.com/gravitee-io/gravitee-policy-jwt/commit/47e19180b7cf95ca01172e0a844171c2a6ae141a))
+
 # [6.0.0-alpha.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.3...6.0.0-alpha.4) (2024-11-29)
 
 
