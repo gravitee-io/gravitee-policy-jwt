@@ -30,15 +30,15 @@
     <parent>
         <groupId>io.gravitee</groupId>
         <artifactId>gravitee-parent</artifactId>
-        <version>22.2.1</version>
+        <version>22.2.4</version>
     </parent>
 
     <properties>
         <gravitee-apim.version>4.6.0-SNAPSHOT</gravitee-apim.version>
 
-        <sshj.version>0.35.0</sshj.version>
-        <maven-plugin-assembly.version>3.6.0</maven-plugin-assembly.version>
-        <maven-plugin-properties.version>1.1.0</maven-plugin-properties.version>
+        <sshj.version>0.39.0</sshj.version>
+        <maven-plugin-assembly.version>3.7.1</maven-plugin-assembly.version>
+        <maven-plugin-properties.version>1.2.1</maven-plugin-properties.version>
 
         <!-- Property used by the publication job in CI-->
         <publish-folder-path>graviteeio-apim/plugins/policies</publish-folder-path>

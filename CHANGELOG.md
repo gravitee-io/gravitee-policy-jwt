@@ -41,6 +41,12 @@
 
 * requires APIM 4.6+
 
+# [5.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.1.0...5.2.0) (2024-11-07)
+
+### Features
+
+* support custom token type header ([47e1918](https://github.com/gravitee-io/gravitee-policy-jwt/commit/47e19180b7cf95ca01172e0a844171c2a6ae141a))
+
 # [5.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.0.0...5.1.0) (2024-10-25)
 
 
