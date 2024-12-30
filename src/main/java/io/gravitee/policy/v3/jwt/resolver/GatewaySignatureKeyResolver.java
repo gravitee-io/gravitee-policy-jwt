@@ -43,23 +43,21 @@ public class GatewaySignatureKeyResolver implements SignatureKeyResolver {
     }
 
     @Override
-    public String resolve() {
-        try {
-            final JWT jwt = JWTParser.parse(token);
-
-            final String iss = jwt.getJWTClaimsSet().getIssuer();
-            String keyId = ((JWSHeader) jwt.getHeader()).getKeyID();
-
-            if (keyId == null || keyId.isEmpty()) {
-                keyId = DEFAULT_KID;
-            }
-
-            String publicKey = environment.getProperty(String.format(KEY_PROPERTY, iss, keyId));
-            return (publicKey == null || publicKey.trim().isEmpty()) ? null : publicKey;
-        } catch (ParseException pe) {
-            LOGGER.debug("Unexpected error while parsing JWT", pe);
+    public String resolve() throws ParseException {
+        if (token == null || token.isEmpty()) {
+            return null;
         }
 
-        return null;
+        final JWT jwt = JWTParser.parse(token);
+
+        final String iss = jwt.getJWTClaimsSet().getIssuer();
+        String keyId = ((JWSHeader) jwt.getHeader()).getKeyID();
+
+        if (keyId == null || keyId.isEmpty()) {
+            keyId = DEFAULT_KID;
+        }
+
+        String publicKey = environment.getProperty(String.format(KEY_PROPERTY, iss, keyId));
+        return (publicKey == null || publicKey.trim().isEmpty()) ? null : publicKey;
     }
 }

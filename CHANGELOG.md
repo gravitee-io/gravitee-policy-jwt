@@ -1,5 +1,59 @@
-# [5.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.1.0...5.2.0) (2024-11-07)
+# [6.0.0-alpha.5](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.4...6.0.0-alpha.5) (2024-12-30)
 
+
+### Bug Fixes
+
+* **deps:** bump apim version ([7999be1](https://github.com/gravitee-io/gravitee-policy-jwt/commit/7999be10ad558c09feda4c2446ba72de081afaa5))
+
+
+### Features
+
+* support custom token type header ([47e1918](https://github.com/gravitee-io/gravitee-policy-jwt/commit/47e19180b7cf95ca01172e0a844171c2a6ae141a))
+
+# [6.0.0-alpha.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.3...6.0.0-alpha.4) (2024-11-29)
+
+
+### Features
+
+* set a max value for kafka token lifetime ([9195623](https://github.com/gravitee-io/gravitee-policy-jwt/commit/9195623d3e7d3a0f2863ad0837f8cfcdb6295ea3))
+
+# [6.0.0-alpha.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.2...6.0.0-alpha.3) (2024-11-22)
+
+
+### Bug Fixes
+
+* invoke callback and complete on auth failure ([3f64243](https://github.com/gravitee-io/gravitee-policy-jwt/commit/3f64243e2455609057d4b947c11c623c2cefdf07))
+
+# [6.0.0-alpha.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0-alpha.1...6.0.0-alpha.2) (2024-11-13)
+
+
+### Features
+
+* support custom token type header ([d08e658](https://github.com/gravitee-io/gravitee-policy-jwt/commit/d08e65834b2eaf111dc9bdeeaa54223160a10fa4))
+
+# [6.0.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.1.0...6.0.0-alpha.1) (2024-11-12)
+
+
+### Bug Fixes
+
+* use provided version of nimbus lib ([7063db4](https://github.com/gravitee-io/gravitee-policy-jwt/commit/7063db42c55cd6bd8a3021502f0bfaf03ce02f12))
+
+
+### Code Refactoring
+
+* use new HttpSecurityPolicy and BaseExecutionContext interface ([8f6270f](https://github.com/gravitee-io/gravitee-policy-jwt/commit/8f6270f8f22e06c972c141d12c28433b5da2f34e))
+
+
+### Features
+
+* implement kafka security policy ([f1db2f1](https://github.com/gravitee-io/gravitee-policy-jwt/commit/f1db2f1818a8cc60f8dfeace66a2c5a8d57bd600))
+
+
+### BREAKING CHANGES
+
+* requires APIM 4.6+
+
+# [5.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.1.0...5.2.0) (2024-11-07)
 
 ### Features
 

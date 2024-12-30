@@ -16,6 +16,7 @@
 package io.gravitee.policy.v3.jwt.resolver;
 
 import io.gravitee.el.TemplateEngine;
+import java.text.ParseException;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -32,7 +33,7 @@ public class TemplatableSignatureKeyResolver implements SignatureKeyResolver {
     }
 
     @Override
-    public String resolve() {
+    public String resolve() throws ParseException {
         String publicKey = keyResolver.resolve();
         return templateEngine.getValue(publicKey, String.class);
     }
