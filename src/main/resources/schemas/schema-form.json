@@ -70,6 +70,12 @@
             "type": "integer",
             "default": 2000
         },
+        "followRedirects": {
+            "title": "Follow HTTP redirects",
+            "description": "Only applies when the resolver is JWKS_URL",
+            "type": "boolean",
+            "default": false
+        },
         "useSystemProxy": {
             "title": "Use system proxy",
             "description": "Use system proxy (make sense only when resolver is set to JWKS_URL)",
