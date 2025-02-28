@@ -54,6 +54,9 @@ Both the header and payload are encoded with Base64, so anyone can read the cont
 
 |publicKeyResolver|X|Used to resolve the public key needed to validate the signature|enum|GIVEN_KEY
 |resolverParameter||Needed if you use the `GATEWAY_KEYS` or `GIVEN_ISSUER` resolver (EL support)|string|
+|connectTimeout||Max time to connect to the JWKS url (only useful when resolver is `JWKS_URL`)|integer|2000
+|requestTimeout||Max time to fetch the JWKS url (only useful when resolver is `JWKS_URL`)|integer|2000
+|followRedirects||Select this option if you want to automatically follow redirect (301, 302) when fecthing the JWKS (only useful when resolver is `JWKS_URL`)|boolean|false
 |useSystemProxy||Select this option if you want use system proxy (only useful when resolver is `JWKS_URL`)|boolean|false
 |extractClaims||Select this option if you want to extract claims into the request context|boolean|false
 |clientIdClaim||Required if the client_id should be read from non-standard claims (azp, aud, client_id)|string|
