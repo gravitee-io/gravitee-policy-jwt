@@ -33,6 +33,7 @@ public class RetrieveOptions {
     boolean useSystemProxy;
     Integer connectTimeout;
     Long requestTimeout;
+    boolean followRedirects;
 
     public int getConnectTimeout() {
         return Optional.ofNullable(connectTimeout).orElse(DEFAULT_CONNECT_TIMEOUT);

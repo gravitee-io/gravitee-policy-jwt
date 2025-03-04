@@ -48,6 +48,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
 
     private final int connectTimeout;
     private final long requestTimeout;
+    private final boolean followRedirects;
 
     public VertxResourceRetriever(final Vertx vertx, Configuration configuration, RetrieveOptions options) {
         this.vertx = vertx;
@@ -55,6 +56,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
         this.useSystemProxy = options.isUseSystemProxy();
         this.connectTimeout = options.getConnectTimeout();
         this.requestTimeout = options.getRequestTimeout();
+        this.followRedirects = options.isFollowRedirects();
     }
 
     @Override
@@ -85,7 +87,8 @@ public class VertxResourceRetriever implements ResourceRetriever {
         final RequestOptions requestOptions = new RequestOptions()
             .setMethod(HttpMethod.GET)
             .setAbsoluteURI(url.toString())
-            .setTimeout(requestTimeout);
+            .setTimeout(requestTimeout)
+            .setFollowRedirects(followRedirects);
 
         final Future<HttpClientRequest> futureRequest = httpClient.request(requestOptions);
 

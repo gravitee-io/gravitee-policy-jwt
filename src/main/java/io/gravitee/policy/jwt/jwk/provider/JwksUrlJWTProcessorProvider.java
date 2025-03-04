@@ -99,6 +99,7 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
                         .connectTimeout(configuration.getConnectTimeout())
                         .requestTimeout(configuration.getRequestTimeout())
                         .useSystemProxy(configuration.isUseSystemProxy())
+                        .followRedirects(configuration.getFollowRedirects())
                         .build()
                 );
         }

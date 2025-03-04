@@ -46,6 +46,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private boolean useSystemProxy;
     private Integer connectTimeout = 2000;
     private Long requestTimeout = 2000L;
+    private Boolean followRedirects = false;
     private ConfirmationMethodValidation confirmationMethodValidation = new ConfirmationMethodValidation();
     private TokenTypValidation tokenTypValidation = new TokenTypValidation();
 
