@@ -1,3 +1,10 @@
+# [6.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0...6.1.0) (2025-03-10)
+
+
+### Features
+
+* add option to follow http redirects ([a5efe2e](https://github.com/gravitee-io/gravitee-policy-jwt/commit/a5efe2e3d9645a3c039b32f59063c6ccfca6d19d))
+
 # [6.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/5.2.0...6.0.0) (2024-12-30)
 
 
