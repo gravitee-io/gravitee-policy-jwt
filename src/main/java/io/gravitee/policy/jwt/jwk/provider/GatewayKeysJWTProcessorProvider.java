@@ -90,15 +90,16 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
     private Map<String, List<JWK>> loadFromConfiguration(JWSAlgorithm alg, ConfigurableEnvironment environment) {
         return EnvironmentUtils
             .getPropertiesStartingWith(environment, KEY_PROPERTY_PREFIX)
-            .entrySet()
+            .keySet()
             .stream()
             .map(entry -> {
-                final Matcher matcher = KEY_PROPERTY_PATTERN.matcher(entry.getKey());
+                final Matcher matcher = KEY_PROPERTY_PATTERN.matcher(entry);
 
                 if (matcher.matches()) {
                     final String iss = matcher.group("iss");
                     final String kid = matcher.group("kid");
-                    final String key = (String) entry.getValue();
+                    // getProperty ensure that environment variable are considered during property resolution
+                    final String key = environment.getProperty(entry);
 
                     try {
                         return new SimpleEntry<>(iss, JWKBuilder.buildKey(kid, key, alg));
