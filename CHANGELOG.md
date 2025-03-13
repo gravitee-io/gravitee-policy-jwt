@@ -1,3 +1,10 @@
+## [4.2.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.2.0...4.2.1) (2025-03-13)
+
+
+### Bug Fixes
+
+* Properly resolve property value ([abbe179](https://github.com/gravitee-io/gravitee-policy-jwt/commit/abbe179fbd0c40f54fbb08cd9a83c6e865fdf154))
+
 # [4.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/4.1.5...4.2.0) (2024-10-25)
 
 
