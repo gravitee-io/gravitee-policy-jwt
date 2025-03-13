@@ -1,3 +1,10 @@
+## [6.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.0...6.1.1) (2025-03-13)
+
+
+### Bug Fixes
+
+* Properly resolve property value ([723382d](https://github.com/gravitee-io/gravitee-policy-jwt/commit/723382de91a580d5cf6be5d762ac9965579934f0))
+
 # [6.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.0.0...6.1.0) (2025-03-10)
 
 
