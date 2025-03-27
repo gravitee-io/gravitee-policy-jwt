@@ -295,6 +295,7 @@ public class JWTPolicyV3 {
                                 .connectTimeout(configuration.getConnectTimeout())
                                 .requestTimeout(configuration.getRequestTimeout())
                                 .useSystemProxy(configuration.isUseSystemProxy())
+                                .followRedirects(configuration.getFollowRedirects())
                                 .build()
                         )
                     )
