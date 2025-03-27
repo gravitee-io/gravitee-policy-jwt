@@ -1,3 +1,10 @@
+## [6.1.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.1...6.1.2) (2025-03-27)
+
+
+### Bug Fixes
+
+* follow http redirect on v2 api ([ca861ce](https://github.com/gravitee-io/gravitee-policy-jwt/commit/ca861ce0b95acc842933d7e103c2dcf2bc73447b))
+
 ## [6.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.0...6.1.1) (2025-03-13)
 
 
