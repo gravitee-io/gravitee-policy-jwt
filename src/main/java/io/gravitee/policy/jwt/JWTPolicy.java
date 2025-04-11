@@ -161,11 +161,9 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                             Date issueTime = jwtClaimsSet.getIssueTime();
 
                             Environment environment = ctx.getComponent(Environment.class);
-                            long maxTokenLifetime = environment.getProperty(
-                                KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME,
-                                Long.class,
-                                DEFAULT_MAX_TOKEN_LIFETIME_MS
-                            );
+                            long maxTokenLifetime =
+                                System.currentTimeMillis() +
+                                environment.getProperty(KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME, Long.class, DEFAULT_MAX_TOKEN_LIFETIME_MS);
 
                             OAuthBearerToken token = new BasicOAuthBearerToken(
                                 extractedToken,
