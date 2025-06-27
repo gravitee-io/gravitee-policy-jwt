@@ -115,6 +115,11 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         return handleSecurity(ctx)
             .flatMapCompletable(jwtClaimsSet ->
                 Completable.fromRunnable(() -> {
+                    Metrics metrics = ctx.metrics();
+                    metrics.setUser(ctx.getAttribute(ATTR_USER));
+                    metrics.setSecurityType(JWT);
+                    metrics.setSecurityToken(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID));
+
                     if (!configuration.isPropagateAuthHeader()) {
                         ctx.request().headers().remove(HttpHeaders.AUTHORIZATION);
                     }
@@ -265,10 +270,6 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
             user = claims.getSubject();
         }
         ctx.setAttribute(ATTR_USER, user);
-        Metrics metrics = ctx.metrics();
-        metrics.setUser(user);
-        metrics.setSecurityType(JWT);
-        metrics.setSecurityToken(clientId);
 
         if (configuration.isExtractClaims()) {
             ctx.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
@@ -288,10 +289,10 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private void reportError(BaseExecutionContext ctx, Throwable throwable) {
         if (throwable != null) {
-            ctx.metrics().setErrorMessage(throwable.getMessage());
+            if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+                ctx.metrics().setErrorMessage(throwable.getMessage());
 
-            if (log.isDebugEnabled()) {
-                if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+                if (log.isDebugEnabled()) {
                     try {
                         final HttpPlainRequest request = httpPlainExecutionContext.request();
                         final String api = ctx.getAttribute(ATTR_API);

@@ -158,6 +158,8 @@ class JWTPolicyTest {
         when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
         when(ctx.request()).thenReturn(request);
         when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(expectedClientId);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn(expectedSubject);
         when(request.headers()).thenReturn(headers);
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
@@ -183,6 +185,8 @@ class JWTPolicyTest {
         when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
         when(ctx.request()).thenReturn(request);
         when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
         when(request.headers()).thenReturn(headers);
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
@@ -212,6 +216,8 @@ class JWTPolicyTest {
         when(ctx.metrics()).thenReturn(metrics);
         when(request.headers()).thenReturn(headers);
         when(configuration.isExtractClaims()).thenReturn(true);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
         obs.assertComplete();
