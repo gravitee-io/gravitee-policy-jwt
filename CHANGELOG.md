@@ -1,3 +1,10 @@
+## [6.1.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.2...6.1.3) (2025-06-30)
+
+
+### Bug Fixes
+
+* condition `.metrics()` use only if ctx is http ([cac9b37](https://github.com/gravitee-io/gravitee-policy-jwt/commit/cac9b37038bf0e19b1b7032d05c4af66385d322a))
+
 ## [6.1.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.1...6.1.2) (2025-03-27)
 
 
