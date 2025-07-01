@@ -290,12 +290,12 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     private void reportError(BaseExecutionContext ctx, Throwable throwable) {
         if (throwable != null) {
             if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
-                ctx.metrics().setErrorMessage(throwable.getMessage());
+                httpPlainExecutionContext.metrics().setErrorMessage(throwable.getMessage());
 
                 if (log.isDebugEnabled()) {
                     try {
                         final HttpPlainRequest request = httpPlainExecutionContext.request();
-                        final String api = ctx.getAttribute(ATTR_API);
+                        final String api = httpPlainExecutionContext.getAttribute(ATTR_API);
                         MDC.put("api", api);
 
                         log.debug(
