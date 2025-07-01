@@ -1,3 +1,11 @@
+## [6.1.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.3...6.1.4) (2025-07-01)
+
+
+### Bug Fixes
+
+* bump gravitee-parent ([164afa8](https://github.com/gravitee-io/gravitee-policy-jwt/commit/164afa8b95fa74efbe30f150465848b1346454d6))
+* condition `.metrics()` use only if ctx is http ([acd3f04](https://github.com/gravitee-io/gravitee-policy-jwt/commit/acd3f0435de83e8204d722df41dae0fc7bf897ff))
+
 ## [6.1.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.2...6.1.3) (2025-06-30)
 
 
