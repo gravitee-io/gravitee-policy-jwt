@@ -1,3 +1,10 @@
+## [6.1.5](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.4...6.1.5) (2025-07-17)
+
+
+### Bug Fixes
+
+* Add support for trust_all ([6e292c1](https://github.com/gravitee-io/gravitee-policy-jwt/commit/6e292c1732aff58b0243c5fc2be3abd637c1c8c9))
+
 ## [6.1.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.3...6.1.4) (2025-07-01)
 
 
