@@ -105,7 +105,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
         }
 
         if (HTTPS_SCHEME.equalsIgnoreCase(url.getProtocol())) {
-            options.setSsl(true);
+            options.setSsl(true).setTrustAll(true);
         }
 
         return vertx.createHttpClient(options);
