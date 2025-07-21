@@ -25,9 +25,9 @@ import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.node.api.configuration.Configuration;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
+import io.gravitee.policy.jwt.contentretriever.vertx.VertxContentRetriever;
 import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
-import io.gravitee.policy.jwt.jwk.source.ResourceRetriever;
-import io.gravitee.policy.jwt.jwk.source.VertxResourceRetriever;
 import io.gravitee.policy.jwt.utils.TokenTypeVerifierFactory;
 import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.reactivex.rxjava3.core.Maybe;
@@ -46,7 +46,7 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
     private static final Duration JWKS_REFRESH_INTERVAL = Duration.ofMinutes(5);
 
     private final JWTPolicyConfiguration configuration;
-    private ResourceRetriever resourceRetriever;
+    private ContentRetriever contentRetriever;
 
     public JwksUrlJWTProcessorProvider(final JWTPolicyConfiguration configuration) {
         this.configuration = configuration;
@@ -88,10 +88,10 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
         return sourceResolver.initialize().andThen(Maybe.just(jwtProcessor));
     }
 
-    private ResourceRetriever getResourceRetriever(BaseExecutionContext ctx) {
-        if (resourceRetriever == null) {
-            resourceRetriever =
-                new VertxResourceRetriever(
+    private ContentRetriever getResourceRetriever(BaseExecutionContext ctx) {
+        if (contentRetriever == null) {
+            contentRetriever =
+                new VertxContentRetriever(
                     ctx.getComponent(Vertx.class),
                     ctx.getComponent(Configuration.class),
                     RetrieveOptions
@@ -100,10 +100,11 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
                         .requestTimeout(configuration.getRequestTimeout())
                         .useSystemProxy(configuration.isUseSystemProxy())
                         .followRedirects(configuration.getFollowRedirects())
-                        .build()
+                        .build(),
+                    null
                 );
         }
 
-        return resourceRetriever;
+        return contentRetriever;
     }
 }

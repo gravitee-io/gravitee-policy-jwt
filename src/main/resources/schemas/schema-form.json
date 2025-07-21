@@ -1,6 +1,42 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
+    "definitions": {
+        "authConfigurationBasic": {
+            "type": "object",
+            "title": "Basic authentication configuration",
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "title": "Username",
+                    "description": "Username which will be added to Authorization header in format 'basic user:password'",
+                    "minLength": 1
+                },
+                "password": {
+                    "type": "string",
+                    "title": "Password",
+                    "description": "Password which will be added to Authorization header in format 'basic user:password'",
+                    "minLength": 1,
+                    "format": "password"
+                }
+            },
+            "required": ["username", "password"]
+        },
+        "authConfigurationToken": {
+            "type": "object",
+            "title": "Token authentication configuration",
+            "properties": {
+                "value": {
+                    "type": "string",
+                    "title": "Token value",
+                    "description": "Token value which will be added to Authorization header in format 'bearer <token value>'",
+                    "minLength": 1,
+                    "format": "password"
+                }
+            },
+            "required": ["value"]
+        }
+    },
     "properties": {
         "signature": {
             "title": "Signature",
@@ -176,6 +212,99 @@
                 }
             },
             "additionalProperties": false
+        },
+        "revocationCheck": {
+            "title": "Revocation Check",
+            "description": "Define revocation check details. If enabled, will check the configured claim of the token against a cached revocation list and deny if a match is found. Disabled by default.",
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "title": "Enable revocation check",
+                    "description": "Will check if the token has been revoked. Default is false.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "revocationClaim": {
+                    "title": "Revocation claim",
+                    "description": "The string claim which will be checked against the revocation list. Default is 'jti'.",
+                    "type": "string",
+                    "default": "jti"
+                },
+                "revocationListUrl": {
+                    "title": "Revocation list URL",
+                    "description": "The URL of the revocation list including protocol, should return a new line seperated list of strings, content type text/plain. No default is provided, required if enabled.",
+                    "type": "string"
+                },
+                "refreshInterval": {
+                    "title": "Revocation list refresh interval",
+                    "description": "The refresh interval in seconds for the cached revocation list. Default is 300.",
+                    "type": "integer",
+                    "default": 300
+                },
+                "connectTimeout": {
+                    "title": "Revocation list connect timeout",
+                    "description": "The connect timeout in milliseconds for retrieving the revocation list. Default is 2000.",
+                    "type": "integer",
+                    "default": 2000
+                },
+                "requestTimeout": {
+                    "title": "Revocation list request timeout",
+                    "description": "The request timeout in milliseconds for retrieving the revocation list. Default is 2000.",
+                    "type": "integer",
+                    "default": 2000
+                },
+                "followRedirects": {
+                    "title": "Revocation list follow redirects",
+                    "description": "If should follow redirects for revocation list requests. Default is false.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "useSystemProxy": {
+                    "title": "Revocation list use system proxy",
+                    "description": "If should use system proxy for revocation list requests. Default is false.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "auth": {
+                    "type": "object",
+                    "title": "Revocation list security configuration",
+                    "oneOf": [
+                        {
+                            "title": "No security",
+                            "properties": {
+                                "type": {
+                                    "const": "none"
+                                }
+                            }
+                        },
+                        {
+                            "title": "Basic security",
+                            "properties": {
+                                "type": {
+                                    "const": "basic"
+                                },
+                                "basic": {
+                                    "$ref": "#/definitions/authConfigurationBasic"
+                                }
+                            },
+                            "required": ["basic"]
+                        },
+                        {
+                            "title": "Token security",
+                            "properties": {
+                                "type": {
+                                    "const": "token"
+                                },
+                                "token": {
+                                    "$ref": "#/definitions/authConfigurationToken"
+                                }
+                            },
+                            "required": ["token"]
+                        }
+                    ]
+                },
+                "additionalProperties": false
+            }
         }
     },
     "required": ["signature", "publicKeyResolver"],

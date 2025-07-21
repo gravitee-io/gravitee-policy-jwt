@@ -25,14 +25,14 @@ import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jose.util.Resource;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.contentretriever.Content;
+import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
 import io.gravitee.policy.jwt.jwk.AbstractJWKTest;
-import io.gravitee.policy.jwt.jwk.source.ResourceRetriever;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.observers.TestObserver;
 import java.security.KeyPair;
@@ -66,7 +66,7 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
     private BaseExecutionContext ctx;
 
     @Mock
-    private ResourceRetriever resourceRetriever;
+    private ContentRetriever contentRetriever;
 
     @ParameterizedTest
     @MethodSource("provideRSAParameters")
@@ -76,13 +76,13 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         final RSAKey rsaKey = (RSAKey) jwkSet.getKeys().get(0);
         final String jwt = generateJWT(rsaKey, "gravitee0.io", "key0");
 
-        when(resourceRetriever.retrieve(jwksUrl))
-            .thenReturn(Single.just(new Resource(jwkSet.toPublicJWKSet().toString(), "application/json")));
+        when(contentRetriever.retrieve(jwksUrl))
+            .thenReturn(Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json")));
         when(configuration.getSignature()).thenReturn(signature);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
-        ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
+        ReflectionTestUtils.setField(cut, "contentRetriever", contentRetriever);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
 
         obs.assertComplete();
@@ -103,13 +103,13 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         final RSAKey rsaKey = (RSAKey) jwkSet.getKeys().get(jwkSet.getKeys().size() - 1);
         final String jwt = generateJWT(rsaKey, "gravitee1.io", "key1");
 
-        when(resourceRetriever.retrieve(jwksUrl))
-            .thenReturn(Single.just(new Resource(jwkSet.toPublicJWKSet().toString(), "application/json")));
+        when(contentRetriever.retrieve(jwksUrl))
+            .thenReturn(Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json")));
         when(configuration.getSignature()).thenReturn(signature);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
-        ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
+        ReflectionTestUtils.setField(cut, "contentRetriever", contentRetriever);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
 
         obs.assertComplete();
@@ -130,12 +130,12 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         final OctetSequenceKey hmacKey = (OctetSequenceKey) jwkSet.getKeys().get(jwkSet.getKeys().size() - 1);
         final String jwt = generateJWT(hmacKey.toByteArray(), signature.getAlg(), "gravitee1.io", "key1");
 
-        when(resourceRetriever.retrieve(jwksUrl)).thenReturn(Single.just(new Resource(jwkSet.toString(false), "application/json")));
+        when(contentRetriever.retrieve(jwksUrl)).thenReturn(Single.just(new Content(jwkSet.toString(false), "application/json")));
         when(configuration.getSignature()).thenReturn(signature);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
-        ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
+        ReflectionTestUtils.setField(cut, "contentRetriever", contentRetriever);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
 
         obs.assertComplete();
@@ -155,13 +155,13 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         final RSAKey rsaKey = (RSAKey) jwkSet.getKeys().get(0);
         final String jwt = generateJWT(rsaKey, "gravitee1.io", "invalid");
 
-        when(resourceRetriever.retrieve(jwksUrl))
-            .thenReturn(Single.just(new Resource(jwkSet.toPublicJWKSet().toString(), "application/json")));
+        when(contentRetriever.retrieve(jwksUrl))
+            .thenReturn(Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json")));
         when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
-        ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
+        ReflectionTestUtils.setField(cut, "contentRetriever", contentRetriever);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
 
         obs.assertComplete();
@@ -176,12 +176,12 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
 
     @Test
     void shouldErrorWhenErrorOccurredWhenRetrievingJWKS() throws Exception {
-        when(resourceRetriever.retrieve(JWKS_URL)).thenReturn(Single.error(new RuntimeException(MOCK_EXCEPTION)));
+        when(contentRetriever.retrieve(JWKS_URL)).thenReturn(Single.error(new RuntimeException(MOCK_EXCEPTION)));
         when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(JWKS_URL);
 
         final JwksUrlJWTProcessorProvider cut = new JwksUrlJWTProcessorProvider(configuration);
-        ReflectionTestUtils.setField(cut, "resourceRetriever", resourceRetriever);
+        ReflectionTestUtils.setField(cut, "contentRetriever", contentRetriever);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
 
         obs.assertError(throwable -> MOCK_EXCEPTION.equals(throwable.getMessage()));

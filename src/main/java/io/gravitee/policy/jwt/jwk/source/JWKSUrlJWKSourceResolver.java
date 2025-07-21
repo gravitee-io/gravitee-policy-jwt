@@ -23,6 +23,8 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.Resource;
+import io.gravitee.policy.jwt.contentretriever.Content;
+import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -49,18 +51,18 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
     private final String jwksUrl;
     private final Duration refreshInterval;
     private final AtomicBoolean refreshing;
-    private final ResourceRetriever resourceRetriever;
+    private final ContentRetriever contentRetriever;
 
     /**
      * Global cache allowing to share jwk source across the whole platform and avoid re-loading the same JWKS url multiple times.
      */
     static final ConcurrentHashMap<String, CachedJWKSource<SecurityContext>> cache = new ConcurrentHashMap<>();
 
-    public JWKSUrlJWKSourceResolver(String jwksUrl, ResourceRetriever resourceRetriever, Duration refreshInterval) {
+    public JWKSUrlJWKSourceResolver(String jwksUrl, ContentRetriever contentRetriever, Duration refreshInterval) {
         this.jwksUrl = jwksUrl;
         this.refreshInterval = refreshInterval;
         this.refreshing = new AtomicBoolean(false);
-        this.resourceRetriever = resourceRetriever;
+        this.contentRetriever = contentRetriever;
     }
 
     @Override
@@ -89,7 +91,7 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
 
     private Completable load() {
         if (refreshing.compareAndSet(false, true)) {
-            return resourceRetriever
+            return contentRetriever
                 .retrieve(jwksUrl)
                 .flatMapMaybe(this::readJwkSourceFromResource)
                 .map(CachedJWKSource::new)
@@ -115,9 +117,9 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
             );
     }
 
-    private Maybe<JWKSource<SecurityContext>> readJwkSourceFromResource(Resource resource) {
+    private Maybe<JWKSource<SecurityContext>> readJwkSourceFromResource(Content content) {
         try {
-            JWKSet parsedJWKSet = JWKSet.parse(resource.getContent());
+            JWKSet parsedJWKSet = JWKSet.parse(content.content());
             ImmutableJWKSet<SecurityContext> jwkSet = new ImmutableJWKSet<>(parsedJWKSet);
             return Maybe.just(jwkSet);
         } catch (ParseException e) {
