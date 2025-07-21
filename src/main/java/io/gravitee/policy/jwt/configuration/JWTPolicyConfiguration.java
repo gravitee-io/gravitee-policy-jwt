@@ -49,6 +49,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private Boolean followRedirects = false;
     private ConfirmationMethodValidation confirmationMethodValidation = new ConfirmationMethodValidation();
     private TokenTypValidation tokenTypValidation = new TokenTypValidation();
+    private RevocationCheckConfiguration revocationCheck = new RevocationCheckConfiguration();
 
     @NoArgsConstructor
     @AllArgsConstructor

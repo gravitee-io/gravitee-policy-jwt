@@ -34,6 +34,8 @@ import io.gravitee.gateway.reactive.api.policy.kafka.KafkaSecurityPolicy;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
+import io.gravitee.policy.jwt.revocation.RevocationChecker;
+import io.gravitee.policy.jwt.revocation.RevocationCheckerFactory;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
 import io.gravitee.policy.v3.jwt.JWTPolicyV3;
 import io.gravitee.reporter.api.v4.metric.Metrics;
@@ -64,10 +66,13 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private static final String KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME = "kafka.oauthbearer.maxTokenLifetime";
     private static final long DEFAULT_MAX_TOKEN_LIFETIME_MS = 60 * 60 * 1000L; // 1 hour
+    public static final String JWT_REVOKED = "JWT_REVOKED";
 
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
 
     private final JWTProcessorProvider jwtProcessorResolver;
+
+    private RevocationChecker revocationChecker;
 
     public JWTPolicy(JWTPolicyConfiguration configuration) {
         super(configuration);
@@ -219,6 +224,27 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         return Single.just(new LazyJWT(token.get()));
     }
 
+    private Single<JWTClaimsSet> validateRevocation(BaseExecutionContext ctx, JWTClaimsSet claims) {
+        if (this.configuration.getRevocationCheck() == null || !this.configuration.getRevocationCheck().isEnabled()) {
+            return Single.just(claims);
+        }
+
+        try {
+            if (this.revocationChecker == null) {
+                this.revocationChecker = RevocationCheckerFactory.create(this.configuration.getRevocationCheck(), ctx);
+            }
+
+            if (this.revocationChecker.isRevoked(claims)) {
+                return interruptUnauthorized(ctx, JWT_REVOKED);
+            }
+
+            return Single.just(claims);
+        } catch (Exception e) {
+            log.warn("Error during revocation check, skipping revocation check", e);
+            return Single.just(claims);
+        }
+    }
+
     private Single<JWTClaimsSet> validateToken(BaseExecutionContext ctx, LazyJWT jwt) {
         return jwtProcessorResolver
             .provide(ctx)
@@ -232,26 +258,32 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                     return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY);
                 }
 
-                // FIXME: Kafka Gateway - https://gravitee.atlassian.net/browse/APIM-7523
-                if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
-                    // Validate confirmation method
-                    JWTPolicyConfiguration.ConfirmationMethodValidation confirmationMethodValidation =
-                        configuration.getConfirmationMethodValidation();
-                    if (confirmationMethodValidation != null && confirmationMethodValidation.getCertificateBoundThumbprint().isEnabled()) {
-                        if (
-                            !isValidCertificateThumbprint(
-                                jwtClaimsSet,
-                                httpPlainExecutionContext.request().tlsSession(),
-                                httpPlainExecutionContext.request().headers(),
-                                confirmationMethodValidation.isIgnoreMissing(),
-                                confirmationMethodValidation.getCertificateBoundThumbprint()
-                            )
-                        ) {
-                            return interruptUnauthorized(httpPlainExecutionContext, JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT);
+                return validateRevocation(ctx, jwtClaimsSet)
+                    .flatMap(claims -> {
+                        // FIXME: Kafka Gateway - https://gravitee.atlassian.net/browse/APIM-7523
+                        if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+                            // Validate confirmation method
+                            JWTPolicyConfiguration.ConfirmationMethodValidation confirmationMethodValidation =
+                                configuration.getConfirmationMethodValidation();
+                            if (
+                                confirmationMethodValidation != null &&
+                                confirmationMethodValidation.getCertificateBoundThumbprint().isEnabled()
+                            ) {
+                                if (
+                                    !isValidCertificateThumbprint(
+                                        claims,
+                                        httpPlainExecutionContext.request().tlsSession(),
+                                        httpPlainExecutionContext.request().headers(),
+                                        confirmationMethodValidation.isIgnoreMissing(),
+                                        confirmationMethodValidation.getCertificateBoundThumbprint()
+                                    )
+                                ) {
+                                    return interruptUnauthorized(httpPlainExecutionContext, JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT);
+                                }
+                            }
                         }
-                    }
-                }
-                return Single.just(jwtClaimsSet);
+                        return Single.just(claims);
+                    });
             })
             .toSingle();
     }

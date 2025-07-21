@@ -32,6 +32,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.Resource;
 import io.gravitee.policy.jwt.alg.Signature;
+import io.gravitee.policy.jwt.contentretriever.Content;
+import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
 import io.gravitee.policy.jwt.jwk.AbstractJWKTest;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.observers.TestObserver;
@@ -62,7 +64,7 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
     protected static final String MOCK_EXCEPTION = "Mock exception";
 
     @Mock
-    private ResourceRetriever resourceRetriever;
+    private ContentRetriever contentRetriever;
 
     private String jwksUrl;
 
@@ -73,17 +75,17 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
         JWKSUrlJWKSourceResolver.cache.clear();
 
         jwksUrl = JWKS_URL.replace("{type}", UUID.randomUUID().toString());
-        cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, resourceRetriever, REFRESH_INTERVAL);
+        cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, contentRetriever, REFRESH_INTERVAL);
     }
 
     @Test
     void shouldLoadAndCacheWhenFirstInitialize() {
         final String jwksUrl = JWKS_URL.replace("{type}", UUID.randomUUID().toString());
-        final Resource resource = new Resource(generateJWKS(), "application/json");
+        final Content content = new Content(generateJWKS(), "application/json");
 
-        when(resourceRetriever.retrieve(jwksUrl)).thenReturn(Single.just(resource));
+        when(contentRetriever.retrieve(jwksUrl)).thenReturn(Single.just(content));
 
-        final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, resourceRetriever, REFRESH_INTERVAL);
+        final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, contentRetriever, REFRESH_INTERVAL);
         final TestObserver<Void> obs = cut.initialize().test();
         obs.assertComplete();
 
@@ -99,11 +101,11 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
 
         JWKSUrlJWKSourceResolver.cache.put(jwksUrl, jwkSource);
 
-        final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, resourceRetriever, REFRESH_INTERVAL);
+        final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, contentRetriever, REFRESH_INTERVAL);
         final TestObserver<Void> obs = cut.initialize().test();
         obs.assertComplete();
 
-        verifyNoInteractions(resourceRetriever);
+        verifyNoInteractions(contentRetriever);
     }
 
     @Test
@@ -117,10 +119,10 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
         JWKSUrlJWKSourceResolver.cache.put(jwksUrl, jwkSource);
         when(jwkSource.isCacheExpired(any(Duration.class))).thenReturn(false);
 
-        final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, resourceRetriever, REFRESH_INTERVAL);
+        final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, contentRetriever, REFRESH_INTERVAL);
 
         assertEquals(jwkList, cut.get(jwkSelector, null));
-        verifyNoInteractions(resourceRetriever);
+        verifyNoInteractions(contentRetriever);
     }
 
     @Test
@@ -130,10 +132,10 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
             final CachedJWKSource<SecurityContext> jwkSource = mock(CachedJWKSource.class);
             final JWKSelector jwkSelector = mock(JWKSelector.class);
             final List<JWK> jwkList = Collections.emptyList();
-            final Resource resource = new Resource(generateJWKS(), "application/json");
+            final Content content = new Content(generateJWKS(), "application/json");
 
             when(jwkSource.get(jwkSelector, null)).thenReturn(jwkList);
-            when(resourceRetriever.retrieve(jwksUrl)).thenReturn(Single.just(resource));
+            when(contentRetriever.retrieve(jwksUrl)).thenReturn(Single.just(content));
             JWKSUrlJWKSourceResolver.cache.put(jwksUrl, jwkSource);
             when(jwkSource.isCacheExpired(any(Duration.class))).thenReturn(true);
 
@@ -143,7 +145,7 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
 
             final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(
                 jwksUrl,
-                resourceRetriever,
+                contentRetriever,
                 REFRESH_INTERVAL
             );
 
@@ -153,7 +155,7 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
             testScheduler.triggerActions();
 
             // Background refresh occurred.
-            verify(resourceRetriever).retrieve(jwksUrl);
+            verify(contentRetriever).retrieve(jwksUrl);
         } finally {
             RxJavaPlugins.reset();
         }
@@ -166,10 +168,10 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
             final CachedJWKSource<SecurityContext> jwkSource = mock(CachedJWKSource.class);
             final JWKSelector jwkSelector = mock(JWKSelector.class);
             final List<JWK> jwkList = Collections.emptyList();
-            final Resource resource = new Resource(generateJWKS(), "application/json");
+            final Content content = new Content(generateJWKS(), "application/json");
 
             when(jwkSource.get(jwkSelector, null)).thenReturn(jwkList);
-            when(resourceRetriever.retrieve(jwksUrl)).thenReturn(Single.just(resource));
+            when(contentRetriever.retrieve(jwksUrl)).thenReturn(Single.just(content));
             JWKSUrlJWKSourceResolver.cache.put(jwksUrl, jwkSource);
             when(jwkSource.isCacheExpired(any(Duration.class))).thenReturn(true);
 
@@ -179,7 +181,7 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
 
             final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(
                 jwksUrl,
-                resourceRetriever,
+                contentRetriever,
                 REFRESH_INTERVAL
             );
 
@@ -191,7 +193,7 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
             testScheduler.triggerActions();
 
             // Only 1 background refresh occurred.
-            verify(resourceRetriever, times(1)).retrieve(jwksUrl);
+            verify(contentRetriever, times(1)).retrieve(jwksUrl);
         } finally {
             RxJavaPlugins.reset();
         }
@@ -204,12 +206,12 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
             final CachedJWKSource<SecurityContext> jwkSource = mock(CachedJWKSource.class);
             final JWKSelector jwkSelector = mock(JWKSelector.class);
             final List<JWK> jwkList = Collections.emptyList();
-            final Resource resource = new Resource("BAD JWKS", "application/json");
+            final Content content = new Content("BAD JWKS", "application/json");
 
             when(jwkSource.get(jwkSelector, null)).thenReturn(jwkList);
             when(jwkSource.isCacheExpired(any(Duration.class))).thenReturn(true);
 
-            when(resourceRetriever.retrieve(jwksUrl)).thenReturn(Single.just(resource));
+            when(contentRetriever.retrieve(jwksUrl)).thenReturn(Single.just(content));
             JWKSUrlJWKSourceResolver.cache.put(jwksUrl, jwkSource);
 
             // Background refresh is made on IO schedulers, fake it to get fine control.
@@ -218,7 +220,7 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
 
             final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(
                 jwksUrl,
-                resourceRetriever,
+                contentRetriever,
                 REFRESH_INTERVAL
             );
 
@@ -228,7 +230,7 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
             testScheduler.triggerActions();
 
             // Background refresh occurred.
-            verify(resourceRetriever, times(1)).retrieve(jwksUrl);
+            verify(contentRetriever, times(1)).retrieve(jwksUrl);
         } finally {
             RxJavaPlugins.reset();
         }
@@ -239,10 +241,10 @@ class JWKSUrlJWKSourceResolverTest extends AbstractJWKTest {
         final String jwksUrl = JWKS_URL.replace("{type}", UUID.randomUUID().toString());
         final JWKSelector jwkSelector = mock(JWKSelector.class);
 
-        final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, resourceRetriever, REFRESH_INTERVAL);
+        final JWKSUrlJWKSourceResolver<SecurityContext> cut = new JWKSUrlJWKSourceResolver<>(jwksUrl, contentRetriever, REFRESH_INTERVAL);
 
         assertEquals(Collections.emptyList(), cut.get(jwkSelector, null));
-        verifyNoInteractions(resourceRetriever);
+        verifyNoInteractions(contentRetriever);
     }
 
     private String generateJWKS() {

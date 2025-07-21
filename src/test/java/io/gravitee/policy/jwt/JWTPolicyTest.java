@@ -24,6 +24,7 @@ import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID
 import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_TOKEN;
 import static io.gravitee.policy.jwt.JWTPolicy.JWT_INVALID_TOKEN_KEY;
 import static io.gravitee.policy.jwt.JWTPolicy.JWT_MISSING_TOKEN_KEY;
+import static io.gravitee.policy.jwt.JWTPolicy.JWT_REVOKED;
 import static io.gravitee.policy.jwt.JWTPolicy.UNAUTHORIZED_MESSAGE;
 import static io.gravitee.reporter.api.http.SecurityType.JWT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,7 +54,9 @@ import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.configuration.RevocationCheckConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
+import io.gravitee.policy.jwt.revocation.RevocationChecker;
 import io.gravitee.reporter.api.v4.metric.Metrics;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
@@ -111,12 +114,16 @@ class JWTPolicyTest {
     @Mock
     private HttpPlainRequest request;
 
+    @Mock
+    private RevocationChecker revocationChecker;
+
     private JWTPolicy cut;
 
     @BeforeEach
     void init() {
         cut = new JWTPolicy(configuration);
         ReflectionTestUtils.setField(cut, "jwtProcessorResolver", jwtProcessorResolver);
+        ReflectionTestUtils.setField(cut, "revocationChecker", revocationChecker);
     }
 
     private static Stream<Arguments> provideClientIdParameters() {
@@ -131,7 +138,7 @@ class JWTPolicyTest {
 
     @ParameterizedTest
     @MethodSource("provideClientIdParameters")
-    void shouldVerifyTokenWithClientId(String clientIdField, String expectedClientId, String expectedSubject)
+    void should_verify_token_with_client_id(String clientIdField, String expectedClientId, String expectedSubject)
         throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
@@ -170,7 +177,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldVerifyTokenFromRequest() throws BadJOSEException, JOSEException {
+    void should_verify_token_from_request() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -196,16 +203,14 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldVerifyTokenAndExtractClaimsWhenExtractClaimsIsConfigured() throws BadJOSEException, JOSEException {
+    void should_verify_token_and_extract_claims_when_extract_claims_is_configured() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
             .issuer(ISSUER)
             .subject(STANDARD_SUBJECT)
             .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
-            .claim("Claim1", "ClaimValue1")
-            .claim("Claim2", "ClaimValue2")
-            .claim("Claim3", "ClaimValue3")
+            .jwtID("jwtId")
             .expirationTime(new Date(System.currentTimeMillis() + 3600000))
             .build();
 
@@ -227,7 +232,84 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401MissingTokenInterruptionWhenNoAuthorizationHeader() {
+    void should_verify_token_and_check_revocation_when_revocation_check_is_configured() throws BadJOSEException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
+            .jwtID("testJti") // Adding jwtID for revocation check
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.isExtractClaims()).thenReturn(true);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
+
+        // Configure revocation check
+        RevocationCheckConfiguration revocationCheckConfiguration = mock(RevocationCheckConfiguration.class);
+        when(configuration.getRevocationCheck()).thenReturn(revocationCheckConfiguration);
+        when(revocationCheckConfiguration.isEnabled()).thenReturn(true);
+        when(revocationChecker.isRevoked(claimsSet)).thenReturn(false);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verify(revocationChecker).isRevoked(claimsSet);
+        verifyMetricsAttributesAndHeaders(metrics, headers, CLIENT_ID, STANDARD_SUBJECT);
+        verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claimsSet.getClaims());
+    }
+
+    @Test
+    void should_error_with_401_if_revocation_claim_is_revoked_and_revocation_check_is_configured() throws BadJOSEException, JOSEException {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
+            .jwtID("revokedJti") // Adding revoked jwtID
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+
+        // Configure revocation check to fail
+        RevocationCheckConfiguration revocationCheckConfiguration = mock(RevocationCheckConfiguration.class);
+        when(configuration.getRevocationCheck()).thenReturn(revocationCheckConfiguration);
+        when(revocationCheckConfiguration.isEnabled()).thenReturn(true);
+        when(revocationChecker.isRevoked(claimsSet)).thenReturn(true);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(revocationChecker).isRevoked(claimsSet);
+        verify(ctx)
+            .interruptWith(
+                argThat(failure -> {
+                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                    assertEquals(JWT_REVOKED, failure.key());
+                    assertNull(failure.parameters());
+                    assertNull(failure.contentType());
+                    return true;
+                })
+            );
+    }
+
+    @Test
+    void should_error_with_401_missing_token_interruption_when_no_authorization_header() {
         final HttpHeaders headers = mock(HttpHeaders.class);
         when(ctx.request()).thenReturn(request);
         when(request.headers()).thenReturn(headers);
@@ -251,7 +333,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401MissingTokenInterruptionWhenNoToken() {
+    void should_error_with_401_missing_token_interruption_when_no_token() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(Collections.emptyList());
@@ -277,7 +359,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401InvaliTokenInterruptionWhenTokenEmpty() {
+    void should_error_with_401_invalid_token_interruption_when_token_empty() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer "));
@@ -303,7 +385,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401InvalidTokenInterruptionWhenTokenRejected() throws BadJOSEException, JOSEException {
+    void should_error_with_401_invalid_token_interruption_when_token_rejected() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
 
         final HttpHeaders headers = mock(HttpHeaders.class);
@@ -337,22 +419,22 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldReturnOrder0() {
+    void should_return_order_0() {
         assertEquals(0, cut.order());
     }
 
     @Test
-    void shouldReturnJWTPolicyId() {
+    void should_return_jwt_policy_id() {
         assertEquals("jwt", cut.id());
     }
 
     @Test
-    void shouldValidateSubscription() {
+    void should_validate_subscription() {
         assertTrue(cut.requireSubscription());
     }
 
     @Test
-    void extractSecurityToken_shouldReturnSecurityToken_whenTokenIsPresent() {
+    void extractSecurityToken_should_return_securityToken_when_token_is_present() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);
@@ -368,7 +450,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void extractSecurityToken_shouldReturnInvalidSecurityToken_whenTokenContainsNoClientId() {
+    void extractSecurityToken_should_return_invalid_securityToken_when_token_contains_no_clientId() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);
@@ -388,7 +470,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void extractSecurityToken_shouldReturnEmpty_whenTokenIsAbsent() {
+    void extractSecurityToken_should_return_empty_when_token_is_absent() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);
