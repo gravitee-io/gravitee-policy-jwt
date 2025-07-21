@@ -24,6 +24,7 @@ import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID
 import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_TOKEN;
 import static io.gravitee.policy.jwt.JWTPolicy.JWT_INVALID_TOKEN_KEY;
 import static io.gravitee.policy.jwt.JWTPolicy.JWT_MISSING_TOKEN_KEY;
+import static io.gravitee.policy.jwt.JWTPolicy.JWT_REVOKED;
 import static io.gravitee.policy.jwt.JWTPolicy.UNAUTHORIZED_MESSAGE;
 import static io.gravitee.reporter.api.http.SecurityType.JWT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,6 +55,7 @@ import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
+import io.gravitee.policy.jwt.revocation.RevocationCheck;
 import io.gravitee.reporter.api.v4.metric.Metrics;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
@@ -111,12 +113,16 @@ class JWTPolicyTest {
     @Mock
     private HttpPlainRequest request;
 
+    @Mock
+    private RevocationCheck revocationCheck;
+
     private JWTPolicy cut;
 
     @BeforeEach
     void init() {
         cut = new JWTPolicy(configuration);
         ReflectionTestUtils.setField(cut, "jwtProcessorResolver", jwtProcessorResolver);
+        ReflectionTestUtils.setField(cut, "revocationCheck", revocationCheck);
     }
 
     private static Stream<Arguments> provideClientIdParameters() {
@@ -203,9 +209,7 @@ class JWTPolicyTest {
             .issuer(ISSUER)
             .subject(STANDARD_SUBJECT)
             .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
-            .claim("Claim1", "ClaimValue1")
-            .claim("Claim2", "ClaimValue2")
-            .claim("Claim3", "ClaimValue3")
+            .jwtID("jwtId")
             .expirationTime(new Date(System.currentTimeMillis() + 3600000))
             .build();
 
@@ -224,6 +228,83 @@ class JWTPolicyTest {
 
         verifyMetricsAttributesAndHeaders(metrics, headers, CLIENT_ID, STANDARD_SUBJECT);
         verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claimsSet.getClaims());
+    }
+
+    @Test
+    void shouldVerifyTokenAndCheckRevocationWhenRevocationCheckIsConfigured() throws BadJOSEException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
+            .jwtID("testJti") // Adding jwtID for revocation check
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.isExtractClaims()).thenReturn(true);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
+
+        // Configure revocation check
+        JWTPolicyConfiguration.RevocationCheck revocationCheckConfig = mock(JWTPolicyConfiguration.RevocationCheck.class);
+        when(configuration.getRevocationCheck()).thenReturn(revocationCheckConfig);
+        when(revocationCheckConfig.isEnabled()).thenReturn(true);
+        when(revocationCheck.isRevoked(claimsSet)).thenReturn(false);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verify(revocationCheck).isRevoked(claimsSet);
+        verifyMetricsAttributesAndHeaders(metrics, headers, CLIENT_ID, STANDARD_SUBJECT);
+        verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claimsSet.getClaims());
+    }
+
+    @Test
+    void shouldErrorWith401IfRevocationClaimIsRevokedAndRevocationCheckIsConfigured() throws BadJOSEException, JOSEException {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
+            .jwtID("revokedJti") // Adding revoked jwtID
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+
+        // Configure revocation check to fail
+        JWTPolicyConfiguration.RevocationCheck revocationCheckConfig = mock(JWTPolicyConfiguration.RevocationCheck.class);
+        when(configuration.getRevocationCheck()).thenReturn(revocationCheckConfig);
+        when(revocationCheckConfig.isEnabled()).thenReturn(true);
+        when(revocationCheck.isRevoked(claimsSet)).thenReturn(true);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(revocationCheck).isRevoked(claimsSet);
+        verify(ctx)
+            .interruptWith(
+                argThat(failure -> {
+                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                    assertEquals(JWT_REVOKED, failure.key());
+                    assertNull(failure.parameters());
+                    assertNull(failure.contentType());
+                    return true;
+                })
+            );
     }
 
     @Test

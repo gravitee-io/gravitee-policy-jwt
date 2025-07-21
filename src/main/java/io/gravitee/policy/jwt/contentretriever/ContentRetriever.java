@@ -13,17 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.jwt.jwk.source;
+package io.gravitee.policy.jwt.contentretriever;
 
-import com.nimbusds.jose.util.Resource;
 import io.reactivex.rxjava3.core.Single;
 
-/**
- * {@link ResourceRetriever} allows to retrieve a nimbus {@link Resource} from a location.
- *
- * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
- * @author GraviteeSource Team
- */
-public interface ResourceRetriever {
-    Single<Resource> retrieve(String location);
+public interface ContentRetriever {
+    Single<Content> retrieve(String location);
 }
