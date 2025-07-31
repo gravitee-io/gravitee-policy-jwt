@@ -191,7 +191,7 @@ policy:
 | Revocation list refresh interval<br>`refreshInterval`| integer|  | `300`| The refresh interval in seconds for the cached revocation list. Default is 300.|
 | Revocation list request timeout<br>`requestTimeout`| integer|  | `2000`| The request timeout in milliseconds for retrieving the revocation list. Default is 2000.|
 | Revocation claim<br>`revocationClaim`| string|  | `jti`| The string claim which will be checked against the revocation list. Default is 'jti'.|
-| Revocation list URL<br>`revocationListUrl`| string|  | | The URL of the revocation list, should return a new line seperated list of strings, content type text/plain. No default is provided, required if enabled.|
+| Revocation list URL<br>`revocationListUrl`| string|  | | The URL of the revocation list including protocol, should return a new line seperated list of strings, content type text/plain. No default is provided, required if enabled.|
 | Revocation list use system proxy<br>`useSystemProxy`| boolean|  | | If should use system proxy for revocation list requests. Default is false.|
 
 
@@ -215,8 +215,8 @@ policy:
 #### Basic authentication configuration (Object)
 | Name <br>`json name`  | Type <br>`constraint`  | Mandatory  | Description  |
 |:----------------------|:-----------------------|:----------:|:-------------|
-| basic.password<br>`password`| string<br>`[1, +Inf]`| ✅| user password|
-| basic.username<br>`username`| string<br>`[1, +Inf]`| ✅| user name|
+| Password<br>`password`| string<br>`[1, +Inf]`| ✅| Password which will be added to Authorization header in format 'basic user:password'|
+| Username<br>`username`| string<br>`[1, +Inf]`| ✅| Username which will be added to Authorization header in format 'basic user:password'|
 
 
 #### Revocation list security configuration: Token security `type = "token"` 
@@ -228,7 +228,7 @@ policy:
 #### Token authentication configuration (Object)
 | Name <br>`json name`  | Type <br>`constraint`  | Mandatory  | Description  |
 |:----------------------|:-----------------------|:----------:|:-------------|
-| token.value<br>`value`| string<br>`[1, +Inf]`| ✅| Bearer token|
+| Token value<br>`value`| string<br>`[1, +Inf]`| ✅| Token value which will be added to Authorization header in format 'bearer <token value>'|
 
 
 #### Token Type Validation (Object)
@@ -630,3 +630,4 @@ policy:
 ##### Features
 
 * **headers:** Internal rework and introduce HTTP Headers API ([28ea9c6](https://github.com/gravitee-io/gravitee-policy-jwt/commit/28ea9c600f08cf76d1aa0df463c418a66cbc4753)), closes [gravitee-io/issues#6772](https://github.com/gravitee-io/issues/issues/6772)
+
