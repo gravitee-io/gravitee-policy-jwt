@@ -1,0 +1,23 @@
+before: .docgen/before-gateway-options.md
+snippets:
+    - title: "gravitee.yml"
+      description: Gateway level configuration of the http client
+      language: YAML
+      content: >-
+          system:
+            proxy:
+              type: HTTP      # HTTP, SOCK4, SOCK5
+              host: localhost
+              port: 3128
+              username: user
+              password: secret
+    - title: "gravitee.yml"
+      description: Gateway level configuration of keys
+      language: YAML
+      content: >-
+          policy:
+            jwt:
+              issuer:
+                my.authorization.server:
+                  default: ssh-rsa myValidationKey anEmail@domain.com
+                  kid-2016: ssh-rsa myCurrentValidationKey anEmail@domain.com

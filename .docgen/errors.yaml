@@ -1,0 +1,9 @@
+rows:
+    - data:
+          key: "JWT_MISSING_TOKEN"
+    - data:
+          key: "JWT_INVALID_TOKEN"
+    - data:
+          key: "JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT"
+    - data:
+          key: "JWT_REVOKED"

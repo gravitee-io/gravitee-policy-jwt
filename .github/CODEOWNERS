@@ -1,2 +1,5 @@
 # Default
-*       @gravitee-io/apim
+*          @gravitee-io/apim
+/.docgen/  @gravitee-io/tech-writers
+/docs/     @gravitee-io/tech-writers
+README.md  @gravitee-io/tech-writers
