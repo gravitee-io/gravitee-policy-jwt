@@ -17,32 +17,29 @@ package io.gravitee.policy.jwt.revocation;
 
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.node.api.configuration.Configuration;
-import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.configuration.RevocationCheckConfiguration;
 import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
 import io.gravitee.policy.jwt.contentretriever.vertx.VertxContentRetriever;
 import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.vertx.rxjava3.core.Vertx;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
-public final class RevocationCheckFactory {
+@Slf4j
+public final class RevocationCheckerFactory {
 
-    private static final Logger log = LoggerFactory.getLogger(RevocationCheckFactory.class);
-
-    public static RevocationCheck create(JWTPolicyConfiguration.RevocationCheck configuration, BaseExecutionContext ctx) {
-        if (!configuration.isValid()) {
-            return new RevocationCheck(configuration, null);
+    public static RevocationChecker create(RevocationCheckConfiguration configuration, BaseExecutionContext ctx) {
+        if (!RevocationCheckConfiguration.isEnabledAndValid(configuration)) {
+            return new RevocationChecker(configuration, null);
         }
 
-        JWTPolicyConfiguration.RevocationCheck normalizedConfig = configuration.normalized();
-        ContentRetriever contentRetriever = createContentRetriever(normalizedConfig, ctx);
-        RevocationCache revocationCache = createRevocationCache(normalizedConfig, contentRetriever);
+        ContentRetriever contentRetriever = createContentRetriever(configuration, ctx);
+        RevocationCache revocationCache = createRevocationCache(configuration, contentRetriever);
 
-        return new RevocationCheck(normalizedConfig, revocationCache);
+        return new RevocationChecker(configuration, revocationCache);
     }
 
-    private static ContentRetriever createContentRetriever(JWTPolicyConfiguration.RevocationCheck configuration, BaseExecutionContext ctx) {
+    private static ContentRetriever createContentRetriever(RevocationCheckConfiguration configuration, BaseExecutionContext ctx) {
         return new VertxContentRetriever(
             ctx.getComponent(Vertx.class),
             ctx.getComponent(Configuration.class),
@@ -57,10 +54,7 @@ public final class RevocationCheckFactory {
         );
     }
 
-    private static RevocationCache createRevocationCache(
-        JWTPolicyConfiguration.RevocationCheck configuration,
-        ContentRetriever contentRetriever
-    ) {
+    private static RevocationCache createRevocationCache(RevocationCheckConfiguration configuration, ContentRetriever contentRetriever) {
         RevocationCache cache = new RevocationCache(
             configuration.getRevocationListUrl(),
             configuration.getRefreshInterval(),

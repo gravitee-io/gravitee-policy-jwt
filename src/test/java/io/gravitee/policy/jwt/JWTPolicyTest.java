@@ -54,8 +54,9 @@ import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.configuration.RevocationCheckConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
-import io.gravitee.policy.jwt.revocation.RevocationCheck;
+import io.gravitee.policy.jwt.revocation.RevocationChecker;
 import io.gravitee.reporter.api.v4.metric.Metrics;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
@@ -114,7 +115,7 @@ class JWTPolicyTest {
     private HttpPlainRequest request;
 
     @Mock
-    private RevocationCheck revocationCheck;
+    private RevocationChecker revocationChecker;
 
     private JWTPolicy cut;
 
@@ -122,7 +123,7 @@ class JWTPolicyTest {
     void init() {
         cut = new JWTPolicy(configuration);
         ReflectionTestUtils.setField(cut, "jwtProcessorResolver", jwtProcessorResolver);
-        ReflectionTestUtils.setField(cut, "revocationCheck", revocationCheck);
+        ReflectionTestUtils.setField(cut, "revocationChecker", revocationChecker);
     }
 
     private static Stream<Arguments> provideClientIdParameters() {
@@ -137,7 +138,7 @@ class JWTPolicyTest {
 
     @ParameterizedTest
     @MethodSource("provideClientIdParameters")
-    void shouldVerifyTokenWithClientId(String clientIdField, String expectedClientId, String expectedSubject)
+    void should_verify_token_with_client_id(String clientIdField, String expectedClientId, String expectedSubject)
         throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
@@ -176,7 +177,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldVerifyTokenFromRequest() throws BadJOSEException, JOSEException {
+    void should_verify_token_from_request() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -202,7 +203,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldVerifyTokenAndExtractClaimsWhenExtractClaimsIsConfigured() throws BadJOSEException, JOSEException {
+    void should_verify_token_and_extract_claims_when_extract_claims_is_configured() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -231,7 +232,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldVerifyTokenAndCheckRevocationWhenRevocationCheckIsConfigured() throws BadJOSEException, JOSEException {
+    void should_verify_token_and_check_revocation_when_revocation_check_is_configured() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -253,21 +254,21 @@ class JWTPolicyTest {
         when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
 
         // Configure revocation check
-        JWTPolicyConfiguration.RevocationCheck revocationCheckConfig = mock(JWTPolicyConfiguration.RevocationCheck.class);
-        when(configuration.getRevocationCheck()).thenReturn(revocationCheckConfig);
-        when(revocationCheckConfig.isEnabled()).thenReturn(true);
-        when(revocationCheck.isRevoked(claimsSet)).thenReturn(false);
+        RevocationCheckConfiguration revocationCheckConfiguration = mock(RevocationCheckConfiguration.class);
+        when(configuration.getRevocationCheck()).thenReturn(revocationCheckConfiguration);
+        when(revocationCheckConfiguration.isEnabled()).thenReturn(true);
+        when(revocationChecker.isRevoked(claimsSet)).thenReturn(false);
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
         obs.assertComplete();
 
-        verify(revocationCheck).isRevoked(claimsSet);
+        verify(revocationChecker).isRevoked(claimsSet);
         verifyMetricsAttributesAndHeaders(metrics, headers, CLIENT_ID, STANDARD_SUBJECT);
         verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claimsSet.getClaims());
     }
 
     @Test
-    void shouldErrorWith401IfRevocationClaimIsRevokedAndRevocationCheckIsConfigured() throws BadJOSEException, JOSEException {
+    void should_error_with_401_if_revocation_claim_is_revoked_and_revocation_check_is_configured() throws BadJOSEException, JOSEException {
         final HttpHeaders headers = mock(HttpHeaders.class);
         final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
             .issuer(ISSUER)
@@ -284,16 +285,16 @@ class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
 
         // Configure revocation check to fail
-        JWTPolicyConfiguration.RevocationCheck revocationCheckConfig = mock(JWTPolicyConfiguration.RevocationCheck.class);
-        when(configuration.getRevocationCheck()).thenReturn(revocationCheckConfig);
-        when(revocationCheckConfig.isEnabled()).thenReturn(true);
-        when(revocationCheck.isRevoked(claimsSet)).thenReturn(true);
+        RevocationCheckConfiguration revocationCheckConfiguration = mock(RevocationCheckConfiguration.class);
+        when(configuration.getRevocationCheck()).thenReturn(revocationCheckConfiguration);
+        when(revocationCheckConfiguration.isEnabled()).thenReturn(true);
+        when(revocationChecker.isRevoked(claimsSet)).thenReturn(true);
         when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
         obs.assertError(Throwable.class);
 
-        verify(revocationCheck).isRevoked(claimsSet);
+        verify(revocationChecker).isRevoked(claimsSet);
         verify(ctx)
             .interruptWith(
                 argThat(failure -> {
@@ -308,7 +309,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401MissingTokenInterruptionWhenNoAuthorizationHeader() {
+    void should_error_with_401_missing_token_interruption_when_no_authorization_header() {
         final HttpHeaders headers = mock(HttpHeaders.class);
         when(ctx.request()).thenReturn(request);
         when(request.headers()).thenReturn(headers);
@@ -332,7 +333,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401MissingTokenInterruptionWhenNoToken() {
+    void should_error_with_401_missing_token_interruption_when_no_token() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(Collections.emptyList());
@@ -358,7 +359,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401InvaliTokenInterruptionWhenTokenEmpty() {
+    void should_error_with_401_invalid_token_interruption_when_token_empty() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer "));
@@ -384,7 +385,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldErrorWith401InvalidTokenInterruptionWhenTokenRejected() throws BadJOSEException, JOSEException {
+    void should_error_with_401_invalid_token_interruption_when_token_rejected() throws BadJOSEException, JOSEException {
         final Metrics metrics = mock(Metrics.class);
 
         final HttpHeaders headers = mock(HttpHeaders.class);
@@ -418,22 +419,22 @@ class JWTPolicyTest {
     }
 
     @Test
-    void shouldReturnOrder0() {
+    void should_return_order_0() {
         assertEquals(0, cut.order());
     }
 
     @Test
-    void shouldReturnJWTPolicyId() {
+    void should_return_jwt_policy_id() {
         assertEquals("jwt", cut.id());
     }
 
     @Test
-    void shouldValidateSubscription() {
+    void should_validate_subscription() {
         assertTrue(cut.requireSubscription());
     }
 
     @Test
-    void extractSecurityToken_shouldReturnSecurityToken_whenTokenIsPresent() {
+    void extractSecurityToken_should_return_securityToken_when_token_is_present() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);
@@ -449,7 +450,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void extractSecurityToken_shouldReturnInvalidSecurityToken_whenTokenContainsNoClientId() {
+    void extractSecurityToken_should_return_invalid_securityToken_when_token_contains_no_clientId() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);
@@ -469,7 +470,7 @@ class JWTPolicyTest {
     }
 
     @Test
-    void extractSecurityToken_shouldReturnEmpty_whenTokenIsAbsent() {
+    void extractSecurityToken_should_return_empty_when_token_is_absent() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
         when(ctx.request()).thenReturn(request);

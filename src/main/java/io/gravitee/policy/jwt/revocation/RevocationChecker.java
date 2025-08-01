@@ -16,19 +16,17 @@
 package io.gravitee.policy.jwt.revocation;
 
 import com.nimbusds.jwt.JWTClaimsSet;
-import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.configuration.RevocationCheckConfiguration;
 import java.text.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
-public class RevocationCheck {
+@Slf4j
+public class RevocationChecker {
 
-    private static final Logger log = LoggerFactory.getLogger(RevocationCheck.class);
-
-    private final JWTPolicyConfiguration.RevocationCheck configuration;
+    private final RevocationCheckConfiguration configuration;
     private final RevocationCache revocationCache;
 
-    public RevocationCheck(JWTPolicyConfiguration.RevocationCheck configuration, RevocationCache revocationCache) {
+    public RevocationChecker(RevocationCheckConfiguration configuration, RevocationCache revocationCache) {
         this.configuration = configuration;
         this.revocationCache = revocationCache;
     }
@@ -39,19 +37,13 @@ public class RevocationCheck {
                 return false;
             }
 
-            String revocationClaim = configuration.getRevocationClaim();
-            if (revocationClaim == null || revocationClaim.isEmpty()) {
-                log.warn("No revocation claim defined in policy configuration, skipping revocation check");
-                return false;
-            }
-
             String claimValue = jwtClaimsSet.getStringClaim(configuration.getRevocationClaim());
             if (claimValue == null) {
-                log.warn("Claim {} not found in token, skipping revocation check", revocationClaim);
+                log.debug("Claim not found in token, skipping revocation check");
                 return false;
             }
 
-            return revocationCache.getRevokedValues().contains(claimValue);
+            return revocationCache.contains(claimValue);
         } catch (ParseException e) {
             log.warn("Error while parsing revocation claim, skipping revocation check", e);
             return false;

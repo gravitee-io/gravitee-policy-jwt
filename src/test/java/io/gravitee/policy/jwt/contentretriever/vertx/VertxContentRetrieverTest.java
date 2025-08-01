@@ -45,7 +45,7 @@ class VertxContentRetrieverTest {
     private Configuration configuration;
 
     @Test
-    void shouldFetchContent(WireMockRuntimeInfo wmRuntimeInfo) {
+    void should_fetch_content(WireMockRuntimeInfo wmRuntimeInfo) {
         stubFor(get(urlPathEqualTo("/ids")).willReturn(ok().withBody(SAMPLE_RESPONSE).withHeader("Content-Type", "text/plain")));
 
         VertxContentRetriever contentRetriever = new VertxContentRetriever(
@@ -107,7 +107,7 @@ class VertxContentRetrieverTest {
 
     @ParameterizedTest
     @ValueSource(booleans = { true, false })
-    void shouldFollowRedirects(boolean permanent, WireMockRuntimeInfo wmRuntimeInfo) {
+    void should_follow_redirects(boolean permanent, WireMockRuntimeInfo wmRuntimeInfo) {
         stubFor(get(urlPathEqualTo("/old-ids")).willReturn(permanent ? permanentRedirect("/ids") : temporaryRedirect("/ids")));
         stubFor(get(urlPathEqualTo("/ids")).willReturn(ok().withBody(SAMPLE_RESPONSE)));
 
@@ -129,7 +129,7 @@ class VertxContentRetrieverTest {
     }
 
     @Test
-    void shouldHandleErrorStatus(WireMockRuntimeInfo wmRuntimeInfo) {
+    void should_handle_error_status(WireMockRuntimeInfo wmRuntimeInfo) {
         stubFor(get(urlPathEqualTo("/ids")).willReturn(notFound()));
 
         VertxContentRetriever contentRetriever = new VertxContentRetriever(
@@ -149,7 +149,7 @@ class VertxContentRetrieverTest {
     }
 
     @Test
-    void shouldHandleInvalidUrl() {
+    void should_handle_invalid_url() {
         VertxContentRetriever contentRetriever = new VertxContentRetriever(
             Vertx.vertx(),
             configuration,
@@ -165,7 +165,7 @@ class VertxContentRetrieverTest {
     }
 
     @Test
-    void shouldRejectVeryLargeResponse(WireMockRuntimeInfo wmRuntimeInfo) {
+    void should_reject_very_large_response(WireMockRuntimeInfo wmRuntimeInfo) {
         // Create a response that exceeds MAX_RESPONSE_SIZE (5MB)
         byte[] largeResponse = new byte[6 * 1024 * 1024]; // 6MB
         stubFor(get(urlPathEqualTo("/large")).willReturn(ok().withBody(largeResponse)));
@@ -191,7 +191,7 @@ class VertxContentRetrieverTest {
     }
 
     @Test
-    void shouldHandleBasicAuth(WireMockRuntimeInfo wmRuntimeInfo) {
+    void should_handle_basic_auth(WireMockRuntimeInfo wmRuntimeInfo) {
         stubFor(get(urlPathEqualTo("/ids")).withBasicAuth("testuser", "testpass").willReturn(ok().withBody(SAMPLE_RESPONSE)));
 
         AuthConfiguration authConfig = new AuthConfiguration();
@@ -218,7 +218,7 @@ class VertxContentRetrieverTest {
     }
 
     @Test
-    void shouldHandleBearerToken(WireMockRuntimeInfo wmRuntimeInfo) {
+    void should_handle_bearer_token(WireMockRuntimeInfo wmRuntimeInfo) {
         String token = "test-token";
         stubFor(
             get(urlPathEqualTo("/ids")).withHeader("Authorization", equalTo("Bearer " + token)).willReturn(ok().withBody(SAMPLE_RESPONSE))

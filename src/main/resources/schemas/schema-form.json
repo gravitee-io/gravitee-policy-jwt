@@ -8,14 +8,14 @@
             "properties": {
                 "username": {
                     "type": "string",
-                    "title": "basic.username",
-                    "description": "user name",
+                    "title": "Username",
+                    "description": "Username which will be added to Authorization header in format 'basic user:password'",
                     "minLength": 1
                 },
                 "password": {
                     "type": "string",
-                    "title": "basic.password",
-                    "description": "user password",
+                    "title": "Password",
+                    "description": "Password which will be added to Authorization header in format 'basic user:password'",
                     "minLength": 1,
                     "format": "password"
                 }
@@ -28,8 +28,8 @@
             "properties": {
                 "value": {
                     "type": "string",
-                    "title": "token.value",
-                    "description": "Bearer token",
+                    "title": "Token value",
+                    "description": "Token value which will be added to Authorization header in format 'bearer <token value>'",
                     "minLength": 1,
                     "format": "password"
                 }
@@ -232,7 +232,7 @@
                 },
                 "revocationListUrl": {
                     "title": "Revocation list URL",
-                    "description": "The URL of the revocation list, should return a new line seperated list of strings, content type text/plain. No default is provided, required if enabled.",
+                    "description": "The URL of the revocation list including protocol, should return a new line seperated list of strings, content type text/plain. No default is provided, required if enabled.",
                     "type": "string"
                 },
                 "refreshInterval": {

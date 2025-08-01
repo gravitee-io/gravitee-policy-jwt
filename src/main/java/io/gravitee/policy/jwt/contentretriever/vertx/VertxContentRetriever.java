@@ -35,12 +35,11 @@ import io.vertx.rxjava3.core.Vertx;
 import io.vertx.rxjava3.core.http.HttpClient;
 import io.vertx.rxjava3.core.http.HttpClientRequest;
 import java.net.URL;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class VertxContentRetriever implements ContentRetriever {
 
-    private static final Logger log = LoggerFactory.getLogger(VertxContentRetriever.class);
     private static final String HTTPS_SCHEME = "https";
     private static final int MAX_RESPONSE_SIZE = 5_242_880; // 5MB
 

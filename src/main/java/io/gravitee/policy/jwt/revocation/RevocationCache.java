@@ -17,20 +17,23 @@ package io.gravitee.policy.jwt.revocation;
 
 import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
 import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class RevocationCache {
 
-    private static final Logger log = LoggerFactory.getLogger(RevocationCache.class);
+    private static final int INITIALIZE_RETRY_INITIAL_DELAY_SECONDS = 5;
+    private static final int INITIALIZE_RETRY_MAX_DELAY_SECONDS = 1800; //30 mins
 
     private final String revocationListUrl;
     private final int refreshInterval;
@@ -50,10 +53,24 @@ public class RevocationCache {
         this.contentRetriever = contentRetriever;
     }
 
-    public Set<String> getRevokedValues() {
+    public boolean contains(String value) {
+        return getRevokedValues().contains(value);
+    }
+
+    public Completable initialize() {
+        CachedRevocationList cachedRevocationList = cache.get(revocationListUrl);
+        if (cachedRevocationList == null) {
+            return loadWithRetry();
+        }
+
+        return Completable.complete();
+    }
+
+    private Set<String> getRevokedValues() {
         CachedRevocationList cachedRevocationList = cache.get(revocationListUrl);
 
         if (cachedRevocationList == null) {
+            log.warn("No cached revocation list found. Revocation check will be skipped.");
             return Collections.emptySet();
         }
 
@@ -64,13 +81,28 @@ public class RevocationCache {
         return cachedRevocationList.getRevokedValues();
     }
 
-    public Completable initialize() {
-        CachedRevocationList cachedRevocationList = cache.get(revocationListUrl);
-        if (cachedRevocationList == null) {
-            return load();
-        }
-
-        return Completable.complete();
+    private Completable loadWithRetry() {
+        AtomicInteger retryCount = new AtomicInteger(0);
+        return Completable
+            .defer(this::load)
+            .retryWhen(errors ->
+                errors
+                    .map(error -> {
+                        int attempt = retryCount.incrementAndGet();
+                        int delaySeconds = Math.min(
+                            INITIALIZE_RETRY_INITIAL_DELAY_SECONDS * (1 << (attempt - 1)),
+                            INITIALIZE_RETRY_MAX_DELAY_SECONDS
+                        );
+                        log.warn(
+                            "Failed to initialize revocation cache (attempt {}), retrying in {} seconds",
+                            attempt,
+                            delaySeconds,
+                            error
+                        );
+                        return delaySeconds;
+                    })
+                    .flatMap(delay -> Flowable.timer(delay, TimeUnit.SECONDS, Schedulers.computation()))
+            );
     }
 
     private Completable load() {
@@ -106,11 +138,7 @@ public class RevocationCache {
                 return Collections.emptySet();
             }
 
-            return Arrays
-                .stream(content.split("\n"))
-                .map(String::trim)
-                .filter(line -> !line.isEmpty())
-                .collect(Collectors.toCollection(HashSet::new));
+            return Arrays.stream(content.split("\n")).map(String::trim).filter(line -> !line.isEmpty()).collect(Collectors.toSet());
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse revocation list content", e);
         }

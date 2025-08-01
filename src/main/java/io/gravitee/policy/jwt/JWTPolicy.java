@@ -34,8 +34,8 @@ import io.gravitee.gateway.reactive.api.policy.kafka.KafkaSecurityPolicy;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
-import io.gravitee.policy.jwt.revocation.RevocationCheck;
-import io.gravitee.policy.jwt.revocation.RevocationCheckFactory;
+import io.gravitee.policy.jwt.revocation.RevocationChecker;
+import io.gravitee.policy.jwt.revocation.RevocationCheckerFactory;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
 import io.gravitee.policy.v3.jwt.JWTPolicyV3;
 import io.gravitee.reporter.api.v4.metric.Metrics;
@@ -72,7 +72,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private final JWTProcessorProvider jwtProcessorResolver;
 
-    private RevocationCheck revocationCheck;
+    private RevocationChecker revocationChecker;
 
     public JWTPolicy(JWTPolicyConfiguration configuration) {
         super(configuration);
@@ -230,17 +230,17 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         }
 
         try {
-            if (this.revocationCheck == null) {
-                this.revocationCheck = RevocationCheckFactory.create(this.configuration.getRevocationCheck(), ctx);
+            if (this.revocationChecker == null) {
+                this.revocationChecker = RevocationCheckerFactory.create(this.configuration.getRevocationCheck(), ctx);
             }
 
-            if (this.revocationCheck.isRevoked(claims)) {
+            if (this.revocationChecker.isRevoked(claims)) {
                 return interruptUnauthorized(ctx, JWT_REVOKED);
             }
 
             return Single.just(claims);
         } catch (Exception e) {
-            log.error("Error during revocation check, skipping revocation check", e);
+            log.warn("Error during revocation check, skipping revocation check", e);
             return Single.just(claims);
         }
     }
