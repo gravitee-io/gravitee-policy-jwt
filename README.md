@@ -248,6 +248,18 @@ policy:
 
 ## Changelog
 
+### [6.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.5...6.2.0) (2025-08-08)
+
+
+##### Bug Fixes
+
+* migrate to generated docs ([91b95a3](https://github.com/gravitee-io/gravitee-policy-jwt/commit/91b95a384b202c953df342d9787c02e5c05e4a4b))
+
+
+##### Features
+
+* revocation list ([7e72715](https://github.com/gravitee-io/gravitee-policy-jwt/commit/7e72715837d41d82040fa462eb72e4c96c2fec38))
+
 #### [6.1.5](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.4...6.1.5) (2025-07-17)
 
 
