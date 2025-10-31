@@ -15,6 +15,8 @@
  */
 package io.gravitee.policy.v3.jwt;
 
+import static io.gravitee.gateway.api.ExecutionContext.ATTR_API;
+import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_JWT;
 import static org.mockito.Mockito.*;
 
 import com.nimbusds.jose.JWSHeader;
@@ -82,6 +84,12 @@ public abstract class JWTPolicyV3Test {
     void init() {
         lenient().when(request.metrics()).thenReturn(Metrics.on(System.currentTimeMillis()).build());
         lenient().when(configuration.getSignature()).thenReturn(getSignature());
+        prepareClaimsSetCacheMocking();
+    }
+
+    private void prepareClaimsSetCacheMocking() {
+        lenient().when(executionContext.getAttribute(ATTR_API)).thenReturn("API_ID");
+        lenient().when(executionContext.getAttribute(CONTEXT_ATTRIBUTE_JWT)).thenReturn(null);
     }
 
     @Test

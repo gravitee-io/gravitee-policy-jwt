@@ -24,6 +24,7 @@ import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.gravitee.policy.jwt.alg.Signature;
+import io.gravitee.policy.processing.JWTClaimsSetValidator;
 import java.security.Key;
 import java.security.PublicKey;
 import java.util.Collections;
@@ -37,6 +38,10 @@ import javax.crypto.SecretKey;
  */
 @Deprecated
 public class NoAlgorithmRSAKeyProcessor<C extends SecurityContext> extends AbstractKeyProcessor<C> {
+
+    public NoAlgorithmRSAKeyProcessor(JWTClaimsSetValidator validator) {
+        super(validator);
+    }
 
     @Override
     JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource, Signature signature) {
