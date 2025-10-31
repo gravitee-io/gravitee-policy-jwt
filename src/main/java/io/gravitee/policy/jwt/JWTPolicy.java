@@ -20,8 +20,12 @@ import static io.gravitee.gateway.api.ExecutionContext.ATTR_API;
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
 import static io.gravitee.reporter.api.http.SecurityType.JWT;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.proc.BadJOSEException;
+import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.security.jwt.LazyJWT;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
@@ -37,6 +41,7 @@ import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
 import io.gravitee.policy.jwt.revocation.RevocationChecker;
 import io.gravitee.policy.jwt.revocation.RevocationCheckerFactory;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
+import io.gravitee.policy.processing.JWTClaimsSetValidator;
 import io.gravitee.policy.v3.jwt.JWTPolicyV3;
 import io.gravitee.reporter.api.v4.metric.Metrics;
 import io.reactivex.rxjava3.core.Completable;
@@ -73,6 +78,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     private final JWTProcessorProvider jwtProcessorResolver;
 
     private RevocationChecker revocationChecker;
+    private JWTClaimsSetValidator jwtClaimsSetValidator;
 
     public JWTPolicy(JWTPolicyConfiguration configuration) {
         super(configuration);
@@ -213,6 +219,11 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     }
 
     private Single<LazyJWT> fetchJWTToken(BaseExecutionContext ctx) {
+        Object lazyJwtFromContext = ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT);
+        if (lazyJwtFromContext instanceof LazyJWT lazyJWT) {
+            return Single.just(lazyJWT);
+        }
+
         Optional<String> token = TokenExtractor.extract(ctx);
         if (token.isEmpty()) {
             return interruptUnauthorized(ctx, JWT_MISSING_TOKEN_KEY);
@@ -252,7 +263,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                 JWTClaimsSet jwtClaimsSet;
                 // Validate JWT
                 try {
-                    jwtClaimsSet = jwtProcessor.process(jwt.getDelegate(), null);
+                    jwtClaimsSet = extractJwtClaimsSet(ctx, jwt, jwtProcessor);
                 } catch (Exception exception) {
                     reportError(ctx, exception);
                     return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY);
@@ -278,6 +289,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                                         confirmationMethodValidation.getCertificateBoundThumbprint()
                                     )
                                 ) {
+                                    jwtClaimsSetValidator.invalidate(jwt);
                                     return interruptUnauthorized(httpPlainExecutionContext, JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT);
                                 }
                             }
@@ -286,6 +298,15 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                     });
             })
             .toSingle();
+    }
+
+    private JWTClaimsSet extractJwtClaimsSet(BaseExecutionContext ctx, LazyJWT jwt, JWTProcessor<SecurityContext> jwtProcessor)
+        throws BadJOSEException, JOSEException {
+        if (this.jwtClaimsSetValidator == null) {
+            this.jwtClaimsSetValidator = JWTClaimsSetValidator.create(ctx);
+        }
+
+        return jwtClaimsSetValidator.extract(jwtProcessor, jwt);
     }
 
     private void setAuthContextInfos(BaseExecutionContext ctx, LazyJWT jwt, JWTClaimsSet claims) {

@@ -15,14 +15,18 @@
  */
 package io.gravitee.policy.v3.jwt.processor;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.policy.jwt.alg.Signature;
+import io.gravitee.policy.processing.JWTClaimsSetValidator;
 import io.gravitee.policy.v3.jwt.exceptions.InvalidTokenException;
 import io.gravitee.policy.v3.jwt.jwks.JWKSourceResolver;
 import java.util.concurrent.CompletableFuture;
@@ -43,6 +47,12 @@ public abstract class AbstractKeyProcessor<C extends SecurityContext> implements
         claimsVerifier.setMaxClockSkew(0);
     }
 
+    protected final JWTClaimsSetValidator validator;
+
+    public AbstractKeyProcessor(JWTClaimsSetValidator validator) {
+        this.validator = validator;
+    }
+
     @Override
     public CompletableFuture<JWTClaimsSet> process(Signature signature, String token) {
         return jwkSourceResolver
@@ -56,7 +66,7 @@ public abstract class AbstractKeyProcessor<C extends SecurityContext> implements
                 jwtProcessor.setJWSKeySelector(jwsKeySelector(jwkSource, signature));
 
                 try {
-                    return CompletableFuture.completedFuture(jwtProcessor.process(token, null));
+                    return CompletableFuture.completedFuture(computeClaimsSet(jwtProcessor, token));
                 } catch (Exception ex) {
                     throw new InvalidTokenException(ex);
                 }
@@ -65,6 +75,14 @@ public abstract class AbstractKeyProcessor<C extends SecurityContext> implements
 
     public void setJwkSourceResolver(JWKSourceResolver<C> jwkSourceResolver) {
         this.jwkSourceResolver = jwkSourceResolver;
+    }
+
+    public JWTClaimsSet invalidate(String token) {
+        return validator.invalidate(token);
+    }
+
+    private JWTClaimsSet computeClaimsSet(JWTProcessor jwtProcessor, String token) throws BadJOSEException, JOSEException {
+        return validator.extract(jwtProcessor, token);
     }
 
     abstract JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource, Signature signature);

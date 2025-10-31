@@ -24,12 +24,17 @@ import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.gravitee.policy.jwt.alg.Signature;
+import io.gravitee.policy.processing.JWTClaimsSetValidator;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
 public class HMACKeyProcessor<C extends SecurityContext> extends AbstractKeyProcessor<C> {
+
+    public HMACKeyProcessor(JWTClaimsSetValidator validator) {
+        super(validator);
+    }
 
     @Override
     JWSKeySelector<C> jwsKeySelector(JWKSource<C> jwkSource, Signature signature) {

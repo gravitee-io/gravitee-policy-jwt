@@ -32,6 +32,7 @@ import io.gravitee.policy.api.annotations.OnRequest;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
+import io.gravitee.policy.processing.JWTClaimsSetValidator;
 import io.gravitee.policy.v3.jwt.exceptions.InvalidCertificateThumbprintException;
 import io.gravitee.policy.v3.jwt.exceptions.InvalidTokenException;
 import io.gravitee.policy.v3.jwt.jwks.URLJWKSourceResolver;
@@ -50,13 +51,14 @@ import io.gravitee.policy.v3.jwt.resolver.SignatureKeyResolver;
 import io.gravitee.policy.v3.jwt.resolver.TemplatableSignatureKeyResolver;
 import io.gravitee.policy.v3.jwt.resolver.UserDefinedSignatureKeyResolver;
 import io.vertx.core.Vertx;
+import java.net.MalformedURLException;
 import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.SSLSession;
-import org.checkerframework.checker.units.qual.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -99,6 +101,8 @@ public class JWTPolicyV3 {
      * The associated configuration to this JWT Policy
      */
     protected JWTPolicyConfiguration configuration;
+
+    private JWTClaimsSetValidator jwtClaimsSetValidator;
 
     /**
      * Create a new JWT Policy instance based on its associated configuration
@@ -242,65 +246,12 @@ public class JWTPolicyV3 {
         try {
             final Signature signature = configuration.getSignature();
 
-            AbstractKeyProcessor keyProcessor = null;
-
-            if (configuration.getPublicKeyResolver() != KeyResolver.JWKS_URL) {
-                SignatureKeyResolver signatureKeyResolver;
-                switch (configuration.getPublicKeyResolver()) {
-                    case GIVEN_KEY:
-                        signatureKeyResolver =
-                            new TemplatableSignatureKeyResolver(
-                                executionContext.getTemplateEngine(),
-                                new UserDefinedSignatureKeyResolver(configuration.getResolverParameter())
-                            );
-                        break;
-                    case GATEWAY_KEYS:
-                        signatureKeyResolver = new GatewaySignatureKeyResolver(executionContext.getComponent(Environment.class), token);
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unexpected signature key resolver");
-                }
-
-                if (signature != null) {
-                    switch (signature) {
-                        case RSA_RS256:
-                        case RSA_RS384:
-                        case RSA_RS512:
-                            keyProcessor = new RSAKeyProcessor();
-                            keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
-                            break;
-                        case HMAC_HS256:
-                        case HMAC_HS384:
-                        case HMAC_HS512:
-                            keyProcessor = new HMACKeyProcessor();
-                            keyProcessor.setJwkSourceResolver(new MACJWKSourceResolver(signatureKeyResolver));
-                            break;
-                    }
-                } else {
-                    // For backward compatibility
-                    keyProcessor = new NoAlgorithmRSAKeyProcessor();
-                    keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
-                }
-            } else {
-                keyProcessor = new JWKSKeyProcessor();
-                keyProcessor.setJwkSourceResolver(
-                    new URLJWKSourceResolver(
-                        executionContext.getTemplateEngine(),
-                        configuration.getResolverParameter(),
-                        new VertxResourceRetriever(
-                            executionContext.getComponent(Vertx.class),
-                            executionContext.getComponent(Configuration.class),
-                            RetrieveOptions
-                                .builder()
-                                .connectTimeout(configuration.getConnectTimeout())
-                                .requestTimeout(configuration.getRequestTimeout())
-                                .useSystemProxy(configuration.isUseSystemProxy())
-                                .followRedirects(configuration.getFollowRedirects())
-                                .build()
-                        )
-                    )
-                );
+            // Lazy init of a single validator per policy instance
+            if (this.jwtClaimsSetValidator == null) {
+                this.jwtClaimsSetValidator = JWTClaimsSetValidator.create(executionContext);
             }
+
+            final AbstractKeyProcessor keyProcessor = buildKeyProcessor(executionContext, token, signature);
 
             CompletableFuture<JWTClaimsSet> process = keyProcessor.process(signature, token);
             return process.thenApply(jwtClaimsSet -> {
@@ -318,6 +269,7 @@ public class JWTPolicyV3 {
                         confirmationMethodValidation.getCertificateBoundThumbprint()
                     )
                 ) {
+                    keyProcessor.invalidate(token);
                     throw new InvalidCertificateThumbprintException("Confirmation method validation failed");
                 }
                 return jwtClaimsSet;
@@ -325,6 +277,70 @@ public class JWTPolicyV3 {
         } catch (ParseException pe) {
             return CompletableFuture.failedFuture(new InvalidTokenException(pe));
         }
+    }
+
+    private AbstractKeyProcessor buildKeyProcessor(ExecutionContext executionContext, String token, Signature signature)
+        throws ParseException, MalformedURLException {
+        AbstractKeyProcessor keyProcessor = null;
+
+        if (configuration.getPublicKeyResolver() != KeyResolver.JWKS_URL) {
+            SignatureKeyResolver signatureKeyResolver;
+            switch (configuration.getPublicKeyResolver()) {
+                case GIVEN_KEY:
+                    signatureKeyResolver =
+                        new TemplatableSignatureKeyResolver(
+                            executionContext.getTemplateEngine(),
+                            new UserDefinedSignatureKeyResolver(configuration.getResolverParameter())
+                        );
+                    break;
+                case GATEWAY_KEYS:
+                    signatureKeyResolver = new GatewaySignatureKeyResolver(executionContext.getComponent(Environment.class), token);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unexpected signature key resolver");
+            }
+
+            if (signature != null) {
+                switch (signature) {
+                    case RSA_RS256:
+                    case RSA_RS384:
+                    case RSA_RS512:
+                        keyProcessor = new RSAKeyProcessor(jwtClaimsSetValidator);
+                        keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
+                        break;
+                    case HMAC_HS256:
+                    case HMAC_HS384:
+                    case HMAC_HS512:
+                        keyProcessor = new HMACKeyProcessor(jwtClaimsSetValidator);
+                        keyProcessor.setJwkSourceResolver(new MACJWKSourceResolver(signatureKeyResolver));
+                        break;
+                }
+            } else {
+                // For backward compatibility
+                keyProcessor = new NoAlgorithmRSAKeyProcessor(jwtClaimsSetValidator);
+                keyProcessor.setJwkSourceResolver(new RSAJWKSourceResolver(signatureKeyResolver));
+            }
+        } else {
+            keyProcessor = new JWKSKeyProcessor(jwtClaimsSetValidator);
+            keyProcessor.setJwkSourceResolver(
+                new URLJWKSourceResolver(
+                    executionContext.getTemplateEngine(),
+                    configuration.getResolverParameter(),
+                    new VertxResourceRetriever(
+                        executionContext.getComponent(Vertx.class),
+                        executionContext.getComponent(Configuration.class),
+                        RetrieveOptions
+                            .builder()
+                            .connectTimeout(configuration.getConnectTimeout())
+                            .requestTimeout(configuration.getRequestTimeout())
+                            .useSystemProxy(configuration.isUseSystemProxy())
+                            .followRedirects(configuration.getFollowRedirects())
+                            .build()
+                    )
+                )
+            );
+        }
+        return keyProcessor;
     }
 
     protected static boolean isValidCertificateThumbprint(
