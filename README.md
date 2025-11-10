@@ -248,6 +248,13 @@ policy:
 
 ## Changelog
 
+#### [6.2.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.2.0...6.2.1) (2025-11-10)
+
+
+##### Performance Improvements
+
+* cache token parsing and validation ([a14b778](https://github.com/gravitee-io/gravitee-policy-jwt/commit/a14b778c4bf19b8285b1e7124159fdf2245c2f88))
+
 ### [6.2.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.5...6.2.0) (2025-08-08)
 
 
