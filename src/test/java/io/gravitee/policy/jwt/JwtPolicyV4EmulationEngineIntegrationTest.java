@@ -262,8 +262,10 @@ public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTes
     }
 
     private SecurityToken securityTokenMatcher(String clientId) {
-        return argThat(securityToken ->
-            securityToken.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) && securityToken.getTokenValue().equals(clientId)
+        return argThat(
+            securityToken ->
+                securityToken.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) &&
+                securityToken.getTokenValue().equals(clientId)
         );
     }
 }

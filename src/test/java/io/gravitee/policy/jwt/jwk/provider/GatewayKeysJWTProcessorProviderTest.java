@@ -202,11 +202,10 @@ class GatewayKeysJWTProcessorProviderTest extends AbstractJWKTest {
             for (int j = 0; j < nbSecretsPerIssuer; j++) {
                 keyPair = generateKeyPair(keySize, signature.getAlg());
                 sshPublicKey = toSSHPublicKeyFormat(keyPair.getPublic());
-                rsaKey =
-                    new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-                        .privateKey(keyPair.getPrivate())
-                        .algorithm(signature.getAlg())
-                        .build();
+                rsaKey = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
+                    .privateKey(keyPair.getPrivate())
+                    .algorithm(signature.getAlg())
+                    .build();
 
                 environment.withProperty("policy.jwt.issuer.gravitee" + i + ".io.key" + j, sshPublicKey);
                 rsaKeys.add(rsaKey);

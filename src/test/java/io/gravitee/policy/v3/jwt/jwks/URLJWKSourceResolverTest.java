@@ -57,12 +57,9 @@ public class URLJWKSourceResolverTest {
     public void builder_should_throw_MalformedURLException_when_invalid_url() throws MalformedURLException {
         when(templateEngine.getValue("invalid_url", String.class)).thenReturn("this_url.is_invalid");
 
-        assertThrows(
-            MalformedURLException.class,
-            () -> {
-                new URLJWKSourceResolver(templateEngine, "invalid_url", mock(ResourceRetriever.class));
-            }
-        );
+        assertThrows(MalformedURLException.class, () -> {
+            new URLJWKSourceResolver(templateEngine, "invalid_url", mock(ResourceRetriever.class));
+        });
     }
 
     @Test

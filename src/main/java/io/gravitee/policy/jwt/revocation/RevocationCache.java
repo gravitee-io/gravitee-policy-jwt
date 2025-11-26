@@ -83,26 +83,19 @@ public class RevocationCache {
 
     private Completable loadWithRetry() {
         AtomicInteger retryCount = new AtomicInteger(0);
-        return Completable
-            .defer(this::load)
-            .retryWhen(errors ->
-                errors
-                    .map(error -> {
-                        int attempt = retryCount.incrementAndGet();
-                        int delaySeconds = Math.min(
-                            INITIALIZE_RETRY_INITIAL_DELAY_SECONDS * (1 << (attempt - 1)),
-                            INITIALIZE_RETRY_MAX_DELAY_SECONDS
-                        );
-                        log.warn(
-                            "Failed to initialize revocation cache (attempt {}), retrying in {} seconds",
-                            attempt,
-                            delaySeconds,
-                            error
-                        );
-                        return delaySeconds;
-                    })
-                    .flatMap(delay -> Flowable.timer(delay, TimeUnit.SECONDS, Schedulers.computation()))
-            );
+        return Completable.defer(this::load).retryWhen(errors ->
+            errors
+                .map(error -> {
+                    int attempt = retryCount.incrementAndGet();
+                    int delaySeconds = Math.min(
+                        INITIALIZE_RETRY_INITIAL_DELAY_SECONDS * (1 << (attempt - 1)),
+                        INITIALIZE_RETRY_MAX_DELAY_SECONDS
+                    );
+                    log.warn("Failed to initialize revocation cache (attempt {}), retrying in {} seconds", attempt, delaySeconds, error);
+                    return delaySeconds;
+                })
+                .flatMap(delay -> Flowable.timer(delay, TimeUnit.SECONDS, Schedulers.computation()))
+        );
     }
 
     private Completable load() {
@@ -138,7 +131,10 @@ public class RevocationCache {
                 return Collections.emptySet();
             }
 
-            return Arrays.stream(content.split("\n")).map(String::trim).filter(line -> !line.isEmpty()).collect(Collectors.toSet());
+            return Arrays.stream(content.split("\n"))
+                .map(String::trim)
+                .filter(line -> !line.isEmpty())
+                .collect(Collectors.toSet());
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse revocation list content", e);
         }

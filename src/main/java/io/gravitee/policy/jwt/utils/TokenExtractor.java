@@ -104,7 +104,9 @@ public class TokenExtractor {
      */
     @Deprecated
     public static String extract(io.gravitee.gateway.api.Request request) {
-        return extractFromHeaders(request.headers()).or(() -> extractFromParameters(request.parameters())).orElse(null);
+        return extractFromHeaders(request.headers())
+            .or(() -> extractFromParameters(request.parameters()))
+            .orElse(null);
     }
 
     private static Optional<String> extractFromHeaders(HttpHeaders headers) {

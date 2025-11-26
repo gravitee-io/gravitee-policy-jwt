@@ -38,21 +38,20 @@ import org.mockito.Mock;
 @WireMockTest
 class VertxResourceRetrieverTest {
 
-    public static final String JWKS_JSON =
-        """
-                      {
-                        "keys" : [ {
-                          "kty" : "RSA",
-                          "use" : "sig",
-                          "alg" : "RS256",
-                          "kid" : "default",
-                          "x5c" : [ "MIICvzCCA..." ],
-                          "x5t#S256" : "_0VtTmrWiO...",
-                          "e" : "AQAB",
-                          "n" : "g4ygRnkRBwPHmHNP8..."
-                        } ]
-                      }
-                    """;
+    public static final String JWKS_JSON = """
+          {
+            "keys" : [ {
+              "kty" : "RSA",
+              "use" : "sig",
+              "alg" : "RS256",
+              "kid" : "default",
+              "x5c" : [ "MIICvzCCA..." ],
+              "x5t#S256" : "_0VtTmrWiO...",
+              "e" : "AQAB",
+              "n" : "g4ygRnkRBwPHmHNP8..."
+            } ]
+          }
+        """;
 
     @Mock
     private Configuration configuration;
@@ -82,8 +81,9 @@ class VertxResourceRetrieverTest {
     @ValueSource(booleans = { true, false })
     void should_follow_http_temporary_redirects(boolean permanent, WireMockRuntimeInfo wmRuntimeInfo) {
         stubFor(
-            get(urlPathEqualTo("/.well-known/old-jwks.json"))
-                .willReturn(permanent ? permanentRedirect("/.well-known/jwks.json") : temporaryRedirect("/.well-known/jwks.json"))
+            get(urlPathEqualTo("/.well-known/old-jwks.json")).willReturn(
+                permanent ? permanentRedirect("/.well-known/jwks.json") : temporaryRedirect("/.well-known/jwks.json")
+            )
         );
         stubFor(get(urlPathEqualTo("/.well-known/jwks.json")).willReturn(okJson(JWKS_JSON)));
 

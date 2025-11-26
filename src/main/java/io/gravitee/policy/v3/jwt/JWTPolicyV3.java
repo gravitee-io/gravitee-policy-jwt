@@ -120,76 +120,72 @@ public class JWTPolicyV3 {
             final String jwt = TokenExtractor.extract(request);
 
             // 2_ Validate the token algorithm + signature
-            validate(executionContext, jwt)
-                .whenComplete((claims, throwable) -> {
-                    final String api = String.valueOf(executionContext.getAttribute(ATTR_API));
-                    MDC.put("api", api);
-                    if (throwable != null) {
-                        String key = JWT_INVALID_TOKEN_KEY;
-                        if (throwable.getCause() instanceof InvalidTokenException) {
-                            LOGGER.debug(
-                                String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
-                                throwable.getCause()
-                            );
-                            request.metrics().setMessage(throwable.getCause().getCause().getMessage());
-                        } else if (throwable instanceof InvalidCertificateThumbprintException) {
-                            key = JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT;
-                            LOGGER.debug(
-                                String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
-                                throwable
-                            );
-                            request.metrics().setMessage(throwable.getCause().getCause().getMessage());
-                        } else {
-                            LOGGER.error(
-                                String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
-                                throwable.getCause()
-                            );
-                            request
-                                .metrics()
-                                .setMessage(throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage());
-                        }
-                        MDC.remove("api");
-                        policyChain.failWith(PolicyResult.failure(key, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
+            validate(executionContext, jwt).whenComplete((claims, throwable) -> {
+                final String api = String.valueOf(executionContext.getAttribute(ATTR_API));
+                MDC.put("api", api);
+                if (throwable != null) {
+                    String key = JWT_INVALID_TOKEN_KEY;
+                    if (throwable.getCause() instanceof InvalidTokenException) {
+                        LOGGER.debug(
+                            String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
+                            throwable.getCause()
+                        );
+                        request.metrics().setMessage(throwable.getCause().getCause().getMessage());
+                    } else if (throwable instanceof InvalidCertificateThumbprintException) {
+                        key = JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT;
+                        LOGGER.debug(
+                            String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
+                            throwable
+                        );
+                        request.metrics().setMessage(throwable.getCause().getCause().getMessage());
                     } else {
-                        try {
-                            // 3_ Set access_token in context
-                            executionContext.setAttribute(CONTEXT_ATTRIBUTE_TOKEN, jwt);
-
-                            String clientId = getClientId(claims);
-                            executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
-
-                            final String user;
-                            if (configuration.getUserClaim() != null && !configuration.getUserClaim().isEmpty()) {
-                                user = (String) claims.getClaim(configuration.getUserClaim());
-                            } else {
-                                user = claims.getSubject();
-                            }
-                            executionContext.setAttribute(ATTR_USER, user);
-                            request.metrics().setUser(user);
-
-                            if (configuration.isExtractClaims()) {
-                                executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
-                            }
-
-                            if (!configuration.isPropagateAuthHeader()) {
-                                request.headers().remove(HttpHeaders.AUTHORIZATION);
-                            }
-
-                            // Finally continue the process...
-                            policyChain.doNext(request, response);
-                        } catch (Exception e) {
-                            LOGGER.error(
-                                String.format(errorMessageFormat, api, request.id(), request.path(), e.getMessage()),
-                                e.getCause()
-                            );
-                            policyChain.failWith(
-                                PolicyResult.failure(JWT_INVALID_TOKEN_KEY, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE)
-                            );
-                        } finally {
-                            MDC.remove("api");
-                        }
+                        LOGGER.error(
+                            String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
+                            throwable.getCause()
+                        );
+                        request
+                            .metrics()
+                            .setMessage(throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage());
                     }
-                });
+                    MDC.remove("api");
+                    policyChain.failWith(PolicyResult.failure(key, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
+                } else {
+                    try {
+                        // 3_ Set access_token in context
+                        executionContext.setAttribute(CONTEXT_ATTRIBUTE_TOKEN, jwt);
+
+                        String clientId = getClientId(claims);
+                        executionContext.setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, clientId);
+
+                        final String user;
+                        if (configuration.getUserClaim() != null && !configuration.getUserClaim().isEmpty()) {
+                            user = (String) claims.getClaim(configuration.getUserClaim());
+                        } else {
+                            user = claims.getSubject();
+                        }
+                        executionContext.setAttribute(ATTR_USER, user);
+                        request.metrics().setUser(user);
+
+                        if (configuration.isExtractClaims()) {
+                            executionContext.setAttribute(CONTEXT_ATTRIBUTE_JWT_CLAIMS, claims.getClaims());
+                        }
+
+                        if (!configuration.isPropagateAuthHeader()) {
+                            request.headers().remove(HttpHeaders.AUTHORIZATION);
+                        }
+
+                        // Finally continue the process...
+                        policyChain.doNext(request, response);
+                    } catch (Exception e) {
+                        LOGGER.error(String.format(errorMessageFormat, api, request.id(), request.path(), e.getMessage()), e.getCause());
+                        policyChain.failWith(
+                            PolicyResult.failure(JWT_INVALID_TOKEN_KEY, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE)
+                        );
+                    } finally {
+                        MDC.remove("api");
+                    }
+                }
+            });
         } catch (Exception e) {
             MDC.put("api", String.valueOf(executionContext.getAttribute(ATTR_API)));
             LOGGER.error(
@@ -287,11 +283,10 @@ public class JWTPolicyV3 {
             SignatureKeyResolver signatureKeyResolver;
             switch (configuration.getPublicKeyResolver()) {
                 case GIVEN_KEY:
-                    signatureKeyResolver =
-                        new TemplatableSignatureKeyResolver(
-                            executionContext.getTemplateEngine(),
-                            new UserDefinedSignatureKeyResolver(configuration.getResolverParameter())
-                        );
+                    signatureKeyResolver = new TemplatableSignatureKeyResolver(
+                        executionContext.getTemplateEngine(),
+                        new UserDefinedSignatureKeyResolver(configuration.getResolverParameter())
+                    );
                     break;
                 case GATEWAY_KEYS:
                     signatureKeyResolver = new GatewaySignatureKeyResolver(executionContext.getComponent(Environment.class), token);
@@ -329,8 +324,7 @@ public class JWTPolicyV3 {
                     new VertxResourceRetriever(
                         executionContext.getComponent(Vertx.class),
                         executionContext.getComponent(Configuration.class),
-                        RetrieveOptions
-                            .builder()
+                        RetrieveOptions.builder()
                             .connectTimeout(configuration.getConnectTimeout())
                             .requestTimeout(configuration.getRequestTimeout())
                             .useSystemProxy(configuration.isUseSystemProxy())
@@ -351,8 +345,7 @@ public class JWTPolicyV3 {
         final JWTPolicyConfiguration.CertificateBoundThumbprint certificateBoundThumbprint
     ) {
         try {
-            String tokenThumbprint = Optional
-                .ofNullable(jwtClaimsSet.getJSONObjectClaim(CLAIMS_CNF))
+            String tokenThumbprint = Optional.ofNullable(jwtClaimsSet.getJSONObjectClaim(CLAIMS_CNF))
                 .map(cnf -> cnf.get(CLAIMS_CNF_X5T))
                 .map(Object::toString)
                 .orElse(null);

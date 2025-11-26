@@ -191,12 +191,11 @@ public class JwtPolicyV4EmulationEngineCustomTokenTypIntegrationTest extends Abs
 
     protected OngoingStubbing<Optional<Subscription>> whenSearchingSubscription() {
         return when(
-            getBean(SubscriptionService.class)
-                .getByApiAndSecurityToken(
-                    eq(JwtPolicyV4EmulationEngineCustomTokenTypIntegrationTest.API_ID),
-                    securityTokenMatcher(),
-                    eq(JwtPolicyV4EmulationEngineCustomTokenTypIntegrationTest.PLAN_ID)
-                )
+            getBean(SubscriptionService.class).getByApiAndSecurityToken(
+                eq(JwtPolicyV4EmulationEngineCustomTokenTypIntegrationTest.API_ID),
+                securityTokenMatcher(),
+                eq(JwtPolicyV4EmulationEngineCustomTokenTypIntegrationTest.PLAN_ID)
+            )
         );
     }
 
@@ -205,9 +204,10 @@ public class JwtPolicyV4EmulationEngineCustomTokenTypIntegrationTest extends Abs
     }
 
     private SecurityToken securityTokenMatcher() {
-        return argThat(securityToken ->
-            securityToken.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) &&
-            securityToken.getTokenValue().equals(JwtPolicyV4EmulationEngineCustomTokenTypIntegrationTest.CLIENT_ID)
+        return argThat(
+            securityToken ->
+                securityToken.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) &&
+                securityToken.getTokenValue().equals(JwtPolicyV4EmulationEngineCustomTokenTypIntegrationTest.CLIENT_ID)
         );
     }
 }

@@ -76,8 +76,9 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         final RSAKey rsaKey = (RSAKey) jwkSet.getKeys().get(0);
         final String jwt = generateJWT(rsaKey, "gravitee0.io", "key0");
 
-        when(contentRetriever.retrieve(jwksUrl))
-            .thenReturn(Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json")));
+        when(contentRetriever.retrieve(jwksUrl)).thenReturn(
+            Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json"))
+        );
         when(configuration.getSignature()).thenReturn(signature);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
@@ -103,8 +104,9 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         final RSAKey rsaKey = (RSAKey) jwkSet.getKeys().get(jwkSet.getKeys().size() - 1);
         final String jwt = generateJWT(rsaKey, "gravitee1.io", "key1");
 
-        when(contentRetriever.retrieve(jwksUrl))
-            .thenReturn(Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json")));
+        when(contentRetriever.retrieve(jwksUrl)).thenReturn(
+            Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json"))
+        );
         when(configuration.getSignature()).thenReturn(signature);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
@@ -155,8 +157,9 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         final RSAKey rsaKey = (RSAKey) jwkSet.getKeys().get(0);
         final String jwt = generateJWT(rsaKey, "gravitee1.io", "invalid");
 
-        when(contentRetriever.retrieve(jwksUrl))
-            .thenReturn(Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json")));
+        when(contentRetriever.retrieve(jwksUrl)).thenReturn(
+            Single.just(new Content(jwkSet.toPublicJWKSet().toString(), "application/json"))
+        );
         when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
 
@@ -195,12 +198,11 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         for (int i = 0; i < nbIssuers; i++) {
             for (int j = 0; j < nbSecretsPerIssuer; j++) {
                 keyPair = generateKeyPair(keySize, signature.getAlg());
-                rsaKey =
-                    new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-                        .privateKey(keyPair.getPrivate())
-                        .keyID("key" + j)
-                        .algorithm(signature.getAlg())
-                        .build();
+                rsaKey = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
+                    .privateKey(keyPair.getPrivate())
+                    .keyID("key" + j)
+                    .algorithm(signature.getAlg())
+                    .build();
 
                 rsaKeys.add(rsaKey);
             }

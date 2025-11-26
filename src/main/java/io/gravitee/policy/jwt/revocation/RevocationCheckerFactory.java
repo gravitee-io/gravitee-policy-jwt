@@ -43,8 +43,7 @@ public final class RevocationCheckerFactory {
         return new VertxContentRetriever(
             ctx.getComponent(Vertx.class),
             ctx.getComponent(Configuration.class),
-            RetrieveOptions
-                .builder()
+            RetrieveOptions.builder()
                 .connectTimeout(configuration.getConnectTimeout())
                 .requestTimeout(configuration.getRequestTimeout())
                 .useSystemProxy(configuration.isUseSystemProxy())

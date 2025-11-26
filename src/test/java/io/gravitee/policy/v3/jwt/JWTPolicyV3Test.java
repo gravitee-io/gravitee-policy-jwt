@@ -161,12 +161,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_INVALID_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_INVALID_TOKEN_KEY.equals(result.key())
+            )
+        );
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -371,12 +370,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+            )
+        );
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -413,12 +411,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_INVALID_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_INVALID_TOKEN_KEY.equals(result.key())
+            )
+        );
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -435,12 +432,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+            )
+        );
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -453,12 +449,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+            )
+        );
     }
 
     @Test
@@ -468,12 +463,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+            )
+        );
     }
 
     @Test
@@ -485,12 +479,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+            )
+        );
     }
 
     @Test
@@ -500,12 +493,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+            )
+        );
     }
 
     @Test
@@ -526,12 +518,11 @@ public abstract class JWTPolicyV3Test {
 
         executePolicy(configuration, request, response, executionContext, policyChain);
 
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_INVALID_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_INVALID_TOKEN_KEY.equals(result.key())
+            )
+        );
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -552,12 +543,11 @@ public abstract class JWTPolicyV3Test {
 
         // Here we expect that JWKSet resource has not been retrieved and so we finally get a 401.
         // Note: VertxResourceRetriever is hard to mock and throws an NPE (that's why we get a 401).
-        verify(policyChain, times(1))
-            .failWith(
-                argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-                )
-            );
+        verify(policyChain, times(1)).failWith(
+            argThat(
+                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
+            )
+        );
         verify(policyChain, never()).doNext(request, response);
     }
 
