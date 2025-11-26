@@ -133,7 +133,7 @@ class GivenKeyJWTProcessorProviderTest extends AbstractJWKTest {
     }
 
     @Test
-    void shouldIgnoreAndLogInvalidKey() {
+    void shouldWarnOnInvalidKey() {
         when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
         when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn("invalid");
 

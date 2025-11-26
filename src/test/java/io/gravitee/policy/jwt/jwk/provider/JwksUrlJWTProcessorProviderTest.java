@@ -15,7 +15,9 @@
  */
 package io.gravitee.policy.jwt.jwk.provider;
 
+import static io.gravitee.common.http.HttpStatusCode.INTERNAL_SERVER_ERROR_500;
 import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.ATTR_INTERNAL_RESOLVED_PARAMETER;
+import static io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver.JWKS_RESOLUTION_ERROR_KEY;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +29,7 @@ import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
+import io.gravitee.gateway.reactive.api.ExecutionFailure;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
@@ -34,6 +37,7 @@ import io.gravitee.policy.jwt.contentretriever.Content;
 import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
 import io.gravitee.policy.jwt.jwk.AbstractJWKTest;
 import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.observers.TestObserver;
 import java.security.KeyPair;
@@ -188,12 +192,26 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         ReflectionTestUtils.setField(cut, "contentRetriever", contentRetriever);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
 
-        obs.assertError(
-            throwable ->
-                throwable instanceof JWKSUrlJWKSourceResolver.ResolutionException &&
-                throwable.getCause() != null &&
-                MOCK_EXCEPTION.equals(throwable.getCause().getMessage())
-        );
+        obs.assertError(throwable -> {
+            // Verify it's the correct exception type
+            assertTrue(throwable instanceof JWKSUrlJWKSourceResolver.ResolutionException);
+            JWKSUrlJWKSourceResolver.ResolutionException resolutionException = (JWKSUrlJWKSourceResolver.ResolutionException) throwable;
+
+            // Verify the cause is present and contains the original message
+            assertNotNull(throwable.getCause());
+            assertEquals(MOCK_EXCEPTION, throwable.getCause().getMessage());
+
+            // Verify the ExecutionFailure attributes
+            ExecutionFailure failure = resolutionException.failure();
+            assertNotNull(failure);
+            assertEquals(INTERNAL_SERVER_ERROR_500, failure.statusCode());
+            assertEquals(JWKS_RESOLUTION_ERROR_KEY, failure.key());
+            assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.reasonPhrase(), failure.message());
+            assertNotNull(failure.cause());
+            assertTrue(failure.cause().getMessage().contains(MOCK_EXCEPTION));
+
+            return true;
+        });
     }
 
     private JWKSet generateJWKSConfiguration(Integer keySize, Signature signature, int nbIssuers, int nbSecretsPerIssuer) {

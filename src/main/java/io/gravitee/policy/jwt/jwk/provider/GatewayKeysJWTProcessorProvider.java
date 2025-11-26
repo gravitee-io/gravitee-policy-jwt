@@ -26,6 +26,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.util.EnvironmentUtils;
+import io.gravitee.gateway.reactive.api.ExecutionWarn;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.IssuerAwareJWSKeySelector;
@@ -58,6 +59,9 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
     private static final Logger log = LoggerFactory.getLogger(GatewayKeysJWTProcessorProvider.class);
     private static final String DEFAULT_KID = "default";
     private static final Pattern KEY_PROPERTY_PATTERN = Pattern.compile("^policy\\.jwt\\.issuer\\.(?<iss>.*)\\.(?<kid>.*)$");
+    private static final String JWT_INVALID_KEY_WARN = "JWT_INVALID_KEY";
+    private static final String KEY_LOADING_ERROR_MESSAGE_FORMAT =
+        "Error occurred when loading key (iss [%s], kid [%s]). Key will be ignored.";
 
     private final JWTPolicyConfiguration configuration;
 
@@ -76,7 +80,7 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
 
     private JWTProcessor<SecurityContext> buildJWTProcessor(BaseExecutionContext ctx) {
         final JWSAlgorithm alg = configuration.getSignature().getAlg();
-        final Map<String, List<JWK>> jwkByIssuer = loadFromConfiguration(alg, ctx.getComponent(ConfigurableEnvironment.class));
+        final Map<String, List<JWK>> jwkByIssuer = loadFromConfiguration(ctx, alg, ctx.getComponent(ConfigurableEnvironment.class));
         final Map<String, JWSKeySelector<SecurityContext>> selectors = createJWSKeySelectors(alg, jwkByIssuer);
 
         DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
@@ -87,7 +91,7 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
         return jwtProcessor;
     }
 
-    private Map<String, List<JWK>> loadFromConfiguration(JWSAlgorithm alg, ConfigurableEnvironment environment) {
+    private Map<String, List<JWK>> loadFromConfiguration(BaseExecutionContext ctx, JWSAlgorithm alg, ConfigurableEnvironment environment) {
         return EnvironmentUtils.getPropertiesStartingWith(environment, KEY_PROPERTY_PREFIX)
             .keySet()
             .stream()
@@ -103,7 +107,9 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
                     try {
                         return new SimpleEntry<>(iss, JWKBuilder.buildKey(kid, key, alg));
                     } catch (KeyException e) {
-                        log.warn("Error occurred when loading key (iss [{}], kid [{}]). Key will be ignored.", iss, kid, e);
+                        String errorMessage = String.format(KEY_LOADING_ERROR_MESSAGE_FORMAT, iss, kid);
+                        log.warn(errorMessage, e);
+                        ctx.warnWith(new ExecutionWarn(JWT_INVALID_KEY_WARN).message(errorMessage).cause(e));
                     }
                 }
 

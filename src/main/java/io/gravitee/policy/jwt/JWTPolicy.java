@@ -46,6 +46,7 @@ import io.gravitee.policy.jwt.utils.TokenExtractor;
 import io.gravitee.policy.processing.JWTClaimsSetValidator;
 import io.gravitee.policy.v3.jwt.JWTPolicyV3;
 import io.gravitee.reporter.api.v4.metric.Metrics;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
@@ -72,9 +73,15 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     public static final String CONTEXT_ATTRIBUTE_JWT = "jwt";
 
     private static final String KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME = "kafka.oauthbearer.maxTokenLifetime";
-    public static final String INTERNAL_SERVER_ERROR = "Internal Server Error";
     private static final long DEFAULT_MAX_TOKEN_LIFETIME_MS = 60 * 60 * 1000L; // 1 hour
     public static final String JWT_REVOKED = "JWT_REVOKED";
+    public static final String JWT_POLICY_ERROR_KEY = "JWT_POLICY_ERROR";
+
+    // Error messages for RuntimeExceptions
+    static final String ERROR_MSG_JWT_REVOKED = "JWT token has been revoked";
+    static final String ERROR_MSG_MISSING_TOKEN = "Missing JWT token";
+    static final String ERROR_MSG_EMPTY_TOKEN = "Empty JWT token";
+    static final String ERROR_MSG_INVALID_THUMBPRINT = "Invalid certificate bound thumbprint";
 
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
 
@@ -228,11 +235,11 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
         Optional<String> token = TokenExtractor.extract(ctx);
         if (token.isEmpty()) {
-            return interruptUnauthorized(ctx, JWT_MISSING_TOKEN_KEY, new RuntimeException("Missing JWT token"));
+            return interruptUnauthorized(ctx, JWT_MISSING_TOKEN_KEY, new RuntimeException(ERROR_MSG_MISSING_TOKEN));
         }
         String tokenValue = token.get();
         if (tokenValue.isEmpty()) {
-            return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY, new RuntimeException("Empty JWT token"));
+            return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY, new RuntimeException(ERROR_MSG_EMPTY_TOKEN));
         }
         return Single.just(new LazyJWT(token.get()));
     }
@@ -248,7 +255,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
             }
 
             if (this.revocationChecker.isRevoked(claims)) {
-                return interruptUnauthorized(ctx, JWT_REVOKED, new RuntimeException("JWT token has been revoked"));
+                return interruptUnauthorized(ctx, JWT_REVOKED, new RuntimeException(ERROR_MSG_JWT_REVOKED));
             }
 
             return Single.just(claims);
@@ -267,7 +274,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                 if (throwable instanceof JWKSUrlJWKSourceResolver.ResolutionException resolutionException) {
                     return this.<JWTProcessor<SecurityContext>>interruptInternalError(ctx, resolutionException.failure()).toMaybe();
                 }
-                return this.<JWTProcessor<SecurityContext>>interruptInternalError(ctx, "JWT_POLICY_ERROR", throwable).toMaybe();
+                return this.<JWTProcessor<SecurityContext>>interruptInternalError(ctx, JWT_POLICY_ERROR_KEY, throwable).toMaybe();
             })
             .flatMapSingle(jwtProcessor -> {
                 JWTClaimsSet jwtClaimsSet;
@@ -301,7 +308,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                                 return interruptUnauthorized(
                                     httpPlainExecutionContext,
                                     JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT,
-                                    new RuntimeException("Invalid certificate bound thumbprint")
+                                    new RuntimeException(ERROR_MSG_INVALID_THUMBPRINT)
                                 );
                             }
                         }
@@ -354,7 +361,10 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     }
 
     private <T> Single<T> interruptInternalError(BaseExecutionContext ctx, String key, Throwable cause) {
-        ExecutionFailure failure = new ExecutionFailure(INTERNAL_SERVER_ERROR_500).key(key).message(INTERNAL_SERVER_ERROR).cause(cause);
+        ExecutionFailure failure = new ExecutionFailure(INTERNAL_SERVER_ERROR_500)
+            .key(key)
+            .message(HttpResponseStatus.INTERNAL_SERVER_ERROR.reasonPhrase())
+            .cause(cause);
         return interruptInternalError(ctx, failure);
     }
 

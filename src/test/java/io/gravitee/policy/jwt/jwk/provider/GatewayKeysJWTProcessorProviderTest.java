@@ -175,7 +175,7 @@ class GatewayKeysJWTProcessorProviderTest extends AbstractJWKTest {
     }
 
     @Test
-    void shouldIgnoreAndLogInvalidKey() {
+    void shouldWarnOnInvalidKey() {
         when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
         when(ctx.getComponent(ConfigurableEnvironment.class)).thenReturn(environment);
 
