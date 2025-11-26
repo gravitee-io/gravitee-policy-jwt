@@ -337,17 +337,16 @@ class JWTPolicyTest {
         obs.assertError(Throwable.class);
 
         verify(revocationChecker).isRevoked(claimsSet);
-        verify(ctx)
-            .interruptWith(
-                argThat(failure -> {
-                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
-                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
-                    assertEquals(JWT_REVOKED, failure.key());
-                    assertNull(failure.parameters());
-                    assertNull(failure.contentType());
-                    return true;
-                })
-            );
+        verify(ctx).interruptWith(
+            argThat(failure -> {
+                assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                assertEquals(JWT_REVOKED, failure.key());
+                assertNull(failure.parameters());
+                assertNull(failure.contentType());
+                return true;
+            })
+        );
     }
 
     @Test
@@ -360,18 +359,17 @@ class JWTPolicyTest {
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
         obs.assertError(Throwable.class);
 
-        verify(ctx)
-            .interruptWith(
-                argThat(failure -> {
-                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
-                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
-                    assertEquals(JWT_MISSING_TOKEN_KEY, failure.key());
-                    assertNull(failure.parameters());
-                    assertNull(failure.contentType());
+        verify(ctx).interruptWith(
+            argThat(failure -> {
+                assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                assertEquals(JWT_MISSING_TOKEN_KEY, failure.key());
+                assertNull(failure.parameters());
+                assertNull(failure.contentType());
 
-                    return true;
-                })
-            );
+                return true;
+            })
+        );
     }
 
     @Test
@@ -386,18 +384,17 @@ class JWTPolicyTest {
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
         obs.assertError(Throwable.class);
 
-        verify(ctx)
-            .interruptWith(
-                argThat(failure -> {
-                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
-                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
-                    assertEquals(JWT_MISSING_TOKEN_KEY, failure.key());
-                    assertNull(failure.parameters());
-                    assertNull(failure.contentType());
+        verify(ctx).interruptWith(
+            argThat(failure -> {
+                assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                assertEquals(JWT_MISSING_TOKEN_KEY, failure.key());
+                assertNull(failure.parameters());
+                assertNull(failure.contentType());
 
-                    return true;
-                })
-            );
+                return true;
+            })
+        );
     }
 
     @Test
@@ -412,18 +409,17 @@ class JWTPolicyTest {
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
         obs.assertError(Throwable.class);
 
-        verify(ctx)
-            .interruptWith(
-                argThat(failure -> {
-                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
-                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
-                    assertEquals(JWT_INVALID_TOKEN_KEY, failure.key());
-                    assertNull(failure.parameters());
-                    assertNull(failure.contentType());
+        verify(ctx).interruptWith(
+            argThat(failure -> {
+                assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                assertEquals(JWT_INVALID_TOKEN_KEY, failure.key());
+                assertNull(failure.parameters());
+                assertNull(failure.contentType());
 
-                    return true;
-                })
-            );
+                return true;
+            })
+        );
     }
 
     @Test
@@ -435,8 +431,9 @@ class JWTPolicyTest {
         when(request.headers()).thenReturn(headers);
 
         when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
-        when(jwtProcessor.process(Mockito.<JWT>argThat(jwt -> TOKEN.equals(jwt.getParsedString())), isNull()))
-            .thenThrow(new JOSEException(MOCK_JOSE_EXCEPTION));
+        when(jwtProcessor.process(Mockito.<JWT>argThat(jwt -> TOKEN.equals(jwt.getParsedString())), isNull())).thenThrow(
+            new JOSEException(MOCK_JOSE_EXCEPTION)
+        );
         when(ctx.request()).thenReturn(request);
         when(ctx.metrics()).thenReturn(metrics);
         when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
@@ -444,18 +441,17 @@ class JWTPolicyTest {
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
         obs.assertError(Throwable.class);
 
-        verify(ctx)
-            .interruptWith(
-                argThat(failure -> {
-                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
-                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
-                    assertEquals(JWT_INVALID_TOKEN_KEY, failure.key());
-                    assertNull(failure.parameters());
-                    assertNull(failure.contentType());
+        verify(ctx).interruptWith(
+            argThat(failure -> {
+                assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                assertEquals(JWT_INVALID_TOKEN_KEY, failure.key());
+                assertNull(failure.parameters());
+                assertNull(failure.contentType());
 
-                    return true;
-                })
-            );
+                return true;
+            })
+        );
 
         verify(metrics).setErrorMessage(MOCK_JOSE_EXCEPTION);
     }
@@ -485,8 +481,8 @@ class JWTPolicyTest {
 
         final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
 
-        obs.assertValue(token ->
-            token.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) && token.getTokenValue().equals("unit-test")
+        obs.assertValue(
+            token -> token.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) && token.getTokenValue().equals("unit-test")
         );
         verify(ctx).setAttribute(eq(CONTEXT_ATTRIBUTE_JWT), Mockito.<LazyJWT>argThat(jwt -> TOKEN.equals(jwt.getToken())));
     }

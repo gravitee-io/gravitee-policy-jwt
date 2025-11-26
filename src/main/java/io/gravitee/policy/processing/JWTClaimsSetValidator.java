@@ -63,11 +63,10 @@ public class JWTClaimsSetValidator {
     protected final Cache<String, JWTClaimsSet> validClaimsSetCache;
 
     private JWTClaimsSetValidator(String apiId) {
-        this.validClaimsSetCache =
-            new InMemoryCache<>(
-                "JWT_%s_%s".formatted(apiId, UUID.random().toString()),
-                CacheConfiguration.builder().maxSize(CACHE_MAX_SIZE).timeToIdleInMs(CACHE_TIME_TO_IDLE_MS).build()
-            );
+        this.validClaimsSetCache = new InMemoryCache<>(
+            "JWT_%s_%s".formatted(apiId, UUID.random().toString()),
+            CacheConfiguration.builder().maxSize(CACHE_MAX_SIZE).timeToIdleInMs(CACHE_TIME_TO_IDLE_MS).build()
+        );
     }
 
     public static JWTClaimsSetValidator create(BaseExecutionContext ctx) {

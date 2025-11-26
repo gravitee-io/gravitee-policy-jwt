@@ -90,19 +90,17 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
 
     private ContentRetriever getResourceRetriever(BaseExecutionContext ctx) {
         if (contentRetriever == null) {
-            contentRetriever =
-                new VertxContentRetriever(
-                    ctx.getComponent(Vertx.class),
-                    ctx.getComponent(Configuration.class),
-                    RetrieveOptions
-                        .builder()
-                        .connectTimeout(configuration.getConnectTimeout())
-                        .requestTimeout(configuration.getRequestTimeout())
-                        .useSystemProxy(configuration.isUseSystemProxy())
-                        .followRedirects(configuration.getFollowRedirects())
-                        .build(),
-                    null
-                );
+            contentRetriever = new VertxContentRetriever(
+                ctx.getComponent(Vertx.class),
+                ctx.getComponent(Configuration.class),
+                RetrieveOptions.builder()
+                    .connectTimeout(configuration.getConnectTimeout())
+                    .requestTimeout(configuration.getRequestTimeout())
+                    .useSystemProxy(configuration.isUseSystemProxy())
+                    .followRedirects(configuration.getFollowRedirects())
+                    .build(),
+                null
+            );
         }
 
         return contentRetriever;

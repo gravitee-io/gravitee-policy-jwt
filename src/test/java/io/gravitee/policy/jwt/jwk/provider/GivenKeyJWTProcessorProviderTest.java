@@ -115,8 +115,9 @@ class GivenKeyJWTProcessorProviderTest extends AbstractJWKTest {
         final String jwt = generateJWT(sharedSecret, signature.getAlg(), "gravitee0.io", "key0");
 
         when(configuration.getSignature()).thenReturn(signature);
-        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER))
-            .thenReturn(encodeBase64 ? Base64.getEncoder().encodeToString(sharedSecret) : new String(sharedSecret));
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(
+            encodeBase64 ? Base64.getEncoder().encodeToString(sharedSecret) : new String(sharedSecret)
+        );
 
         final GivenKeyJWTProcessorProvider cut = new GivenKeyJWTProcessorProvider(configuration);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();

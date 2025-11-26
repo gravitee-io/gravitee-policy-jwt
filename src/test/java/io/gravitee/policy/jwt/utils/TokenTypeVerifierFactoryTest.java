@@ -37,8 +37,12 @@ class TokenTypeVerifierFactoryTest {
     void buildDefault_should_return_default_verifier() {
         DefaultJOSEObjectTypeVerifier<SecurityContext> verifier = TokenTypeVerifierFactory.buildDefault();
         assertThat(verifier).isNotNull();
-        assertThat(verifier.getAllowedTypes())
-            .containsExactlyInAnyOrder(JOSEObjectType.JWT, new JOSEObjectType("at+jwt"), new JOSEObjectType("application/at+jwt"), null);
+        assertThat(verifier.getAllowedTypes()).containsExactlyInAnyOrder(
+            JOSEObjectType.JWT,
+            new JOSEObjectType("at+jwt"),
+            new JOSEObjectType("application/at+jwt"),
+            null
+        );
     }
 
     @Test

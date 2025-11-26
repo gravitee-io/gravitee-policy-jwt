@@ -35,11 +35,11 @@ import org.mockito.Mock;
 class VertxContentRetrieverTest {
 
     public static final String SAMPLE_RESPONSE = """
-            id1
-            id2
-            id3
-            id4
-            id5""";
+        id1
+        id2
+        id3
+        id4
+        id5""";
 
     @Mock
     private Configuration configuration;
@@ -67,8 +67,7 @@ class VertxContentRetrieverTest {
 
     @Test
     void should_fetch_jwks_json(WireMockRuntimeInfo wmRuntimeInfo) {
-        String JWKS_JSON =
-            """
+        String JWKS_JSON = """
             {
               "keys" : [ {
                 "kty" : "RSA",
@@ -84,8 +83,9 @@ class VertxContentRetrieverTest {
             """;
 
         stubFor(
-            get(urlPathEqualTo("/.well-known/jwks.json"))
-                .willReturn(ok().withBody(JWKS_JSON).withHeader("Content-Type", "application/json"))
+            get(urlPathEqualTo("/.well-known/jwks.json")).willReturn(
+                ok().withBody(JWKS_JSON).withHeader("Content-Type", "application/json")
+            )
         );
 
         VertxContentRetriever contentRetriever = new VertxContentRetriever(
@@ -181,10 +181,11 @@ class VertxContentRetrieverTest {
             .retrieve(wmRuntimeInfo.getHttpBaseUrl() + "/large")
             .test()
             .awaitDone(10, TimeUnit.SECONDS)
-            .assertError(throwable ->
-                throwable instanceof IllegalStateException &&
-                throwable.getMessage().contains("Response size") &&
-                throwable.getMessage().contains("exceeds maximum allowed size")
+            .assertError(
+                throwable ->
+                    throwable instanceof IllegalStateException &&
+                    throwable.getMessage().contains("Response size") &&
+                    throwable.getMessage().contains("exceeds maximum allowed size")
             );
 
         verify(getRequestedFor(urlPathEqualTo("/large")));

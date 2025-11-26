@@ -48,7 +48,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
 
-    private static final String KEY = "key", EL_EXPRESSION = "{# request.headers['origin'] == 'https://gravitee.io'";
+    private static final String KEY = "key",
+        EL_EXPRESSION = "{# request.headers['origin'] == 'https://gravitee.io'";
 
     @Mock
     private JWTPolicyConfiguration configuration;

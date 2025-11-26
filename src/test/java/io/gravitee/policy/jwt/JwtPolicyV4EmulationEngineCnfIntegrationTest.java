@@ -38,6 +38,7 @@ import io.gravitee.apim.gateway.tests.sdk.AbstractPolicyTest;
 import io.gravitee.apim.gateway.tests.sdk.annotations.DeployApi;
 import io.gravitee.apim.gateway.tests.sdk.annotations.GatewayTest;
 import io.gravitee.apim.gateway.tests.sdk.configuration.GatewayConfigurationBuilder;
+import io.gravitee.apim.gateway.tests.sdk.parameters.GatewayDynamicConfig;
 import io.gravitee.definition.model.Api;
 import io.gravitee.definition.model.Plan;
 import io.gravitee.gateway.api.service.Subscription;
@@ -62,6 +63,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ParameterContext;
 import org.mockito.stubbing.OngoingStubbing;
 
 /**
@@ -115,8 +117,10 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
     }
 
     public static SecurityToken securityTokenMatcher(String clientId) {
-        return argThat(securityToken ->
-            securityToken.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) && securityToken.getTokenValue().equals(clientId)
+        return argThat(
+            securityToken ->
+                securityToken.getTokenType().equals(SecurityToken.TokenType.CLIENT_ID.name()) &&
+                securityToken.getTokenValue().equals(clientId)
         );
     }
 
@@ -174,8 +178,12 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
         }
 
         @Override
-        protected void configureHttpClient(final HttpClientOptions options) {
-            JwtPolicyV4EmulationEngineCnfIntegrationTest.configureHttpClient(options, gatewayPort());
+        protected void configureHttpClient(
+            final HttpClientOptions options,
+            GatewayDynamicConfig.Config gatewayConfig,
+            ParameterContext parameterContext
+        ) {
+            JwtPolicyV4EmulationEngineCnfIntegrationTest.configureHttpClient(options, gatewayConfig.httpPort());
         }
 
         @Override
@@ -244,8 +252,12 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
         }
 
         @Override
-        protected void configureHttpClient(final HttpClientOptions options) {
-            JwtPolicyV4EmulationEngineCnfIntegrationTest.configureHttpClient(options, gatewayPort());
+        protected void configureHttpClient(
+            final HttpClientOptions options,
+            GatewayDynamicConfig.Config gatewayConfig,
+            ParameterContext parameterContext
+        ) {
+            JwtPolicyV4EmulationEngineCnfIntegrationTest.configureHttpClient(options, gatewayConfig.httpPort());
         }
 
         @Override
@@ -310,7 +322,8 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
 
             Single<HttpClientResponse> httpClientResponse = client
                 .rxRequest(HttpMethod.GET, "/test")
-                .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).putHeader("ssl-client-cert", "wrong").rxSend()
+                .flatMap(request ->
+                    request.putHeader("Authorization", "Bearer " + jwtToken).putHeader("ssl-client-cert", "wrong").rxSend()
                 );
 
             assert401unauthorized(wiremock, httpClientResponse);
@@ -330,7 +343,8 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
 
             Single<HttpClientResponse> httpClientResponse = client
                 .rxRequest(HttpMethod.GET, "/test")
-                .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).putHeader("ssl-client-cert", encoded).rxSend()
+                .flatMap(request ->
+                    request.putHeader("Authorization", "Bearer " + jwtToken).putHeader("ssl-client-cert", encoded).rxSend()
                 );
 
             assert401unauthorized(wiremock, httpClientResponse);
@@ -354,8 +368,12 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
         }
 
         @Override
-        protected void configureHttpClient(final HttpClientOptions options) {
-            JwtPolicyV4EmulationEngineCnfIntegrationTest.configureHttpClient(options, gatewayPort());
+        protected void configureHttpClient(
+            final HttpClientOptions options,
+            GatewayDynamicConfig.Config gatewayConfig,
+            ParameterContext parameterContext
+        ) {
+            JwtPolicyV4EmulationEngineCnfIntegrationTest.configureHttpClient(options, gatewayConfig.httpPort());
 
             final PemKeyCertOptions pemKeyCertOptions = new PemKeyCertOptions();
             pemKeyCertOptions.setCertPath(
@@ -428,7 +446,8 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
 
             Single<HttpClientResponse> httpClientResponse = client
                 .rxRequest(HttpMethod.GET, "/test")
-                .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).putHeader("ssl-client-cert", encoded).rxSend()
+                .flatMap(request ->
+                    request.putHeader("Authorization", "Bearer " + jwtToken).putHeader("ssl-client-cert", encoded).rxSend()
                 );
 
             assert401unauthorized(wiremock, httpClientResponse);
@@ -454,8 +473,12 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
         }
 
         @Override
-        protected void configureHttpClient(final HttpClientOptions options) {
-            JwtPolicyV4EmulationEngineCnfIntegrationTest.configureHttpClient(options, gatewayPort());
+        protected void configureHttpClient(
+            final HttpClientOptions options,
+            GatewayDynamicConfig.Config gatewayConfig,
+            ParameterContext parameterContext
+        ) {
+            JwtPolicyV4EmulationEngineCnfIntegrationTest.configureHttpClient(options, gatewayConfig.httpPort());
         }
 
         @Override

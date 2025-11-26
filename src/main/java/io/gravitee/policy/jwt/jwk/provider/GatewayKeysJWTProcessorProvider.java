@@ -88,8 +88,7 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
     }
 
     private Map<String, List<JWK>> loadFromConfiguration(JWSAlgorithm alg, ConfigurableEnvironment environment) {
-        return EnvironmentUtils
-            .getPropertiesStartingWith(environment, KEY_PROPERTY_PREFIX)
+        return EnvironmentUtils.getPropertiesStartingWith(environment, KEY_PROPERTY_PREFIX)
             .keySet()
             .stream()
             .map(entry -> {
