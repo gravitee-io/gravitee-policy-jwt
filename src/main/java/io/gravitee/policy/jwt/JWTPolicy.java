@@ -228,11 +228,11 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
         Optional<String> token = TokenExtractor.extract(ctx);
         if (token.isEmpty()) {
-            return interruptUnauthorized(ctx, JWT_MISSING_TOKEN_KEY);
+            return interruptUnauthorized(ctx, JWT_MISSING_TOKEN_KEY, new RuntimeException("Missing JWT token"));
         }
         String tokenValue = token.get();
         if (tokenValue.isEmpty()) {
-            return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY);
+            return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY, new RuntimeException("Empty JWT token"));
         }
         return Single.just(new LazyJWT(token.get()));
     }
@@ -248,7 +248,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
             }
 
             if (this.revocationChecker.isRevoked(claims)) {
-                return interruptUnauthorized(ctx, JWT_REVOKED);
+                return interruptUnauthorized(ctx, JWT_REVOKED, new RuntimeException("JWT token has been revoked"));
             }
 
             return Single.just(claims);
@@ -276,7 +276,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                     jwtClaimsSet = extractJwtClaimsSet(ctx, jwt, jwtProcessor);
                 } catch (Exception exception) {
                     reportError(ctx, exception);
-                    return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY);
+                    return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY, exception);
                 }
 
                 return validateRevocation(ctx, jwtClaimsSet).flatMap(claims -> {
@@ -298,7 +298,11 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                                 )
                             ) {
                                 jwtClaimsSetValidator.invalidate(jwt);
-                                return interruptUnauthorized(httpPlainExecutionContext, JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT);
+                                return interruptUnauthorized(
+                                    httpPlainExecutionContext,
+                                    JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT,
+                                    new RuntimeException("Invalid certificate bound thumbprint")
+                                );
                             }
                         }
                     }
@@ -337,15 +341,16 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         }
     }
 
-    private <T> Single<T> interruptUnauthorized(BaseExecutionContext ctx, String key) {
+    private <T> Single<T> interruptUnauthorized(BaseExecutionContext ctx, String key, Throwable cause) {
         if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
-            return httpPlainExecutionContext
-                .interruptWith(new ExecutionFailure(UNAUTHORIZED_401).key(key).message(UNAUTHORIZED_MESSAGE))
-                .<T>toMaybe()
-                .toSingle();
+            ExecutionFailure failure = new ExecutionFailure(UNAUTHORIZED_401).key(key).message(UNAUTHORIZED_MESSAGE);
+            if (cause != null) {
+                failure = failure.cause(cause);
+            }
+            return httpPlainExecutionContext.interruptWith(failure).<T>toMaybe().toSingle();
         }
         // FIXME: Kafka Gateway - manage interruption with Kafka.
-        return Single.error(new Exception(key));
+        return Single.error(cause != null ? cause : new Exception(key));
     }
 
     private <T> Single<T> interruptInternalError(BaseExecutionContext ctx, String key, Throwable cause) {
