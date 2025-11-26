@@ -15,6 +15,7 @@
  */
 package io.gravitee.policy.jwt;
 
+import static io.gravitee.common.http.HttpStatusCode.INTERNAL_SERVER_ERROR_500;
 import static io.gravitee.common.http.HttpStatusCode.UNAUTHORIZED_401;
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_API;
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
@@ -38,6 +39,7 @@ import io.gravitee.gateway.reactive.api.policy.kafka.KafkaSecurityPolicy;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
 import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
+import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
 import io.gravitee.policy.jwt.revocation.RevocationChecker;
 import io.gravitee.policy.jwt.revocation.RevocationCheckerFactory;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
@@ -70,6 +72,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     public static final String CONTEXT_ATTRIBUTE_JWT = "jwt";
 
     private static final String KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME = "kafka.oauthbearer.maxTokenLifetime";
+    public static final String INTERNAL_SERVER_ERROR = "Internal Server Error";
     private static final long DEFAULT_MAX_TOKEN_LIFETIME_MS = 60 * 60 * 1000L; // 1 hour
     public static final String JWT_REVOKED = "JWT_REVOKED";
 
@@ -123,19 +126,18 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     @Override
     public Completable onRequest(HttpPlainExecutionContext ctx) {
-        return handleSecurity(ctx)
-            .flatMapCompletable(jwtClaimsSet ->
-                Completable.fromRunnable(() -> {
-                    Metrics metrics = ctx.metrics();
-                    metrics.setUser(ctx.getAttribute(ATTR_USER));
-                    metrics.setSecurityType(JWT);
-                    metrics.setSecurityToken(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID));
+        return handleSecurity(ctx).flatMapCompletable(jwtClaimsSet ->
+            Completable.fromRunnable(() -> {
+                Metrics metrics = ctx.metrics();
+                metrics.setUser(ctx.getAttribute(ATTR_USER));
+                metrics.setSecurityType(JWT);
+                metrics.setSecurityToken(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID));
 
-                    if (!configuration.isPropagateAuthHeader()) {
-                        ctx.request().headers().remove(HttpHeaders.AUTHORIZATION);
-                    }
-                })
-            );
+                if (!configuration.isPropagateAuthHeader()) {
+                    ctx.request().headers().remove(HttpHeaders.AUTHORIZATION);
+                }
+            })
+        );
     }
 
     @Override
@@ -259,6 +261,14 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     private Single<JWTClaimsSet> validateToken(BaseExecutionContext ctx, LazyJWT jwt) {
         return jwtProcessorResolver
             .provide(ctx)
+            .onErrorResumeNext(throwable -> {
+                // Handle errors from JWT processor resolution (e.g., JWKS URL resolution failures)
+                reportError(ctx, throwable);
+                if (throwable instanceof JWKSUrlJWKSourceResolver.ResolutionException resolutionException) {
+                    return this.<JWTProcessor<SecurityContext>>interruptInternalError(ctx, resolutionException.failure()).toMaybe();
+                }
+                return this.<JWTProcessor<SecurityContext>>interruptInternalError(ctx, "JWT_POLICY_ERROR", throwable).toMaybe();
+            })
             .flatMapSingle(jwtProcessor -> {
                 JWTClaimsSet jwtClaimsSet;
                 // Validate JWT
@@ -269,33 +279,31 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                     return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY);
                 }
 
-                return validateRevocation(ctx, jwtClaimsSet)
-                    .flatMap(claims -> {
-                        // FIXME: Kafka Gateway - https://gravitee.atlassian.net/browse/APIM-7523
-                        if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
-                            // Validate confirmation method
-                            JWTPolicyConfiguration.ConfirmationMethodValidation confirmationMethodValidation =
-                                configuration.getConfirmationMethodValidation();
+                return validateRevocation(ctx, jwtClaimsSet).flatMap(claims -> {
+                    // FIXME: Kafka Gateway - https://gravitee.atlassian.net/browse/APIM-7523
+                    if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+                        // Validate confirmation method
+                        JWTPolicyConfiguration.ConfirmationMethodValidation confirmationMethodValidation =
+                            configuration.getConfirmationMethodValidation();
+                        if (
+                            confirmationMethodValidation != null && confirmationMethodValidation.getCertificateBoundThumbprint().isEnabled()
+                        ) {
                             if (
-                                confirmationMethodValidation != null &&
-                                confirmationMethodValidation.getCertificateBoundThumbprint().isEnabled()
+                                !isValidCertificateThumbprint(
+                                    claims,
+                                    httpPlainExecutionContext.request().tlsSession(),
+                                    httpPlainExecutionContext.request().headers(),
+                                    confirmationMethodValidation.isIgnoreMissing(),
+                                    confirmationMethodValidation.getCertificateBoundThumbprint()
+                                )
                             ) {
-                                if (
-                                    !isValidCertificateThumbprint(
-                                        claims,
-                                        httpPlainExecutionContext.request().tlsSession(),
-                                        httpPlainExecutionContext.request().headers(),
-                                        confirmationMethodValidation.isIgnoreMissing(),
-                                        confirmationMethodValidation.getCertificateBoundThumbprint()
-                                    )
-                                ) {
-                                    jwtClaimsSetValidator.invalidate(jwt);
-                                    return interruptUnauthorized(httpPlainExecutionContext, JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT);
-                                }
+                                jwtClaimsSetValidator.invalidate(jwt);
+                                return interruptUnauthorized(httpPlainExecutionContext, JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT);
                             }
                         }
-                        return Single.just(claims);
-                    });
+                    }
+                    return Single.just(claims);
+                });
             })
             .toSingle();
     }
@@ -338,6 +346,20 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         }
         // FIXME: Kafka Gateway - manage interruption with Kafka.
         return Single.error(new Exception(key));
+    }
+
+    private <T> Single<T> interruptInternalError(BaseExecutionContext ctx, String key, Throwable cause) {
+        ExecutionFailure failure = new ExecutionFailure(INTERNAL_SERVER_ERROR_500).key(key).message(INTERNAL_SERVER_ERROR).cause(cause);
+        return interruptInternalError(ctx, failure);
+    }
+
+    private <T> Single<T> interruptInternalError(BaseExecutionContext ctx, ExecutionFailure failure) {
+        if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+            return httpPlainExecutionContext.interruptWith(failure).<T>toMaybe().toSingle();
+        }
+
+        Throwable propagatedCause = Optional.ofNullable(failure.cause()).orElseGet(() -> new IllegalStateException(failure.key()));
+        return Single.error(propagatedCause);
     }
 
     private void reportError(BaseExecutionContext ctx, Throwable throwable) {
