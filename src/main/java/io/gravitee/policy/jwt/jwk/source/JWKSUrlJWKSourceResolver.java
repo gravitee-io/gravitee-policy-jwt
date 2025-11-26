@@ -16,7 +16,6 @@
 package io.gravitee.policy.jwt.jwk.source;
 
 import static io.gravitee.common.http.HttpStatusCode.INTERNAL_SERVER_ERROR_500;
-import static io.gravitee.policy.jwt.JWTPolicy.INTERNAL_SERVER_ERROR;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWK;
@@ -29,6 +28,7 @@ import com.nimbusds.jose.util.Resource;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
 import io.gravitee.policy.jwt.contentretriever.Content;
 import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
@@ -147,10 +147,11 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
             super(message, cause);
             Throwable mostSpecific = NestedExceptionUtils.getMostSpecificCause(cause);
             String mostSpecificMessage = Optional.ofNullable(mostSpecific.getMessage()).map(String::trim).orElse("");
+            String combinedMessage = mostSpecificMessage.isEmpty() ? message : message + " - " + mostSpecificMessage;
             this.failure = new ExecutionFailure(INTERNAL_SERVER_ERROR_500)
                 .key(JWKS_RESOLUTION_ERROR_KEY)
-                .message(INTERNAL_SERVER_ERROR)
-                .cause(new RuntimeException(message + " " + mostSpecificMessage));
+                .message(HttpResponseStatus.INTERNAL_SERVER_ERROR.reasonPhrase())
+                .cause(new RuntimeException(combinedMessage));
         }
 
         public ExecutionFailure failure() {

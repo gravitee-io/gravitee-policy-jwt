@@ -23,6 +23,7 @@ import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
+import io.gravitee.gateway.reactive.api.ExecutionWarn;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.selector.NoKidJWSVerificationKeySelector;
@@ -42,6 +43,8 @@ import org.slf4j.LoggerFactory;
 class GivenKeyJWTProcessorProvider implements JWTProcessorProvider {
 
     private static final Logger log = LoggerFactory.getLogger(GivenKeyJWTProcessorProvider.class);
+    private static final String JWT_INVALID_KEY_WARN = "JWT_INVALID_KEY";
+    private static final String KEY_LOADING_ERROR_MESSAGE = "Error occurred when loading key. Key will be ignored.";
 
     private final JWTPolicyConfiguration configuration;
 
@@ -55,10 +58,10 @@ class GivenKeyJWTProcessorProvider implements JWTProcessorProvider {
      */
     @Override
     public Maybe<JWTProcessor<SecurityContext>> provide(BaseExecutionContext ctx) {
-        return Maybe.fromCallable(() -> buildJWTProcessor(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)));
+        return Maybe.fromCallable(() -> buildJWTProcessor(ctx, ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)));
     }
 
-    private JWTProcessor<SecurityContext> buildJWTProcessor(String keyValue) {
+    private JWTProcessor<SecurityContext> buildJWTProcessor(BaseExecutionContext ctx, String keyValue) {
         final DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
         try {
             // Explicitly use a NoKidJWSVerificationKeySelector as the given key does not have keyId and nimbus library always try to match incoming jwt kid with the jwk kid.
@@ -69,7 +72,8 @@ class GivenKeyJWTProcessorProvider implements JWTProcessorProvider {
 
             jwtProcessor.setJWSKeySelector(selector);
         } catch (Throwable throwable) {
-            log.warn("Error occurred when loading key. Key will be ignored.", throwable);
+            log.warn(KEY_LOADING_ERROR_MESSAGE, throwable);
+            ctx.warnWith(new ExecutionWarn(JWT_INVALID_KEY_WARN).message(KEY_LOADING_ERROR_MESSAGE).cause(throwable));
         }
 
         jwtProcessor.setJWSTypeVerifier(TokenTypeVerifierFactory.build(configuration.getTokenTypValidation()));
