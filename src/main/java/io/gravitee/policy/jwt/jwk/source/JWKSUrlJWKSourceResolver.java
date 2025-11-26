@@ -15,6 +15,9 @@
  */
 package io.gravitee.policy.jwt.jwk.source;
 
+import static io.gravitee.common.http.HttpStatusCode.INTERNAL_SERVER_ERROR_500;
+import static io.gravitee.policy.jwt.JWTPolicy.INTERNAL_SERVER_ERROR;
+
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
@@ -23,19 +26,23 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.Resource;
+import io.gravitee.gateway.reactive.api.ExecutionFailure;
 import io.gravitee.policy.jwt.contentretriever.Content;
 import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.text.ParseException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.NestedExceptionUtils;
 
 /**
  * Specific implementation of {@link JWKSource} allowing retrieve the JWKS from an url and triggering refresh every {@link #refreshInterval} in background.
@@ -47,6 +54,8 @@ import org.slf4j.LoggerFactory;
 public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKSource<C> {
 
     private static final Logger log = LoggerFactory.getLogger(JWKSUrlJWKSourceResolver.class);
+
+    public static final String JWKS_RESOLUTION_ERROR_KEY = "JWT_JWKS_RESOLUTION_ERROR";
 
     private final String jwksUrl;
     private final Duration refreshInterval;
@@ -93,6 +102,9 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
         if (refreshing.compareAndSet(false, true)) {
             return contentRetriever
                 .retrieve(jwksUrl)
+                .onErrorResumeNext(throwable ->
+                    Single.error(new ResolutionException("Failed to retrieve JWKS from url " + jwksUrl, throwable))
+                )
                 .flatMapMaybe(this::readJwkSourceFromResource)
                 .map(CachedJWKSource::new)
                 .doOnSuccess(jwkSource -> cache.put(jwksUrl, jwkSource))
@@ -123,7 +135,26 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
             ImmutableJWKSet<SecurityContext> jwkSet = new ImmutableJWKSet<>(parsedJWKSet);
             return Maybe.just(jwkSet);
         } catch (ParseException e) {
-            return Maybe.error(e);
+            return Maybe.error(new ResolutionException("Failed to parse JWKS retrieved from url " + jwksUrl, e));
+        }
+    }
+
+    public static final class ResolutionException extends RuntimeException {
+
+        private final ExecutionFailure failure;
+
+        public ResolutionException(String message, Throwable cause) {
+            super(message, cause);
+            Throwable mostSpecific = NestedExceptionUtils.getMostSpecificCause(cause);
+            String mostSpecificMessage = Optional.ofNullable(mostSpecific.getMessage()).map(String::trim).orElse("");
+            this.failure = new ExecutionFailure(INTERNAL_SERVER_ERROR_500)
+                .key(JWKS_RESOLUTION_ERROR_KEY)
+                .message(INTERNAL_SERVER_ERROR)
+                .cause(new RuntimeException(message + " " + mostSpecificMessage));
+        }
+
+        public ExecutionFailure failure() {
+            return failure;
         }
     }
 }

@@ -33,6 +33,7 @@ import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.contentretriever.Content;
 import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
 import io.gravitee.policy.jwt.jwk.AbstractJWKTest;
+import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.observers.TestObserver;
 import java.security.KeyPair;
@@ -187,7 +188,12 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
         ReflectionTestUtils.setField(cut, "contentRetriever", contentRetriever);
         final TestObserver<JWTProcessor<SecurityContext>> obs = cut.provide(ctx).test();
 
-        obs.assertError(throwable -> MOCK_EXCEPTION.equals(throwable.getMessage()));
+        obs.assertError(
+            throwable ->
+                throwable instanceof JWKSUrlJWKSourceResolver.ResolutionException &&
+                throwable.getCause() != null &&
+                MOCK_EXCEPTION.equals(throwable.getCause().getMessage())
+        );
     }
 
     private JWKSet generateJWKSConfiguration(Integer keySize, Signature signature, int nbIssuers, int nbSecretsPerIssuer) {
