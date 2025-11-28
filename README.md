@@ -248,6 +248,25 @@ policy:
 
 ## Changelog
 
+### [7.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.2.1...7.0.0) (2025-11-28)
+
+
+##### Bug Fixes
+
+* add cause to interruptUnauthorized ([bddd2ca](https://github.com/gravitee-io/gravitee-policy-jwt/commit/bddd2cac69c13e17b85887736804a41fff6a1e01))
+* bump APIM to 4.9.0 ([07b2dcc](https://github.com/gravitee-io/gravitee-policy-jwt/commit/07b2dcc5706fdb218e2f4a23d8a8a7a0f5a0563f))
+* propagate exceptions to properly handle them with interrupt ([00b2a46](https://github.com/gravitee-io/gravitee-policy-jwt/commit/00b2a469228483d555c312a5b8561d5a936cdb89))
+
+
+##### Features
+
+* include cause throwable in the execution failure ([216fa2a](https://github.com/gravitee-io/gravitee-policy-jwt/commit/216fa2a23f23f1a59f85d9f5d05f8f7850c13a7c))
+
+
+##### BREAKING CHANGES
+
+* requires APIM version 4.9.0 or later
+
 #### [6.2.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.2.0...6.2.1) (2025-11-10)
 
 
