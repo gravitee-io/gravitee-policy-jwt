@@ -229,7 +229,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private Single<LazyJWT> fetchJWTToken(BaseExecutionContext ctx) {
         Object lazyJwtFromContext = ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT);
-        if (lazyJwtFromContext instanceof LazyJWT lazyJWT) {
+        if (lazyJwtFromContext instanceof LazyJWT lazyJWT && !configuration.isIgnoreCachedToken()) {
             return Single.just(lazyJWT);
         }
 

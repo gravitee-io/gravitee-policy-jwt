@@ -130,6 +130,12 @@
             "type": "boolean",
             "default": true
         },
+        "ignoreCachedToken": {
+            "title": "Ignore the cached token",
+            "description": "Force the evaluation of the token from the request instead of relying on the cached one",
+            "type": "boolean",
+            "default": false
+        },
         "userClaim": {
             "title": "User claim",
             "description": "Claim where the user can be extracted",

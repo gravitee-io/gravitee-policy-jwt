@@ -457,6 +457,59 @@ class JWTPolicyTest {
     }
 
     @Test
+    void should_fetch_token_from_request_when_cached_token_exists_but_ignore_is_enabled() throws BadJOSEException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT)).thenReturn(new LazyJWT(TOKEN));
+        when(configuration.isIgnoreCachedToken()).thenReturn(true);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verifyMetricsAttributesAndHeaders(metrics, headers, CLIENT_ID, STANDARD_SUBJECT);
+    }
+
+    @Test
+    void should_error_with_401_missing_token_when_cached_token_exists_but_ignore_is_enabled_and_no_header() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT)).thenReturn(new LazyJWT(TOKEN));
+        when(configuration.isIgnoreCachedToken()).thenReturn(true);
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(ctx).interruptWith(
+            argThat(failure -> {
+                assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                assertEquals(JWT_MISSING_TOKEN_KEY, failure.key());
+                assertNull(failure.parameters());
+                assertNull(failure.contentType());
+                return true;
+            })
+        );
+    }
+
+    @Test
     void should_return_order_0() {
         assertEquals(0, cut.order());
     }
