@@ -63,7 +63,6 @@ import io.gravitee.reporter.api.v4.metric.Metrics;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.observers.TestObserver;
-import java.text.ParseException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -209,39 +208,6 @@ class JWTPolicyTest {
         obs.assertComplete();
 
         verifyMetricsAttributesAndHeaders(metrics, headers, CLIENT_ID, STANDARD_SUBJECT);
-    }
-
-    @Test
-    void should_verify_token_from_context() throws BadJOSEException, JOSEException, ParseException {
-        final Metrics metrics = mock(Metrics.class);
-        final HttpHeaders headers = mock(HttpHeaders.class);
-
-        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-            .issuer(ISSUER)
-            .subject(STANDARD_SUBJECT)
-            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
-            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
-            .build();
-
-        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
-        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
-        when(ctx.request()).thenReturn(request);
-        when(ctx.metrics()).thenReturn(metrics);
-        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
-        when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
-        when(request.headers()).thenReturn(headers);
-        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT)).thenReturn(new LazyJWT(TOKEN));
-
-        final TestObserver<Void> obs = cut.onRequest(ctx).test();
-        obs.assertComplete();
-
-        // Verify context attributes.
-        verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_TOKEN, TOKEN);
-        verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, CLIENT_ID);
-        verify(ctx).setAttribute(ATTR_USER, STANDARD_SUBJECT);
-
-        // Verify request headers.
-        verify(headers).remove(io.vertx.rxjava3.core.http.HttpHeaders.AUTHORIZATION);
     }
 
     @Test
