@@ -226,11 +226,6 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     }
 
     private Single<LazyJWT> fetchJWTToken(BaseExecutionContext ctx) {
-        Object lazyJwtFromContext = ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT);
-        if (lazyJwtFromContext instanceof LazyJWT lazyJWT) {
-            return Single.just(lazyJWT);
-        }
-
         Optional<String> token = TokenExtractor.extract(ctx);
         if (token.isEmpty()) {
             return interruptUnauthorized(ctx, JWT_MISSING_TOKEN_KEY, new RuntimeException(ERROR_MSG_MISSING_TOKEN));
