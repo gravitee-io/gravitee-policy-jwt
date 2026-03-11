@@ -1,3 +1,10 @@
+## [6.1.6](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.5...6.1.6) (2026-03-11)
+
+
+### Bug Fixes
+
+* calculate right maxLifeTime for kafka oauthbearer ([81674f2](https://github.com/gravitee-io/gravitee-policy-jwt/commit/81674f2a3d10d597385902028771c3215045698f))
+
 ## [6.1.5](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.4...6.1.5) (2025-07-17)
 
 
