@@ -45,6 +45,7 @@ import io.gravitee.policy.jwt.revocation.RevocationCheckerFactory;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
 import io.gravitee.policy.processing.JWTClaimsSetValidator;
 import io.gravitee.policy.v3.jwt.JWTPolicyV3;
+import io.gravitee.policy.v3.jwt.exceptions.InvalidTokenException;
 import io.gravitee.reporter.api.v4.metric.Metrics;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.rxjava3.core.Completable;
@@ -76,11 +77,13 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     private static final long DEFAULT_MAX_TOKEN_LIFETIME_MS = 60 * 60 * 1000L; // 1 hour
     public static final String JWT_REVOKED = "JWT_REVOKED";
     public static final String JWT_POLICY_ERROR_KEY = "JWT_POLICY_ERROR";
+    private static final String WWW_AUTHENTICATE_ERROR_INVALID_TOKEN = "invalid_token";
 
     // Error messages for RuntimeExceptions
     static final String ERROR_MSG_JWT_REVOKED = "JWT token has been revoked";
     static final String ERROR_MSG_MISSING_TOKEN = "Missing JWT token";
     static final String ERROR_MSG_EMPTY_TOKEN = "Empty JWT token";
+    static final String ERROR_MSG_INVALID_TOKEN = "Invalid JWT token";
     static final String ERROR_MSG_INVALID_THUMBPRINT = "Invalid certificate bound thumbprint";
 
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
@@ -182,7 +185,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                 Callback[] callbacks = ctx.callbacks();
                 for (Callback callback : callbacks) {
                     if (callback instanceof OAuthBearerValidatorCallback oauthCallback) {
-                        oauthCallback.error("invalid_token", null, null);
+                        oauthCallback.error(WWW_AUTHENTICATE_ERROR_INVALID_TOKEN, null, null);
                     }
                 }
 
@@ -343,6 +346,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private <T> Single<T> interruptUnauthorized(BaseExecutionContext ctx, String key, Throwable cause) {
         if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+            setWwwAuthenticateHeaderIfPossible(httpPlainExecutionContext, key, cause);
             ExecutionFailure failure = new ExecutionFailure(UNAUTHORIZED_401).key(key).message(UNAUTHORIZED_MESSAGE);
             if (cause != null) {
                 failure = failure.cause(cause);
@@ -368,6 +372,12 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
         Throwable propagatedCause = Optional.ofNullable(failure.cause()).orElseGet(() -> new IllegalStateException(failure.key()));
         return Single.error(propagatedCause);
+    }
+
+    private void setWwwAuthenticateHeaderIfPossible(HttpPlainExecutionContext ctx, String key, Throwable cause) {
+        if (configuration.isSendWwwAuthenticateHeader() && ctx != null && ctx.response() != null && ctx.response().headers() != null) {
+            ctx.response().headers().set(WWW_AUTHENTICATE_HEADER, buildWwwAuthenticateValue(key, cause));
+        }
     }
 
     private void reportError(BaseExecutionContext ctx, Throwable throwable) {
