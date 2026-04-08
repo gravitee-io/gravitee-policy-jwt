@@ -41,6 +41,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private Signature signature;
     private boolean extractClaims = false;
     private boolean propagateAuthHeader = true;
+    private boolean sendWwwAuthenticateHeader = false;
     private String userClaim;
     private String clientIdClaim;
     private boolean useSystemProxy;
