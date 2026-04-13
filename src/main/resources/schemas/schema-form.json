@@ -88,12 +88,6 @@
             "type": "boolean",
             "default": false
         },
-        "sendWwwAuthenticateHeader": {
-            "title": "Send WWW-Authenticate header",
-            "description": "Emit the WWW-Authenticate response header on unauthorized JWT requests.",
-            "type": "boolean",
-            "default": false
-        },
         "propagateAuthHeader": {
             "title": "Propagate Authorization header",
             "description": "Allows to propagate Authorization header to the target endpoints",

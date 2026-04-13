@@ -89,10 +89,6 @@ public class JWTPolicyV3 {
     public static final String JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT = "JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT";
     public static final String CLAIMS_CNF = "cnf";
     public static final String CLAIMS_CNF_X5T = "x5t#S256";
-    protected static final String WWW_AUTHENTICATE_HEADER = "WWW-Authenticate";
-    protected static final String WWW_AUTHENTICATE_BEARER_VALUE = "Bearer";
-    private static final String WWW_AUTHENTICATE_ERROR_INVALID_REQUEST = "invalid_request";
-    private static final String WWW_AUTHENTICATE_ERROR_INVALID_TOKEN = "invalid_token";
 
     /**
      * Error message format
@@ -149,7 +145,6 @@ public class JWTPolicyV3 {
                                 .setMessage(throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage());
                         }
                         MDC.remove("api");
-                        setWwwAuthenticateHeaderIfPossible(response, key, throwable);
                         policyChain.failWith(PolicyResult.failure(key, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
                     } else {
                         try {
@@ -198,7 +193,6 @@ public class JWTPolicyV3 {
                 e.getCause()
             );
             MDC.remove("api");
-            setWwwAuthenticateHeaderIfPossible(response, JWT_MISSING_TOKEN_KEY, e);
             policyChain.failWith(PolicyResult.failure(JWT_MISSING_TOKEN_KEY, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
         }
     }
@@ -331,24 +325,6 @@ public class JWTPolicyV3 {
         } catch (ParseException pe) {
             return CompletableFuture.failedFuture(new InvalidTokenException(pe));
         }
-    }
-
-    protected void setWwwAuthenticateHeaderIfPossible(Response response, String key, Throwable cause) {
-        if (configuration.isSendWwwAuthenticateHeader() && response != null && response.headers() != null) {
-            response.headers().set(WWW_AUTHENTICATE_HEADER, buildWwwAuthenticateValue(key, cause));
-        }
-    }
-
-    protected String buildWwwAuthenticateValue(String key, Throwable cause) {
-        final String error = JWT_MISSING_TOKEN_KEY.equals(key)
-            ? WWW_AUTHENTICATE_ERROR_INVALID_REQUEST
-            : WWW_AUTHENTICATE_ERROR_INVALID_TOKEN;
-        final String description = Optional.ofNullable(cause).map(Throwable::getMessage).orElse(UNAUTHORIZED_MESSAGE);
-        return WWW_AUTHENTICATE_BEARER_VALUE + " error=\"" + error + "\", error_description=\"" + escapeHeaderValue(description) + "\"";
-    }
-
-    protected String escapeHeaderValue(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     protected static boolean isValidCertificateThumbprint(
