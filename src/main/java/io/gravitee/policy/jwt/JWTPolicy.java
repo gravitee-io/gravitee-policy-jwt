@@ -68,8 +68,6 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
 
     private final JWTProcessorProvider jwtProcessorResolver;
-    private static final String WWW_AUTHENTICATE_ERROR_INVALID_TOKEN = "invalid_token";
-    static final String ERROR_MSG_INVALID_TOKEN = "Invalid JWT token";
 
     public JWTPolicy(JWTPolicyConfiguration configuration) {
         super(configuration);
@@ -164,7 +162,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                 Callback[] callbacks = ctx.callbacks();
                 for (Callback callback : callbacks) {
                     if (callback instanceof OAuthBearerValidatorCallback oauthCallback) {
-                        oauthCallback.error(WWW_AUTHENTICATE_ERROR_INVALID_TOKEN, null, null);
+                        oauthCallback.error("invalid_token", null, null);
                     }
                 }
 
@@ -217,12 +215,6 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
             return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY);
         }
         return Single.just(new LazyJWT(token.get()));
-    }
-
-    private void setWwwAuthenticateHeaderIfPossible(HttpPlainExecutionContext ctx, String key, Throwable cause) {
-        if (configuration.isSendWwwAuthenticateHeader() && ctx != null && ctx.response() != null && ctx.response().headers() != null) {
-            ctx.response().headers().set(WWW_AUTHENTICATE_HEADER, buildWwwAuthenticateValue(key, cause));
-        }
     }
 
     private Single<JWTClaimsSet> validateToken(BaseExecutionContext ctx, LazyJWT jwt) {
