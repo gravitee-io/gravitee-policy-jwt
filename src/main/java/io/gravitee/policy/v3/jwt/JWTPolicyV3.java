@@ -25,6 +25,7 @@ import io.gravitee.common.security.CertificateUtils;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.Response;
+import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.node.api.configuration.Configuration;
 import io.gravitee.policy.api.PolicyChain;
 import io.gravitee.policy.api.PolicyResult;
@@ -115,6 +116,10 @@ public class JWTPolicyV3 {
             // 1_ Extract the JWT from HTTP request headers or query-parameters
             final String jwt = TokenExtractor.extract(request);
 
+            if (jwt == null || jwt.isEmpty()) {
+                throw new InvalidTokenException("Missing token");
+            }
+
             // 2_ Validate the token algorithm + signature
             validate(executionContext, jwt)
                 .whenComplete((claims, throwable) -> {
@@ -145,6 +150,10 @@ public class JWTPolicyV3 {
                                 .setMessage(throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage());
                         }
                         MDC.remove("api");
+                        final String errorMessage = request.metrics().getMessage() != null
+                            ? request.metrics().getMessage()
+                            : UNAUTHORIZED_MESSAGE;
+                        response.headers().set(HttpHeaderNames.WWW_AUTHENTICATE, errorMessage);
                         policyChain.failWith(PolicyResult.failure(key, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
                     } else {
                         try {
@@ -187,12 +196,12 @@ public class JWTPolicyV3 {
                     }
                 });
         } catch (Exception e) {
-            MDC.put("api", String.valueOf(executionContext.getAttribute(ATTR_API)));
-            LOGGER.error(
-                String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), e.getMessage()),
-                e.getCause()
-            );
+            final String api = String.valueOf(executionContext.getAttribute(ATTR_API));
+            MDC.put("api", api);
+            LOGGER.error(String.format(errorMessageFormat, api, request.id(), request.path(), e.getMessage()), e.getCause());
             MDC.remove("api");
+            final String errorMessage = request.metrics().getMessage() != null ? request.metrics().getMessage() : UNAUTHORIZED_MESSAGE;
+            response.headers().set(HttpHeaderNames.WWW_AUTHENTICATE, errorMessage);
             policyChain.failWith(PolicyResult.failure(JWT_MISSING_TOKEN_KEY, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
         }
     }

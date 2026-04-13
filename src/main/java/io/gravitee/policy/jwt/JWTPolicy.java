@@ -23,6 +23,7 @@ import static io.gravitee.reporter.api.http.SecurityType.JWT;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import io.gravitee.common.security.jwt.LazyJWT;
+import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
@@ -276,9 +277,11 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private <T> Single<T> interruptUnauthorized(BaseExecutionContext ctx, String key) {
         if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+            final String errorMessage = ctx.metrics().getErrorMessage() != null ? ctx.metrics().getErrorMessage() : UNAUTHORIZED_MESSAGE;
             return httpPlainExecutionContext
                 .interruptWith(new ExecutionFailure(UNAUTHORIZED_401).key(key).message(UNAUTHORIZED_MESSAGE))
                 .<T>toMaybe()
+                .doOnComplete(() -> httpPlainExecutionContext.response().headers().set(HttpHeaderNames.WWW_AUTHENTICATE, errorMessage))
                 .toSingle();
         }
         // FIXME: Kafka Gateway - manage interruption with Kafka.

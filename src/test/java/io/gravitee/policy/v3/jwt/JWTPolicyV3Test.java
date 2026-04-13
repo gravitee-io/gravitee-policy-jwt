@@ -15,6 +15,8 @@
  */
 package io.gravitee.policy.v3.jwt;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 import com.nimbusds.jose.JWSHeader;
@@ -553,6 +555,40 @@ public abstract class JWTPolicyV3Test {
         verify(policyChain, never()).doNext(request, response);
     }
 
+    @Test
+    void test_onRequest_WWWAuthenticate_with_default_message() {
+        when(request.headers()).thenReturn(HttpHeaders.create());
+        io.gravitee.gateway.api.http.HttpHeaders responseHeaders = mock(io.gravitee.gateway.api.http.HttpHeaders.class);
+        when(response.headers()).thenReturn(responseHeaders);
+        Metrics metrics = mock(Metrics.class);
+        when(request.metrics()).thenReturn(metrics);
+
+        // Bypass the validate call by providing no token and no key resolver
+        lenient().when(configuration.getPublicKeyResolver()).thenReturn(null);
+
+        new JWTPolicyV3(configuration).onRequest(request, response, executionContext, policyChain);
+
+        verify(responseHeaders).set(io.gravitee.gateway.api.http.HttpHeaderNames.WWW_AUTHENTICATE, JWTPolicyV3.UNAUTHORIZED_MESSAGE);
+    }
+
+    @Test
+    void test_onRequest_WWWAuthenticate_with_custom_message() {
+        when(request.headers()).thenReturn(HttpHeaders.create());
+        io.gravitee.gateway.api.http.HttpHeaders responseHeaders = mock(io.gravitee.gateway.api.http.HttpHeaders.class);
+        when(response.headers()).thenReturn(responseHeaders);
+
+        String customMessage = "Custom error message";
+        Metrics metrics = mock(Metrics.class);
+        when(request.metrics()).thenReturn(metrics);
+        when(metrics.getMessage()).thenReturn(customMessage);
+
+        lenient().when(configuration.getPublicKeyResolver()).thenReturn(null);
+
+        new JWTPolicyV3(configuration).onRequest(request, response, executionContext, policyChain);
+
+        verify(responseHeaders).set(io.gravitee.gateway.api.http.HttpHeaderNames.WWW_AUTHENTICATE, customMessage);
+    }
+
     private void executePolicy(
         JWTPolicyConfiguration configuration,
         Request request,
@@ -561,6 +597,9 @@ public abstract class JWTPolicyV3Test {
         PolicyChain policyChain
     ) throws InterruptedException {
         final CountDownLatch lock = new CountDownLatch(1);
+
+        lenient().when(request.metrics()).thenReturn(mock(Metrics.class));
+        lenient().when(response.headers()).thenReturn(HttpHeaders.create());
 
         new JWTPolicyV3(configuration).onRequest(request, response, executionContext, policyChain);
 

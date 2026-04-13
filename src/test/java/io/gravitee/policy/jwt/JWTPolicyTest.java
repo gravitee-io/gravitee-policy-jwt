@@ -51,6 +51,7 @@ import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainResponse;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
@@ -61,6 +62,7 @@ import io.reactivex.rxjava3.observers.TestObserver;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -229,8 +231,10 @@ class JWTPolicyTest {
     @Test
     void shouldErrorWith401MissingTokenInterruptionWhenNoAuthorizationHeader() {
         final HttpHeaders headers = mock(HttpHeaders.class);
+        final Metrics metrics = mock(Metrics.class);
         when(ctx.request()).thenReturn(request);
         when(request.headers()).thenReturn(headers);
+        when(ctx.metrics()).thenReturn(metrics);
         when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
@@ -253,10 +257,12 @@ class JWTPolicyTest {
     @Test
     void shouldErrorWith401MissingTokenInterruptionWhenNoToken() {
         final HttpHeaders headers = mock(HttpHeaders.class);
+        final Metrics metrics = mock(Metrics.class);
 
         when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(Collections.emptyList());
         when(ctx.request()).thenReturn(request);
         when(request.headers()).thenReturn(headers);
+        when(ctx.metrics()).thenReturn(metrics);
         when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
@@ -279,10 +285,12 @@ class JWTPolicyTest {
     @Test
     void shouldErrorWith401InvaliTokenInterruptionWhenTokenEmpty() {
         final HttpHeaders headers = mock(HttpHeaders.class);
+        final Metrics metrics = mock(Metrics.class);
 
         when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer "));
         when(ctx.request()).thenReturn(request);
         when(request.headers()).thenReturn(headers);
+        when(ctx.metrics()).thenReturn(metrics);
         when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
 
         final TestObserver<Void> obs = cut.onRequest(ctx).test();
@@ -397,6 +405,46 @@ class JWTPolicyTest {
         final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
 
         obs.assertComplete().assertValueCount(0);
+    }
+
+    @Test
+    void shouldSetWWWAuthenticateHeaderWithDefaultMessageWhenNoMetricsMessage() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final Metrics metrics = mock(Metrics.class);
+        final HttpPlainResponse response = mock(HttpPlainResponse.class);
+        final io.gravitee.gateway.api.http.HttpHeaders responseHeaders = io.gravitee.gateway.api.http.HttpHeaders.create();
+
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.response()).thenReturn(response);
+        when(response.headers()).thenReturn(responseHeaders);
+        when(ctx.interruptWith(any())).thenReturn(Completable.complete());
+
+        cut.onRequest(ctx).test().assertError(NoSuchElementException.class);
+
+        assertEquals(UNAUTHORIZED_MESSAGE, responseHeaders.get(HttpHeaderNames.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    void shouldSetWWWAuthenticateHeaderWithMetricsErrorMessage() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final Metrics metrics = mock(Metrics.class);
+        final HttpPlainResponse response = mock(HttpPlainResponse.class);
+        final io.gravitee.gateway.api.http.HttpHeaders responseHeaders = io.gravitee.gateway.api.http.HttpHeaders.create();
+        final String customErrorMessage = "Custom error message";
+
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(metrics.getErrorMessage()).thenReturn(customErrorMessage);
+        when(ctx.response()).thenReturn(response);
+        when(response.headers()).thenReturn(responseHeaders);
+        when(ctx.interruptWith(any())).thenReturn(Completable.complete());
+
+        cut.onRequest(ctx).test().assertError(NoSuchElementException.class);
+
+        assertEquals(customErrorMessage, responseHeaders.get(HttpHeaderNames.WWW_AUTHENTICATE));
     }
 
     private void verifyMetricsAttributesAndHeaders(Metrics metrics, HttpHeaders headers, String expectedClientId, String expectedSubject) {
