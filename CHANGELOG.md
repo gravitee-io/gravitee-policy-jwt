@@ -1,3 +1,10 @@
+## [6.1.7](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.6...6.1.7) (2026-04-13)
+
+
+### Bug Fixes
+
+* **jwt:** support WWW-Authenticate header ([94f6697](https://github.com/gravitee-io/gravitee-policy-jwt/commit/94f669785f629d7bf8cffef3cf74e1104198572a))
+
 ## [6.1.6](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.5...6.1.6) (2026-03-11)
 
 
