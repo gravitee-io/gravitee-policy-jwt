@@ -1,3 +1,10 @@
+## [6.1.8](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.7...6.1.8) (2026-04-13)
+
+
+### Reverts
+
+* Revert "fix(jwt): support WWW-Authenticate header" ([accb9c2](https://github.com/gravitee-io/gravitee-policy-jwt/commit/accb9c2aec219aae3c3b7b8a72f2ad25d7c712ab))
+
 ## [6.1.7](https://github.com/gravitee-io/gravitee-policy-jwt/compare/6.1.6...6.1.7) (2026-04-13)
 
 
