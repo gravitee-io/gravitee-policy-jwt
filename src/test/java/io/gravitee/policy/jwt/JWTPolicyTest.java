@@ -35,6 +35,7 @@ import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +52,8 @@ import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainResponse;
+import io.gravitee.gateway.reactive.api.context.kafka.KafkaConnectionContext;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider;
@@ -62,6 +65,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Stream;
+import javax.security.auth.callback.Callback;
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerValidatorCallback;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -110,6 +115,15 @@ class JWTPolicyTest {
 
     @Mock
     private HttpPlainRequest request;
+
+    @Mock
+    private HttpPlainResponse response;
+
+    @Mock
+    private HttpHeaders responseHeaders;
+
+    @Mock
+    private KafkaConnectionContext kafkaCtx;
 
     private JWTPolicy cut;
 
@@ -397,6 +411,18 @@ class JWTPolicyTest {
         final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
 
         obs.assertComplete().assertValueCount(0);
+    }
+
+    @Test
+    void authenticate_shouldSetInvalidTokenErrorOnKafkaCallback_whenJwtValidationFails() {
+        final OAuthBearerValidatorCallback oauthCallback = new OAuthBearerValidatorCallback("invalid-token");
+        when(kafkaCtx.callbacks()).thenReturn(new Callback[] { oauthCallback });
+
+        final TestObserver<Void> obs = cut.authenticate(kafkaCtx).test();
+
+        obs.assertComplete();
+        assertEquals("invalid_token", oauthCallback.errorStatus());
+        verify(kafkaCtx, never()).setAttribute(eq(CONTEXT_ATTRIBUTE_TOKEN), any());
     }
 
     private void verifyMetricsAttributesAndHeaders(Metrics metrics, HttpHeaders headers, String expectedClientId, String expectedSubject) {
