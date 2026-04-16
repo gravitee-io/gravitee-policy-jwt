@@ -25,6 +25,7 @@ import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.security.jwt.LazyJWT;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
@@ -52,6 +53,7 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import javax.security.auth.callback.Callback;
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken;
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerValidatorCallback;
@@ -72,6 +74,9 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     private static final String KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME = "kafka.oauthbearer.maxTokenLifetime";
     private static final long DEFAULT_MAX_TOKEN_LIFETIME_MS = 60 * 60 * 1000L; // 1 hour
     public static final String JWT_REVOKED = "JWT_REVOKED";
+    public static final String JWT_INVALID_CLIENT_ID_KEY = "JWT_INVALID_CLIENT_ID";
+    public static final String JWT_INVALID_CLAIMS_KEY = "JWT_INVALID_CLAIMS";
+    public static final String JWT_EXPIRED_TOKEN_KEY = "JWT_EXPIRED_TOKEN";
 
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
 
@@ -190,26 +195,51 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
         if (jwtToken != null) {
             ctx.setAttribute(CONTEXT_ATTRIBUTE_JWT, jwtToken);
-            String clientId = getClientId(jwtToken);
-            if (clientId != null) {
-                return Maybe.just(SecurityToken.forClientId(clientId));
+            ClientIdExtractionResult extractionResult = extractClientId(jwtToken);
+            if (extractionResult.clientId() != null) {
+                return Maybe.just(SecurityToken.forClientId(extractionResult.clientId()));
+            }
+            if (
+                configuration.isSendWwwAuthenticateHeader() &&
+                extractionResult.errorKey() != null &&
+                ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext
+            ) {
+                addWwwAuthenticateHeader(httpPlainExecutionContext, extractionResult.errorKey());
             }
             return Maybe.just(SecurityToken.invalid(SecurityToken.TokenType.CLIENT_ID));
         }
 
+        if (configuration.isSendWwwAuthenticateHeader() && ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+            addWwwAuthenticateHeader(httpPlainExecutionContext, JWT_MISSING_TOKEN_KEY);
+        }
         return Maybe.empty();
     }
 
-    private String getClientId(LazyJWT jwtToken) {
+    private ClientIdExtractionResult extractClientId(LazyJWT jwtToken) {
         try {
             JWT jwt = jwtToken.getDelegate();
             if (jwt != null) {
-                return getClientId(jwt.getJWTClaimsSet());
+                String clientId = getClientId(jwt.getJWTClaimsSet());
+                if (clientId != null) {
+                    return ClientIdExtractionResult.success(clientId);
+                }
+                return ClientIdExtractionResult.error(JWT_INVALID_CLIENT_ID_KEY);
             }
-        } catch (ParseException e) {
-            log.error("Failed to parse JWT claim set while looking for clientId", e);
+            return ClientIdExtractionResult.error(JWT_INVALID_TOKEN_KEY);
+        } catch (Exception e) {
+            log.error("Failed to extract clientId from JWT claim set", e);
+            return ClientIdExtractionResult.error(JWT_INVALID_TOKEN_KEY);
         }
-        return null;
+    }
+
+    private record ClientIdExtractionResult(String clientId, String errorKey) {
+        private static ClientIdExtractionResult success(String clientId) {
+            return new ClientIdExtractionResult(clientId, null);
+        }
+
+        private static ClientIdExtractionResult error(String errorKey) {
+            return new ClientIdExtractionResult(null, errorKey);
+        }
     }
 
     private Single<JWTClaimsSet> handleSecurity(final BaseExecutionContext ctx) {
@@ -259,7 +289,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                     jwtClaimsSet = extractJwtClaimsSet(ctx, jwt, jwtProcessor);
                 } catch (Exception exception) {
                     reportError(ctx, exception);
-                    return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY);
+                    return interruptUnauthorized(ctx, resolveUnauthorizedKey(exception));
                 }
 
                 return validateRevocation(ctx, jwtClaimsSet)
@@ -324,6 +354,9 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private <T> Single<T> interruptUnauthorized(BaseExecutionContext ctx, String key) {
         if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+            if (configuration.isSendWwwAuthenticateHeader()) {
+                addWwwAuthenticateHeader(httpPlainExecutionContext, key);
+            }
             return httpPlainExecutionContext
                 .interruptWith(new ExecutionFailure(UNAUTHORIZED_401).key(key).message(UNAUTHORIZED_MESSAGE))
                 .<T>toMaybe()
@@ -331,6 +364,42 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         }
         // FIXME: Kafka Gateway - manage interruption with Kafka.
         return Single.error(new Exception(key));
+    }
+
+    private void addWwwAuthenticateHeader(HttpPlainExecutionContext ctx, String key) {
+        String realm = Optional.ofNullable(configuration.getRealm()).filter(r -> !r.isBlank()).orElse("api-gateway");
+
+        StringJoiner headerValue = new StringJoiner(", ");
+        headerValue.add("Bearer realm=\"" + realm + "\"");
+
+        if (!JWT_MISSING_TOKEN_KEY.equals(key)) {
+            headerValue.add("error=\"invalid_token\"");
+            headerValue.add("error_description=\"" + resolveErrorDescription(key) + "\"");
+        }
+
+        ctx.response().headers().set("WWW-Authenticate", headerValue.toString());
+    }
+
+    private static String resolveErrorDescription(String key) {
+        return switch (key) {
+            case JWT_REVOKED -> "The access token has been revoked";
+            case JWT_INVALID_CLIENT_ID_KEY -> "The access token does not contain a valid client_id claim";
+            case JWT_EXPIRED_TOKEN_KEY -> "The access token is expired";
+            case JWT_INVALID_CLAIMS_KEY -> "The access token claims are invalid";
+            case JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT -> "The access token certificate-bound thumbprint is invalid";
+            default -> "The access token is invalid or expired";
+        };
+    }
+
+    private static String resolveUnauthorizedKey(Throwable throwable) {
+        if (throwable instanceof BadJWTException) {
+            String message = Optional.ofNullable(throwable.getMessage()).orElse("").toLowerCase();
+            if (message.contains("expired")) {
+                return JWT_EXPIRED_TOKEN_KEY;
+            }
+            return JWT_INVALID_CLAIMS_KEY;
+        }
+        return JWT_INVALID_TOKEN_KEY;
     }
 
     private void reportError(BaseExecutionContext ctx, Throwable throwable) {
