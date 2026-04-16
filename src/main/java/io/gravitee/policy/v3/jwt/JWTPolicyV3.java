@@ -56,6 +56,7 @@ import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.SSLSession;
@@ -89,6 +90,15 @@ public class JWTPolicyV3 {
     public static final String JWT_MISSING_TOKEN_KEY = "JWT_MISSING_TOKEN";
     public static final String JWT_INVALID_TOKEN_KEY = "JWT_INVALID_TOKEN";
     public static final String JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT = "JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT";
+    public static final String JWT_REVOKED = "JWT_REVOKED";
+    public static final String JWT_INVALID_CLIENT_ID_KEY = "JWT_INVALID_CLIENT_ID";
+    public static final String JWT_UNAUTHORIZED_CLIENT_ID_KEY = "JWT_UNAUTHORIZED_CLIENT_ID";
+    public static final String JWT_INVALID_CLAIMS_KEY = "JWT_INVALID_CLAIMS";
+    public static final String JWT_EXPIRED_TOKEN_KEY = "JWT_EXPIRED_TOKEN";
+    /**
+     * Message of {@link com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier#EXPIRED_JWT_EXCEPTION}.
+     */
+    public static final String EXPIRED_JWT_EXCEPTION_MESSAGE = "Expired JWT";
     public static final String CLAIMS_CNF = "cnf";
     public static final String CLAIMS_CNF_X5T = "x5t#S256";
 
@@ -125,7 +135,7 @@ public class JWTPolicyV3 {
                     final String api = String.valueOf(executionContext.getAttribute(ATTR_API));
                     MDC.put("api", api);
                     if (throwable != null) {
-                        String key = JWT_INVALID_TOKEN_KEY;
+                        String key = resolveUnauthorizedKey(throwable);
                         if (throwable.getCause() instanceof InvalidTokenException) {
                             LOGGER.debug(
                                 String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
@@ -133,7 +143,6 @@ public class JWTPolicyV3 {
                             );
                             request.metrics().setMessage(throwable.getCause().getCause().getMessage());
                         } else if (throwable instanceof InvalidCertificateThumbprintException) {
-                            key = JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT;
                             LOGGER.debug(
                                 String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
                                 throwable
@@ -149,6 +158,7 @@ public class JWTPolicyV3 {
                                 .setMessage(throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage());
                         }
                         MDC.remove("api");
+                        setWwwAuthenticateHeader(response, key);
                         policyChain.failWith(PolicyResult.failure(key, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
                     } else {
                         try {
@@ -175,6 +185,10 @@ public class JWTPolicyV3 {
                                 request.headers().remove(HttpHeaders.AUTHORIZATION);
                             }
 
+                            if (response.headers() != null) {
+                                response.headers().remove("WWW-Authenticate");
+                            }
+
                             // Finally continue the process...
                             policyChain.doNext(request, response);
                         } catch (Exception e) {
@@ -182,6 +196,7 @@ public class JWTPolicyV3 {
                                 String.format(errorMessageFormat, api, request.id(), request.path(), e.getMessage()),
                                 e.getCause()
                             );
+                            setWwwAuthenticateHeader(response, JWT_INVALID_TOKEN_KEY);
                             policyChain.failWith(
                                 PolicyResult.failure(JWT_INVALID_TOKEN_KEY, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE)
                             );
@@ -197,8 +212,61 @@ public class JWTPolicyV3 {
                 e.getCause()
             );
             MDC.remove("api");
+            setWwwAuthenticateHeader(response, JWT_MISSING_TOKEN_KEY);
             policyChain.failWith(PolicyResult.failure(JWT_MISSING_TOKEN_KEY, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE));
         }
+    }
+
+    protected void setWwwAuthenticateHeader(Response response, String key) {
+        if (response.headers() != null) {
+            response.headers().set("WWW-Authenticate", buildWwwAuthenticateHeaderValue(key));
+        }
+    }
+
+    protected String buildWwwAuthenticateHeaderValue(String key) {
+        String realm = Optional.ofNullable(configuration.getRealm()).filter(r -> !r.isBlank()).orElse("api-gateway");
+
+        StringJoiner headerValue = new StringJoiner(", ");
+        headerValue.add("Bearer realm=\"" + realm + "\"");
+        headerValue.add("error=\"" + (JWT_MISSING_TOKEN_KEY.equals(key) ? "invalid_request" : "invalid_token") + "\"");
+        headerValue.add("error_description=\"" + resolveErrorDescription(key) + "\"");
+
+        return headerValue.toString();
+    }
+
+    protected static String resolveErrorDescription(String key) {
+        return switch (key) {
+            case JWT_MISSING_TOKEN_KEY -> "No access token was provided";
+            case JWT_REVOKED -> "The access token has been revoked";
+            case JWT_INVALID_CLIENT_ID_KEY -> "The access token does not contain a valid client_id claim";
+            case JWT_UNAUTHORIZED_CLIENT_ID_KEY -> "The access token client_id is not authorized";
+            case JWT_EXPIRED_TOKEN_KEY -> "The access token is expired";
+            case JWT_INVALID_CLAIMS_KEY -> "The access token claims are invalid";
+            case JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT -> "The access token certificate-bound thumbprint is invalid";
+            default -> "The access token is invalid";
+        };
+    }
+
+    protected static boolean isExpiredJwtMessage(String message) {
+        return EXPIRED_JWT_EXCEPTION_MESSAGE.equals(message);
+    }
+
+    protected String resolveUnauthorizedKey(Throwable throwable) {
+        if (throwable instanceof InvalidCertificateThumbprintException) {
+            return JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT;
+        }
+        Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
+        if (cause instanceof InvalidTokenException invalidTokenException) {
+            Throwable tokenCause = invalidTokenException.getCause();
+            if (tokenCause != null && isExpiredJwtMessage(tokenCause.getMessage())) {
+                return JWT_EXPIRED_TOKEN_KEY;
+            }
+            return JWT_INVALID_CLAIMS_KEY;
+        }
+        if (isExpiredJwtMessage(throwable.getMessage())) {
+            return JWT_EXPIRED_TOKEN_KEY;
+        }
+        return JWT_INVALID_TOKEN_KEY;
     }
 
     protected String getClientId(JWTClaimsSet claims) {

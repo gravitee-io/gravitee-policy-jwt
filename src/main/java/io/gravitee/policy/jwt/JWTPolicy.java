@@ -25,6 +25,7 @@ import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.security.jwt.LazyJWT;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
@@ -71,7 +72,6 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private static final String KAFKA_OAUTHBEARER_MAX_TOKEN_LIFETIME = "kafka.oauthbearer.maxTokenLifetime";
     private static final long DEFAULT_MAX_TOKEN_LIFETIME_MS = 60 * 60 * 1000L; // 1 hour
-    public static final String JWT_REVOKED = "JWT_REVOKED";
 
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
 
@@ -134,6 +134,8 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                     if (!configuration.isPropagateAuthHeader()) {
                         ctx.request().headers().remove(HttpHeaders.AUTHORIZATION);
                     }
+
+                    ctx.response().headers().remove("WWW-Authenticate");
                 })
             );
     }
@@ -190,26 +192,50 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
         if (jwtToken != null) {
             ctx.setAttribute(CONTEXT_ATTRIBUTE_JWT, jwtToken);
-            String clientId = getClientId(jwtToken);
-            if (clientId != null) {
-                return Maybe.just(SecurityToken.forClientId(clientId));
+            ClientIdExtractionResult extractionResult = extractClientId(jwtToken);
+            if (extractionResult.clientId() != null) {
+                return Maybe.just(SecurityToken.forClientId(extractionResult.clientId()));
+            }
+            if (extractionResult.errorKey() != null && ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+                addWwwAuthenticateHeader(httpPlainExecutionContext, extractionResult.errorKey());
             }
             return Maybe.just(SecurityToken.invalid(SecurityToken.TokenType.CLIENT_ID));
         }
 
+        if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+            addWwwAuthenticateHeader(httpPlainExecutionContext, JWT_MISSING_TOKEN_KEY);
+        }
         return Maybe.empty();
     }
 
-    private String getClientId(LazyJWT jwtToken) {
+    private ClientIdExtractionResult extractClientId(LazyJWT jwtToken) {
         try {
             JWT jwt = jwtToken.getDelegate();
             if (jwt != null) {
-                return getClientId(jwt.getJWTClaimsSet());
+                String clientId = getClientId(jwt.getJWTClaimsSet());
+                if (clientId != null) {
+                    return ClientIdExtractionResult.success(clientId);
+                }
+                return ClientIdExtractionResult.error(JWT_INVALID_CLIENT_ID_KEY);
             }
+            return ClientIdExtractionResult.error(JWT_INVALID_TOKEN_KEY);
         } catch (ParseException e) {
             log.error("Failed to parse JWT claim set while looking for clientId", e);
+            return ClientIdExtractionResult.error(JWT_INVALID_TOKEN_KEY);
+        } catch (Exception e) {
+            log.error("Failed to extract clientId from JWT claim set", e);
+            return ClientIdExtractionResult.error(JWT_INVALID_TOKEN_KEY);
         }
-        return null;
+    }
+
+    private record ClientIdExtractionResult(String clientId, String errorKey) {
+        private static ClientIdExtractionResult success(String clientId) {
+            return new ClientIdExtractionResult(clientId, null);
+        }
+
+        private static ClientIdExtractionResult error(String errorKey) {
+            return new ClientIdExtractionResult(null, errorKey);
+        }
     }
 
     private Single<JWTClaimsSet> handleSecurity(final BaseExecutionContext ctx) {
@@ -259,7 +285,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                     jwtClaimsSet = extractJwtClaimsSet(ctx, jwt, jwtProcessor);
                 } catch (Exception exception) {
                     reportError(ctx, exception);
-                    return interruptUnauthorized(ctx, JWT_INVALID_TOKEN_KEY);
+                    return interruptUnauthorized(ctx, resolveReactiveUnauthorizedKey(exception));
                 }
 
                 return validateRevocation(ctx, jwtClaimsSet)
@@ -324,6 +350,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     private <T> Single<T> interruptUnauthorized(BaseExecutionContext ctx, String key) {
         if (ctx instanceof HttpPlainExecutionContext httpPlainExecutionContext) {
+            addWwwAuthenticateHeader(httpPlainExecutionContext, key);
             return httpPlainExecutionContext
                 .interruptWith(new ExecutionFailure(UNAUTHORIZED_401).key(key).message(UNAUTHORIZED_MESSAGE))
                 .<T>toMaybe()
@@ -331,6 +358,20 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         }
         // FIXME: Kafka Gateway - manage interruption with Kafka.
         return Single.error(new Exception(key));
+    }
+
+    private void addWwwAuthenticateHeader(HttpPlainExecutionContext ctx, String key) {
+        ctx.response().headers().set("WWW-Authenticate", buildWwwAuthenticateHeaderValue(key));
+    }
+
+    private static String resolveReactiveUnauthorizedKey(Throwable throwable) {
+        if (throwable instanceof BadJWTException badJwtException && isExpiredJwtMessage(badJwtException.getMessage())) {
+            return JWT_EXPIRED_TOKEN_KEY;
+        }
+        if (throwable instanceof BadJWTException) {
+            return JWT_INVALID_CLAIMS_KEY;
+        }
+        return JWT_INVALID_TOKEN_KEY;
     }
 
     private void reportError(BaseExecutionContext ctx, Throwable throwable) {

@@ -416,7 +416,7 @@ public abstract class JWTPolicyV3Test {
         verify(policyChain, times(1))
             .failWith(
                 argThat(result ->
-                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_INVALID_TOKEN_KEY.equals(result.key())
+                    result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_EXPIRED_TOKEN_KEY.equals(result.key())
                 )
             );
         verify(policyChain, never()).doNext(request, response);
