@@ -40,4 +40,19 @@ public class JwtPolicyV3IntegrationTest extends JwtPolicyV4EmulationEngineIntegr
     protected OngoingStubbing<Optional<Subscription>> whenSearchingSubscription(String api, String clientId, String plan) {
         return when(getBean(SubscriptionService.class).getByApiAndClientIdAndPlan(api, clientId, plan));
     }
+
+    @Override
+    protected String expectedMissingTokenHeader() {
+        return null;
+    }
+
+    @Override
+    protected String expectedInvalidTokenHeader() {
+        return null;
+    }
+
+    @Override
+    protected String expectedInvalidClientIdHeader() {
+        return null;
+    }
 }

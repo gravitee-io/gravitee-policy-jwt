@@ -130,6 +130,12 @@
             "type": "boolean",
             "default": true
         },
+        "sendWwwAuthenticateHeader": {
+            "title": "Send WWW-Authenticate header",
+            "description": "Emit the WWW-Authenticate response header on unauthorized JWT requests.",
+            "type": "boolean",
+            "default": false
+        },
         "userClaim": {
             "title": "User claim",
             "description": "Claim where the user can be extracted",
