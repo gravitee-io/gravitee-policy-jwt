@@ -47,6 +47,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimNames;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.common.security.jwt.LazyJWT;
@@ -54,6 +55,7 @@ import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainResponse;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.configuration.RevocationCheckConfiguration;
@@ -117,6 +119,9 @@ class JWTPolicyTest {
     private HttpPlainRequest request;
 
     @Mock
+    private HttpPlainResponse response;
+
+    @Mock
     private RevocationChecker revocationChecker;
 
     private JWTPolicy cut;
@@ -132,6 +137,10 @@ class JWTPolicyTest {
     private void prepareClaimsSetCacheMocking() {
         lenient().when(ctx.getAttribute(ATTR_API)).thenReturn("API_ID");
         lenient().when(ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT)).thenReturn(null);
+        lenient().when(configuration.getRealm()).thenReturn("api-gateway");
+        lenient().when(ctx.response()).thenReturn(response);
+        HttpHeaders responseHeaders = mock(HttpHeaders.class);
+        lenient().when(response.headers()).thenReturn(responseHeaders);
     }
 
     private static Stream<Arguments> provideClientIdParameters() {
@@ -314,6 +323,11 @@ class JWTPolicyTest {
                     return true;
                 })
             );
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token has been revoked\""
+            );
     }
 
     @Test
@@ -337,6 +351,11 @@ class JWTPolicyTest {
 
                     return true;
                 })
+            );
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_request\", error_description=\"No access token was provided\""
             );
     }
 
@@ -364,6 +383,11 @@ class JWTPolicyTest {
                     return true;
                 })
             );
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_request\", error_description=\"No access token was provided\""
+            );
     }
 
     @Test
@@ -389,6 +413,11 @@ class JWTPolicyTest {
 
                     return true;
                 })
+            );
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token is invalid\""
             );
     }
 
@@ -424,6 +453,65 @@ class JWTPolicyTest {
             );
 
         verify(metrics).setErrorMessage(MOCK_JOSE_EXCEPTION);
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token is invalid\""
+            );
+    }
+
+    @Test
+    void should_error_with_401_expired_token_interruption_when_claims_are_expired() throws BadJOSEException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(request.headers()).thenReturn(headers);
+
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(Mockito.<JWT>argThat(jwt -> TOKEN.equals(jwt.getParsedString())), isNull()))
+            .thenThrow(new BadJWTException("Expired JWT"));
+        when(ctx.request()).thenReturn(request);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(ctx)
+            .interruptWith(
+                argThat(failure -> {
+                    assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                    assertEquals(UNAUTHORIZED_MESSAGE, failure.message());
+                    assertEquals(JWTPolicy.JWT_EXPIRED_TOKEN_KEY, failure.key());
+                    return true;
+                })
+            );
+
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token is expired\""
+            );
+    }
+
+    @Test
+    void should_use_custom_realm_in_www_authenticate_header() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(Collections.emptyList());
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+        when(configuration.getRealm()).thenReturn("my-custom-realm");
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertError(Throwable.class);
+
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"my-custom-realm\", error=\"invalid_request\", error_description=\"No access token was provided\""
+            );
     }
 
     @Test
@@ -487,6 +575,85 @@ class JWTPolicyTest {
         final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
 
         obs.assertComplete().assertValueCount(0);
+    }
+
+    @Test
+    void extractSecurityToken_should_set_www_authenticate_header_when_token_is_absent_and_feature_enabled() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
+
+        obs.assertComplete().assertValueCount(0);
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_request\", error_description=\"No access token was provided\""
+            );
+    }
+
+    @Test
+    void extractSecurityToken_should_set_www_authenticate_header_when_token_has_no_client_id_and_feature_enabled() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN_WITHOUT_CLIENT_ID));
+
+        final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
+
+        obs.assertComplete().assertValueCount(1).assertValue(SecurityToken::isInvalid);
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token does not contain a valid client_id claim\""
+            );
+    }
+
+    @Test
+    void extractSecurityToken_should_set_www_authenticate_header_when_clientId_extracted() {
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        when(ctx.request()).thenReturn(request);
+        when(request.headers()).thenReturn(headers);
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+
+        final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
+
+        obs.assertComplete().assertValueCount(1);
+        verify(response.headers())
+            .set(
+                "WWW-Authenticate",
+                "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token client_id is not authorized\""
+            );
+    }
+
+    @Test
+    void onRequest_should_not_set_www_authenticate_header_on_successful_authentication() throws BadJOSEException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CONTEXT_ATTRIBUTE_CLIENT_ID, CLIENT_ID)
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verify(response.headers()).remove("WWW-Authenticate");
     }
 
     private void verifyMetricsAttributesAndHeaders(Metrics metrics, HttpHeaders headers, String expectedClientId, String expectedSubject) {
