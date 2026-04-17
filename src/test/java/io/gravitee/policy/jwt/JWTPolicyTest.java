@@ -38,7 +38,6 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -55,7 +54,6 @@ import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
-import io.gravitee.gateway.reactive.api.context.http.HttpPlainResponse;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.configuration.RevocationCheckConfiguration;
@@ -119,12 +117,6 @@ class JWTPolicyTest {
     private HttpPlainRequest request;
 
     @Mock
-    private HttpPlainResponse response;
-
-    @Mock
-    private HttpHeaders responseHeaders;
-
-    @Mock
     private RevocationChecker revocationChecker;
 
     private JWTPolicy cut;
@@ -140,9 +132,6 @@ class JWTPolicyTest {
     private void prepareClaimsSetCacheMocking() {
         lenient().when(ctx.getAttribute(ATTR_API)).thenReturn("API_ID");
         lenient().when(ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT)).thenReturn(null);
-        lenient().when(ctx.response()).thenReturn(response);
-        lenient().when(response.headers()).thenReturn(responseHeaders);
-        lenient().when(configuration.isSendWwwAuthenticateHeader()).thenReturn(true);
     }
 
     private static Stream<Arguments> provideClientIdParameters() {
@@ -324,7 +313,6 @@ class JWTPolicyTest {
                 return true;
             })
         );
-        verify(responseHeaders).set("WWW-Authenticate", "Bearer error=\"invalid_token\", error_description=\"JWT token has been revoked\"");
     }
 
     @Test
@@ -348,7 +336,6 @@ class JWTPolicyTest {
                 return true;
             })
         );
-        verify(responseHeaders).set("WWW-Authenticate", "Bearer error=\"invalid_request\", error_description=\"Missing JWT token\"");
     }
 
     @Test
@@ -374,7 +361,6 @@ class JWTPolicyTest {
                 return true;
             })
         );
-        verify(responseHeaders).set("WWW-Authenticate", "Bearer error=\"invalid_request\", error_description=\"Missing JWT token\"");
     }
 
     @Test
@@ -400,7 +386,6 @@ class JWTPolicyTest {
                 return true;
             })
         );
-        verify(responseHeaders).set("WWW-Authenticate", "Bearer error=\"invalid_token\", error_description=\"Empty JWT token\"");
     }
 
     @Test
@@ -435,10 +420,6 @@ class JWTPolicyTest {
         );
 
         verify(metrics).setErrorMessage(MOCK_JOSE_EXCEPTION);
-        verify(responseHeaders).set(
-            "WWW-Authenticate",
-            "Bearer error=\"invalid_token\", error_description=\"" + MOCK_JOSE_EXCEPTION + "\""
-        );
     }
 
     @Test
