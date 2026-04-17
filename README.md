@@ -160,7 +160,6 @@ policy:
 | JWKS URL request timeout<br>`requestTimeout`| integer|  | `2000`| Only applies when the resolver is JWKS_URL|
 | Resolver parameter<br>`resolverParameter`| string|  | | Set the signature key GIVEN_KEY or a JWKS_URL following selected resolver (support EL).|
 | Revocation Check<br>`revocationCheck`| object|  | | Define revocation check details. If enabled, will check the configured claim of the token against a cached revocation list and deny if a match is found. Disabled by default.<br/>See "Revocation Check" section.|
-| Send WWW-Authenticate header<br>`sendWwwAuthenticateHeader`| boolean|  | | Emit the WWW-Authenticate response header on unauthorized JWT requests.|
 | Signature<br>`signature`| enum (string)| ✅| `RSA_RS256`| Define how the JSON Web Token must be signed.<br>Values: `RSA_RS256` `RSA_RS384` `RSA_RS512` `HMAC_HS256` `HMAC_HS384` `HMAC_HS512`|
 | Token Type Validation<br>`tokenTypValidation`| object|  | | Define the token type to validate<br/>See "Token Type Validation" section.|
 | Use system proxy<br>`useSystemProxy`| boolean|  | | Use system proxy (make sense only when resolver is set to JWKS_URL)|
