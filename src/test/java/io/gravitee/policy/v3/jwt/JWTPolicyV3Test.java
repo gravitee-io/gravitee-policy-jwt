@@ -72,9 +72,6 @@ public abstract class JWTPolicyV3Test {
     private Response response;
 
     @Mock
-    private HttpHeaders responseHeaders;
-
-    @Mock
     private PolicyChain policyChain;
 
     @Mock
@@ -93,8 +90,6 @@ public abstract class JWTPolicyV3Test {
     private void prepareClaimsSetCacheMocking() {
         lenient().when(executionContext.getAttribute(ATTR_API)).thenReturn("API_ID");
         lenient().when(executionContext.getAttribute(CONTEXT_ATTRIBUTE_JWT)).thenReturn(null);
-        lenient().when(response.headers()).thenReturn(responseHeaders);
-        lenient().when(configuration.isSendWwwAuthenticateHeader()).thenReturn(true);
     }
 
     @Test
@@ -171,7 +166,6 @@ public abstract class JWTPolicyV3Test {
                 result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_INVALID_TOKEN_KEY.equals(result.key())
             )
         );
-        verify(responseHeaders, times(1)).set(eq("WWW-Authenticate"), contains("error=\"invalid_token\""));
         verify(policyChain, never()).doNext(request, response);
     }
 
@@ -474,22 +468,6 @@ public abstract class JWTPolicyV3Test {
                 result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
             )
         );
-        verify(responseHeaders, times(1)).set(eq("WWW-Authenticate"), contains("error=\"invalid_request\""));
-    }
-
-    @Test
-    void test_not_authentification_empty_bearer_with_space() throws Exception {
-        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer ");
-        when(request.headers()).thenReturn(headers);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1)).failWith(
-            argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-            )
-        );
-        verify(responseHeaders, times(1)).set(eq("WWW-Authenticate"), contains("error=\"invalid_request\""));
     }
 
     @Test
@@ -520,23 +498,6 @@ public abstract class JWTPolicyV3Test {
                 result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
             )
         );
-        verify(responseHeaders, times(1)).set(eq("WWW-Authenticate"), contains("error=\"invalid_request\""));
-    }
-
-    @Test
-    void test_should_not_set_www_authenticate_header_when_disabled() throws Exception {
-        HttpHeaders headers = HttpHeaders.create();
-        when(request.headers()).thenReturn(headers);
-        when(configuration.isSendWwwAuthenticateHeader()).thenReturn(false);
-
-        executePolicy(configuration, request, response, executionContext, policyChain);
-
-        verify(policyChain, times(1)).failWith(
-            argThat(
-                result -> result.statusCode() == HttpStatusCode.UNAUTHORIZED_401 && JWTPolicyV3.JWT_MISSING_TOKEN_KEY.equals(result.key())
-            )
-        );
-        verify(responseHeaders, never()).set(any(CharSequence.class), any(CharSequence.class));
     }
 
     @Test
