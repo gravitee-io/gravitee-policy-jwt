@@ -142,7 +142,6 @@ class JWTPolicyTest {
         lenient().when(ctx.getAttribute(CONTEXT_ATTRIBUTE_JWT)).thenReturn(null);
         lenient().when(ctx.response()).thenReturn(response);
         lenient().when(response.headers()).thenReturn(responseHeaders);
-        lenient().when(configuration.isSendWwwAuthenticateHeader()).thenReturn(true);
     }
 
     private static Stream<Arguments> provideClientIdParameters() {

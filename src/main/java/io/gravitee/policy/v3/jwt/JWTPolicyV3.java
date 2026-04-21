@@ -118,7 +118,7 @@ public class JWTPolicyV3 {
     }
 
     protected void setWwwAuthenticateHeaderIfPossible(Response response, String key, Throwable cause) {
-        if (configuration.isSendWwwAuthenticateHeader() && response != null && response.headers() != null) {
+        if (response != null && response.headers() != null) {
             response.headers().set(WWW_AUTHENTICATE_HEADER, buildWwwAuthenticateValue(key, cause));
         }
     }

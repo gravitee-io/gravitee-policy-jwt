@@ -115,7 +115,12 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
     @Override
     public Maybe<SecurityToken> extractSecurityToken(HttpPlainExecutionContext ctx) {
-        return getSecurityTokenFromContext(ctx);
+        return getSecurityTokenFromContext(ctx).switchIfEmpty(
+            Maybe.<SecurityToken>defer(() -> {
+                setWwwAuthenticateHeaderIfPossible(ctx, JWT_MISSING_TOKEN_KEY, new RuntimeException(ERROR_MSG_MISSING_TOKEN));
+                return Maybe.empty();
+            })
+        );
     }
 
     @Override
@@ -375,7 +380,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     }
 
     private void setWwwAuthenticateHeaderIfPossible(HttpPlainExecutionContext ctx, String key, Throwable cause) {
-        if (configuration.isSendWwwAuthenticateHeader() && ctx != null && ctx.response() != null && ctx.response().headers() != null) {
+        if (ctx != null && ctx.response() != null && ctx.response().headers() != null) {
             ctx.response().headers().set(WWW_AUTHENTICATE_HEADER, buildWwwAuthenticateValue(key, cause));
         }
     }
