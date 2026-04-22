@@ -107,7 +107,7 @@ public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTes
 
         Single<HttpClientResponse> httpClientResponse = httpClient.rxRequest(GET, "/test").flatMap(HttpClientRequest::rxSend);
 
-        assert401unauthorized(httpClientResponse);
+        assert401unauthorized(httpClientResponse, expectedMissingTokenHeader());
     }
 
     @Test
@@ -119,7 +119,7 @@ public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTes
             .rxRequest(GET, "/test")
             .flatMap(request -> request.putHeader("Authorization", "Bearer").rxSend());
 
-        assert401unauthorized(httpClientResponse);
+        assert401unauthorized(httpClientResponse, expectedInvalidTokenHeader());
     }
 
     @Test
@@ -131,7 +131,7 @@ public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTes
             .rxRequest(GET, "/test")
             .flatMap(request -> request.putHeader("Authorization", "Bearer this_is_wrong").rxSend());
 
-        assert401unauthorized(httpClientResponse);
+        assert401unauthorized(httpClientResponse, expectedInvalidTokenHeader());
     }
 
     @Test
@@ -139,47 +139,29 @@ public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTes
     void shouldGet401_ifExpiredToken(HttpClient httpClient) throws Exception {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
-        String jwtToken = getJsonWebToken(-50);
+        String jwtToken = getJsonWebToken(-120);
+
+        whenSearchingSubscription(API_ID, CLIENT_ID, PLAN_ID).thenReturn(Optional.of(fakeSubscriptionFromCache(false)));
 
         Single<HttpClientResponse> httpClientResponse = httpClient
             .rxRequest(GET, "/test")
             .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).rxSend());
 
-        assert401unauthorized(httpClientResponse);
+        assert401unauthorized(httpClientResponse, expectedExpiredTokenHeader());
     }
 
     @Test
-    @DisplayName("Should receive 401 - Unauthorized when calling with an valid token, but no subscription")
-    void shouldGet401_ifNoSubscription(HttpClient httpClient) throws Exception {
+    @DisplayName("Should receive 401 - Unauthorized when calling with valid token but missing client_id claim")
+    void shouldGet401_ifTokenHasNoClientId(HttpClient httpClient) throws Exception {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
 
-        String jwtToken = getJsonWebToken(5000);
-
-        // no subscription found
-        whenSearchingSubscription(API_ID, CLIENT_ID, PLAN_ID).thenReturn(Optional.empty());
+        String jwtToken = getJsonWebTokenWithoutClientId(5000);
 
         Single<HttpClientResponse> httpClientResponse = httpClient
             .rxRequest(GET, "/test")
             .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).rxSend());
 
-        assert401unauthorized(httpClientResponse);
-    }
-
-    @Test
-    @DisplayName("Should receive 401 - Unauthorized when calling with an valid token, but subscription is expired")
-    void shouldGet401_ifSubscriptionExpired(HttpClient httpClient) throws Exception {
-        wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
-
-        String jwtToken = getJsonWebToken(5000);
-
-        // subscription found is expired
-        whenSearchingSubscription(API_ID, CLIENT_ID, PLAN_ID).thenReturn(Optional.of(fakeSubscriptionFromCache(true)));
-
-        Single<HttpClientResponse> httpClientResponse = httpClient
-            .rxRequest(GET, "/test")
-            .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).rxSend());
-
-        assert401unauthorized(httpClientResponse);
+        assert401unauthorized(httpClientResponse, expectedInvalidClientIdHeader());
     }
 
     @Test
@@ -197,6 +179,7 @@ public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTes
             .flatMap(request -> request.putHeader("Authorization", "Bearer " + jwtToken).rxSend())
             .flatMapPublisher(response -> {
                 assertThat(response.statusCode()).isEqualTo(200);
+                assertThat(response.getHeader("WWW-Authenticate")).isNull();
                 return response.toFlowable();
             })
             .test()
@@ -236,10 +219,35 @@ public class JwtPolicyV4EmulationEngineIntegrationTest extends AbstractPolicyTes
         return signedJWT.serialize();
     }
 
-    private void assert401unauthorized(Single<HttpClientResponse> httpClientResponse) throws InterruptedException {
+    private String getJsonWebTokenWithoutClientId(long secondsToAdd) throws Exception {
+        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder().expirationTime(Date.from(Instant.now().plusSeconds(secondsToAdd))).build();
+        SignedJWT signedJWT = new SignedJWT(new JWSHeader(HMAC_HS256.getAlg()), jwtClaimsSet);
+        signedJWT.sign(new MACSigner(JWT_SECRET));
+        return signedJWT.serialize();
+    }
+
+    protected String expectedMissingTokenHeader() {
+        return "Bearer realm=\"api-gateway\", error=\"invalid_request\", error_description=\"No access token was provided\"";
+    }
+
+    protected String expectedInvalidTokenHeader() {
+        return "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token is invalid\"";
+    }
+
+    protected String expectedExpiredTokenHeader() {
+        return "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token is expired\"";
+    }
+
+    protected String expectedInvalidClientIdHeader() {
+        return "Bearer realm=\"api-gateway\", error=\"invalid_token\", error_description=\"The access token does not contain a valid client_id claim\"";
+    }
+
+    private void assert401unauthorized(Single<HttpClientResponse> httpClientResponse, String expectedWwwAuthenticateHeader)
+        throws InterruptedException {
         httpClientResponse
             .flatMapPublisher(response -> {
                 assertThat(response.statusCode()).isEqualTo(401);
+                assertThat(response.getHeader("WWW-Authenticate")).isEqualTo(expectedWwwAuthenticateHeader);
                 return response.toFlowable();
             })
             .test()

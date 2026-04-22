@@ -43,6 +43,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private boolean propagateAuthHeader = true;
     private String userClaim;
     private String clientIdClaim;
+    private String realm = "api-gateway";
     private boolean useSystemProxy;
     private Integer connectTimeout = 2000;
     private Long requestTimeout = 2000L;
