@@ -16,6 +16,7 @@
 package io.gravitee.policy.v3.jwt;
 
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_API;
+import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
 import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_JWT;
 import static org.mockito.Mockito.*;
 
@@ -41,6 +42,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -212,6 +214,103 @@ public abstract class JWTPolicyV3Test {
 
         verify(executionContext, times(1)).setAttribute(JWTPolicyV3.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "my-client-id-from-configuration");
 
+        verify(policyChain, times(1)).doNext(request, response);
+    }
+
+    @Test
+    void test_get_client_with_nested_clientid_claim() throws Exception {
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
+
+        // Build a JWT with a nested "act" claim containing "repository".
+        JSONObject act = new JSONObject();
+        act.put("repository", "dktunited/poc-github-fedid-token-exchange");
+
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
+        builder.claim("act", act);
+
+        String jwt = sign(builder.build());
+
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
+        when(configuration.getClientIdClaim()).thenReturn("act.repository");
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(executionContext, times(1)).setAttribute(
+            JWTPolicyV3.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID,
+            "dktunited/poc-github-fedid-token-exchange"
+        );
+        verify(policyChain, times(1)).doNext(request, response);
+    }
+
+    @Test
+    void test_get_client_with_literal_dot_clientid_claim_flat_wins() throws Exception {
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
+
+        // A top-level claim whose name literally contains a dot must win over nested resolution.
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
+        builder.claim("x.y", "flat-value");
+
+        String jwt = sign(builder.build());
+
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
+        when(configuration.getClientIdClaim()).thenReturn("x.y");
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(executionContext, times(1)).setAttribute(JWTPolicyV3.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "flat-value");
+        verify(policyChain, times(1)).doNext(request, response);
+    }
+
+    @Test
+    void test_get_user_with_nested_user_claim() throws Exception {
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
+
+        // JWT payload: nested realm_access and preferred_username
+        JSONObject realmAccess = new JSONObject();
+        realmAccess.put("preferred_username", "john.doe");
+
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
+        builder.claim("realm_access", realmAccess);
+
+        String jwt = sign(builder.build());
+
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
+        when(configuration.getUserClaim()).thenReturn("realm_access.preferred_username");
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(executionContext, times(1)).setAttribute(ATTR_USER, "john.doe");
+        verify(policyChain, times(1)).doNext(request, response);
+    }
+
+    @Test
+    void test_get_user_with_literal_dot_user_claim_flat_wins() throws Exception {
+        when(executionContext.getComponent(Environment.class)).thenReturn(environment);
+        when(environment.getProperty("policy.jwt.issuer.gravitee.authorization.server.MAIN")).thenReturn(getSignatureKey());
+
+        // A top-level claim whose name literally contains a dot must win over nested resolution.
+        JWTClaimsSet.Builder builder = getJsonWebTokenBuilder(7200);
+        builder.claim("x.y", "flat-user-value");
+
+        String jwt = sign(builder.build());
+
+        HttpHeaders headers = HttpHeaders.create().set("Authorization", "Bearer " + jwt);
+        when(request.headers()).thenReturn(headers);
+        when(configuration.getPublicKeyResolver()).thenReturn(KeyResolver.GATEWAY_KEYS);
+        when(configuration.getUserClaim()).thenReturn("x.y");
+
+        executePolicy(configuration, request, response, executionContext, policyChain);
+
+        verify(executionContext, times(1)).setAttribute(ATTR_USER, "flat-user-value");
         verify(policyChain, times(1)).doNext(request, response);
     }
 

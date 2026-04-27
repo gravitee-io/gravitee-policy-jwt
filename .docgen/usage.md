@@ -34,3 +34,31 @@ You can extract the issuer from JWT using the following Expression Language stat
 
 <pre> {#context.attributes['jwt.claims']['iss']} </pre>
 
+### Nested claim extraction
+
+Both `clientIdClaim` and `userClaim` support dot-notation paths to extract values from nested JWT structures.
+
+Given the following JWT payload:
+
+```json
+{
+  "iss": "my-issuer",
+  "sub": "svc-account",
+  "act": {
+    "repository": "my-org/my-repo"
+  },
+  "realm_access": {
+    "preferred_username": "alice"
+  }
+}
+```
+
+Configure the policy as follows to resolve nested values:
+
+| Field | Value |
+|-------|-------|
+| `clientIdClaim` | `act.repository` → resolves to `my-org/my-repo` |
+| `userClaim` | `realm_access.preferred_username` → resolves to `alice` |
+
+**Flat-claim precedence:** If a JWT contains a top-level claim whose name literally includes a dot (e.g., `"act.repository": "flat-value"`), that flat claim takes precedence over any nested path traversal. This ensures full backward compatibility with existing tokens and configurations.
+
