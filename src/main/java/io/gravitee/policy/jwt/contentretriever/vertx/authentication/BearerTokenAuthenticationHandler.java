@@ -32,7 +32,7 @@ public class BearerTokenAuthenticationHandler implements AuthenticationHandler {
 
     @Override
     public MultiMap getAuthenticationHeaders() {
-        MultiMap headers = new HeadersMultiMap();
+        MultiMap headers = HeadersMultiMap.httpHeaders();
         headers.add(HttpHeaders.AUTHORIZATION.toString(), "Bearer " + token);
         return headers;
     }

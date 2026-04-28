@@ -111,7 +111,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
                 httpClient.close();
             });
         } else {
-            httpResponse.end(event -> httpClient.close());
+            httpResponse.endHandler(event -> httpClient.close()).end();
             promise.fail("Status code from JWKS URL is not valid: " + httpResponse.statusCode());
         }
     }

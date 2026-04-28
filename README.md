@@ -100,7 +100,8 @@ Strikethrough text indicates that a version is deprecated.
 
 | Plugin version| APIM |
 | --- | ---  |
-|7.x|4.9.x to latest |
+|8.x|4.12.x to latest |
+|7.x|4.9.x to 4.11.x |
 |6.x|4.6.x to 4.8.x |
 |5.x|4.4.x to 4.5.x |
 |4.x|4.0.x to 4.3.x |

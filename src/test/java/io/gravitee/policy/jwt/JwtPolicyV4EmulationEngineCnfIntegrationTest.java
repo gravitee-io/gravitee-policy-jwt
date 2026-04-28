@@ -48,7 +48,9 @@ import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.PoolOptions;
 import io.vertx.core.net.PemKeyCertOptions;
+import io.vertx.core.net.SSLEngineOptions;
 import io.vertx.rxjava3.core.http.HttpClient;
 import io.vertx.rxjava3.core.http.HttpClientResponse;
 import java.net.URLEncoder;
@@ -180,6 +182,7 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
         @Override
         protected void configureHttpClient(
             final HttpClientOptions options,
+            PoolOptions poolOptions,
             GatewayDynamicConfig.Config gatewayConfig,
             ParameterContext parameterContext
         ) {
@@ -254,6 +257,7 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
         @Override
         protected void configureHttpClient(
             final HttpClientOptions options,
+            PoolOptions poolOptions,
             GatewayDynamicConfig.Config gatewayConfig,
             ParameterContext parameterContext
         ) {
@@ -370,6 +374,7 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
         @Override
         protected void configureHttpClient(
             final HttpClientOptions options,
+            PoolOptions poolOptions,
             GatewayDynamicConfig.Config gatewayConfig,
             ParameterContext parameterContext
         ) {
@@ -382,7 +387,7 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
             pemKeyCertOptions.setKeyPath(
                 JwtPolicyV4EmulationEngineCnfIntegrationTest.class.getResource("/client/client1-key.pem").getPath()
             );
-            options.setPemKeyCertOptions(pemKeyCertOptions);
+            options.getSslOptions().setKeyCertOptions(pemKeyCertOptions);
         }
 
         @Override
@@ -475,6 +480,7 @@ public class JwtPolicyV4EmulationEngineCnfIntegrationTest {
         @Override
         protected void configureHttpClient(
             final HttpClientOptions options,
+            PoolOptions poolOptions,
             GatewayDynamicConfig.Config gatewayConfig,
             ParameterContext parameterContext
         ) {
