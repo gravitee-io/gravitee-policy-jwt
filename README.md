@@ -250,6 +250,18 @@ policy:
 
 ## Changelog
 
+### [8.0.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/7.0.3...8.0.0-alpha.1) (2026-04-28)
+
+
+##### chore
+
+* update project to use vert.x 5 ([1b89181](https://github.com/gravitee-io/gravitee-policy-jwt/commit/1b89181bd9e7393b03f3ee6eaabc54500d1d2fad))
+
+
+##### BREAKING CHANGES
+
+* requires APIM 4.12 and Vert.x 5
+
 #### [7.0.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/7.0.2...7.0.3) (2026-04-22)
 
 
