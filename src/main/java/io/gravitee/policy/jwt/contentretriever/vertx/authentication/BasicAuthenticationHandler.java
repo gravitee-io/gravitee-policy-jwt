@@ -42,7 +42,7 @@ public class BasicAuthenticationHandler implements AuthenticationHandler {
         String credentials = username + ":" + password;
         String encodedCredentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
 
-        MultiMap headers = new HeadersMultiMap();
+        MultiMap headers = HeadersMultiMap.httpHeaders();
         headers.add(HttpHeaders.AUTHORIZATION.toString(), "Basic " + encodedCredentials);
         return headers;
     }
