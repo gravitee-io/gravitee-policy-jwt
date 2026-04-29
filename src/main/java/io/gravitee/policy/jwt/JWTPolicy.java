@@ -42,6 +42,7 @@ import io.gravitee.policy.jwt.jwk.provider.JWTProcessorProvider;
 import io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver;
 import io.gravitee.policy.jwt.revocation.RevocationChecker;
 import io.gravitee.policy.jwt.revocation.RevocationCheckerFactory;
+import io.gravitee.policy.jwt.utils.ClaimPathResolver;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
 import io.gravitee.policy.processing.JWTClaimsSetValidator;
 import io.gravitee.policy.v3.jwt.JWTPolicyV3;
@@ -330,7 +331,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
         final String user;
         if (configuration.getUserClaim() != null && !configuration.getUserClaim().isEmpty()) {
-            user = (String) claims.getClaim(configuration.getUserClaim());
+            user = (String) ClaimPathResolver.resolve(claims, configuration.getUserClaim());
         } else {
             user = claims.getSubject();
         }
