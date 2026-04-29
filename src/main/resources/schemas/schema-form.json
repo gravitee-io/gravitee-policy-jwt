@@ -132,13 +132,13 @@
         },
         "userClaim": {
             "title": "User claim",
-            "description": "Claim where the user can be extracted",
+            "description": "Claim where the user can be extracted. Supports dot-notation for nested claims (e.g. 'realm_access.preferred_username'). A flat claim whose name literally contains a dot takes precedence.",
             "type": "string",
             "default": "sub"
         },
         "clientIdClaim": {
             "title": "Client ID claim",
-            "description": "Claim where the client ID can be extracted. Configuring this field will override the standard behavior.",
+            "description": "Claim where the client ID can be extracted. Supports dot-notation for nested claims (e.g. 'act.repository'). A flat claim whose name literally contains a dot takes precedence. Configuring this field will override the standard behavior.",
             "type": "string"
         },
         "confirmationMethodValidation": {
