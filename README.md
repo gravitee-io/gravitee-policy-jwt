@@ -66,6 +66,34 @@ You can extract the issuer from JWT using the following Expression Language stat
 
 <pre> {#context.attributes['jwt.claims']['iss']} </pre>
 
+### Nested claim extraction
+
+Both `clientIdClaim` and `userClaim` support dot-notation paths to extract values from nested JWT structures.
+
+Given the following JWT payload:
+
+```json
+{
+  "iss": "my-issuer",
+  "sub": "svc-account",
+  "act": {
+    "repository": "my-org/my-repo"
+  },
+  "realm_access": {
+    "preferred_username": "alice"
+  }
+}
+```
+
+Configure the policy as follows to resolve nested values:
+
+| Field | Value |
+|-------|-------|
+| `clientIdClaim` | `act.repository` → resolves to `my-org/my-repo` |
+| `userClaim` | `realm_access.preferred_username` → resolves to `alice` |
+
+**Flat-claim precedence:** If a JWT contains a top-level claim whose name literally includes a dot (e.g., `"act.repository": "flat-value"`), that flat claim takes precedence over any nested path traversal. This ensures full backward compatibility with existing tokens and configurations.
+
 
 
 
@@ -151,7 +179,7 @@ policy:
 #### 
 | Name <br>`json name`  | Type <br>`constraint`  | Mandatory  | Default  | Description  |
 |:----------------------|:-----------------------|:----------:|:---------|:-------------|
-| Client ID claim<br>`clientIdClaim`| string|  | | Claim where the client ID can be extracted. Configuring this field will override the standard behavior.|
+| Client ID claim<br>`clientIdClaim`| string|  | | Claim where the client ID can be extracted. Supports dot-notation for nested claims (e.g. 'act.repository'). A flat claim whose name literally contains a dot takes precedence. Configuring this field will override the standard behavior.|
 | Confirmation Method Validation<br>`confirmationMethodValidation`| object|  | | <br/>See "Confirmation Method Validation" section.|
 | JWKS URL connect timeout<br>`connectTimeout`| integer|  | `2000`| Only applies when the resolver is JWKS_URL|
 | Extract JWT Claims<br>`extractClaims`| boolean|  | | Put claims into the 'jwt.claims' context attribute.|
@@ -164,7 +192,7 @@ policy:
 | Signature<br>`signature`| enum (string)| ✅| `RSA_RS256`| Define how the JSON Web Token must be signed.<br>Values: `RSA_RS256` `RSA_RS384` `RSA_RS512` `HMAC_HS256` `HMAC_HS384` `HMAC_HS512`|
 | Token Type Validation<br>`tokenTypValidation`| object|  | | Define the token type to validate. When disabled (the default), the typ header is not validated.<br/>See "Token Type Validation" section.|
 | Use system proxy<br>`useSystemProxy`| boolean|  | | Use system proxy (make sense only when resolver is set to JWKS_URL)|
-| User claim<br>`userClaim`| string|  | `sub`| Claim where the user can be extracted|
+| User claim<br>`userClaim`| string|  | `sub`| Claim where the user can be extracted. Supports dot-notation for nested claims (e.g. 'realm_access.preferred_username'). A flat claim whose name literally contains a dot takes precedence.|
 
 
 #### Confirmation Method Validation (Object)

@@ -67,6 +67,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Stream;
+import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -483,6 +484,101 @@ class JWTPolicyTest {
         final TestObserver<SecurityToken> obs = cut.extractSecurityToken(ctx).test();
 
         obs.assertComplete().assertValueCount(0);
+    }
+
+    @Test
+    void should_resolve_nested_clientid_claim_in_v4_path() throws BadJOSEException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        // JWT payload: nested act and repository
+        JSONObject act = new JSONObject();
+        act.put("repository", "dktunited/poc-github-fedid-token-exchange");
+
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim("act", act)
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(configuration.getClientIdClaim()).thenReturn("act.repository");
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn("dktunited/poc-github-fedid-token-exchange");
+        when(ctx.getAttribute(ATTR_USER)).thenReturn(STANDARD_SUBJECT);
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verify(ctx).setAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID, "dktunited/poc-github-fedid-token-exchange");
+    }
+
+    @Test
+    void should_resolve_nested_user_claim_in_v4_path() throws BadJOSEException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        // JWT payload: nested realm_access and preferred_username
+        JSONObject realmAccess = new JSONObject();
+        realmAccess.put("preferred_username", "john.doe");
+
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CLIENT_ID, CLIENT_ID)
+            .claim("realm_access", realmAccess)
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(configuration.getUserClaim()).thenReturn("realm_access.preferred_username");
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn("john.doe");
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verify(ctx).setAttribute(ATTR_USER, "john.doe");
+    }
+
+    @Test
+    void should_resolve_flat_user_claim_when_literal_dot_name_exists_in_v4_path() throws BadJOSEException, JOSEException {
+        final Metrics metrics = mock(Metrics.class);
+        final HttpHeaders headers = mock(HttpHeaders.class);
+
+        // A top-level claim whose name literally contains a dot must win over nested resolution.
+        final JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .issuer(ISSUER)
+            .subject(STANDARD_SUBJECT)
+            .claim(CLIENT_ID, CLIENT_ID)
+            .claim("x.y", "flat-user-value")
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+
+        when(configuration.getUserClaim()).thenReturn("x.y");
+        when(headers.getAll(HttpHeaderNames.AUTHORIZATION)).thenReturn(List.of("Bearer " + TOKEN));
+        when(jwtProcessorResolver.provide(ctx)).thenReturn(Maybe.just(jwtProcessor));
+        when(jwtProcessor.process(any(JWT.class), isNull())).thenReturn(claimsSet);
+        when(ctx.request()).thenReturn(request);
+        when(ctx.metrics()).thenReturn(metrics);
+        when(ctx.getAttribute(CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID)).thenReturn(CLIENT_ID);
+        when(ctx.getAttribute(ATTR_USER)).thenReturn("flat-user-value");
+        when(request.headers()).thenReturn(headers);
+
+        final TestObserver<Void> obs = cut.onRequest(ctx).test();
+        obs.assertComplete();
+
+        verify(ctx).setAttribute(ATTR_USER, "flat-user-value");
     }
 
     private void verifyMetricsAttributesAndHeaders(Metrics metrics, HttpHeaders headers, String expectedClientId, String expectedSubject) {

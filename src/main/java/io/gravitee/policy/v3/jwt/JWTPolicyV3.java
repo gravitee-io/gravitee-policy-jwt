@@ -31,6 +31,7 @@ import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.api.annotations.OnRequest;
 import io.gravitee.policy.jwt.alg.Signature;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
+import io.gravitee.policy.jwt.utils.ClaimPathResolver;
 import io.gravitee.policy.jwt.utils.TokenExtractor;
 import io.gravitee.policy.processing.JWTClaimsSetValidator;
 import io.gravitee.policy.v3.jwt.exceptions.InvalidCertificateThumbprintException;
@@ -159,7 +160,7 @@ public class JWTPolicyV3 {
 
                         final String user;
                         if (configuration.getUserClaim() != null && !configuration.getUserClaim().isEmpty()) {
-                            user = (String) claims.getClaim(configuration.getUserClaim());
+                            user = (String) ClaimPathResolver.resolve(claims, configuration.getUserClaim());
                         } else {
                             user = claims.getSubject();
                         }
@@ -199,7 +200,7 @@ public class JWTPolicyV3 {
 
     protected String getClientId(JWTClaimsSet claims) {
         if (!ObjectUtils.isEmpty(configuration.getClientIdClaim())) {
-            Object clientIdClaim = claims.getClaim(configuration.getClientIdClaim());
+            Object clientIdClaim = ClaimPathResolver.resolve(claims, configuration.getClientIdClaim());
             return extractClientId(clientIdClaim);
         }
 
