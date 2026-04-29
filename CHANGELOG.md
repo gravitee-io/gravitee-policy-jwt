@@ -1,3 +1,10 @@
+# [8.0.0-alpha.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.0.0-alpha.1...8.0.0-alpha.2) (2026-04-29)
+
+
+### Features
+
+* **jwt:** support dot-notation nested claim paths for clientIdClaim and userClaim ([#173](https://github.com/gravitee-io/gravitee-policy-jwt/issues/173)) ([bf1fda9](https://github.com/gravitee-io/gravitee-policy-jwt/commit/bf1fda92ee9a715833c8282da01931d3a1683104))
+
 # [8.0.0-alpha.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/7.0.3...8.0.0-alpha.1) (2026-04-28)
 
 
