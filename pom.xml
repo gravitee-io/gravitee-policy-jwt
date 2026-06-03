@@ -34,7 +34,7 @@
     </parent>
 
     <properties>
-        <gravitee-apim.version>4.12.0-SNAPSHOT</gravitee-apim.version>
+        <gravitee-apim.version>4.12.0-milestone.1</gravitee-apim.version>
 
         <sshj.version>0.40.0</sshj.version>
         <maven-plugin-properties.version>1.3.0</maven-plugin-properties.version>
