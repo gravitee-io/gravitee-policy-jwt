@@ -42,17 +42,21 @@ class TokenTypeVerifierFactoryTest {
     }
 
     @Test
-    void build_should_return_default_verifier_when_tokenTypValidation_is_null() {
+    void build_should_return_permissive_verifier_when_tokenTypValidation_is_null() {
         JOSEObjectTypeVerifier<SecurityContext> verifier = TokenTypeVerifierFactory.build(null);
-        assertThat(verifier).isInstanceOf(DefaultJOSEObjectTypeVerifier.class);
+        assertThat(verifier).isNotInstanceOf(DefaultJOSEObjectTypeVerifier.class);
+        assertAcceptsTyp(verifier, "JWS");
+        assertAcceptsMissingTyp(verifier);
     }
 
     @Test
-    void build_should_return_default_verifier_when_tokenTypValidation_is_disabled() {
+    void build_should_return_permissive_verifier_when_tokenTypValidation_is_disabled() {
         JWTPolicyConfiguration.TokenTypValidation tokenTypValidation = new JWTPolicyConfiguration.TokenTypValidation();
         tokenTypValidation.setEnabled(false);
         JOSEObjectTypeVerifier<SecurityContext> verifier = TokenTypeVerifierFactory.build(tokenTypValidation);
-        assertThat(verifier).isInstanceOf(DefaultJOSEObjectTypeVerifier.class);
+        assertThat(verifier).isNotInstanceOf(DefaultJOSEObjectTypeVerifier.class);
+        assertAcceptsTyp(verifier, "JWS");
+        assertAcceptsMissingTyp(verifier);
     }
 
     @Test
@@ -65,5 +69,13 @@ class TokenTypeVerifierFactoryTest {
 
         JOSEObjectTypeVerifier<SecurityContext> verifier = TokenTypeVerifierFactory.build(tokenTypValidation);
         assertThat(verifier).isNotInstanceOf(DefaultJOSEObjectTypeVerifier.class).isInstanceOf(JOSEObjectTypeVerifier.class);
+    }
+
+    private void assertAcceptsTyp(JOSEObjectTypeVerifier<SecurityContext> verifier, String typ) {
+        assertThatCode(() -> verifier.verify(new JOSEObjectType(typ), null)).doesNotThrowAnyException();
+    }
+
+    private void assertAcceptsMissingTyp(JOSEObjectTypeVerifier<SecurityContext> verifier) {
+        assertThatCode(() -> verifier.verify(null, null)).doesNotThrowAnyException();
     }
 }
