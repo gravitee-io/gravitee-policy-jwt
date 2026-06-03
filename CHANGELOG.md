@@ -1,3 +1,10 @@
+# [8.0.0-alpha.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.0.0-alpha.2...8.0.0-alpha.3) (2026-06-03)
+
+
+### Bug Fixes
+
+* bump apim dependency to 4.12.0-milestone.1 ([52f92f8](https://github.com/gravitee-io/gravitee-policy-jwt/commit/52f92f8fa23034832fb4fba0f3829bd768778e23))
+
 # [8.0.0-alpha.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.0.0-alpha.1...8.0.0-alpha.2) (2026-04-29)
 
 
