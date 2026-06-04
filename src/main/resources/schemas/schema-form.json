@@ -180,12 +180,12 @@
         },
         "tokenTypValidation": {
             "title": "Token Type Validation",
-            "description": "Define the token type to validate. When disabled (the default), the typ header is not validated.",
+            "description": "Define the token type to validate. When disabled, the typ header is not checked and tokens with any typ value (including JWS) are accepted.",
             "type": "object",
             "properties": {
                 "enabled": {
                     "title": "Enable token type validation",
-                    "description": "When true, validates the token typ header against expected values. When disabled, the typ header is not validated and expectedValues is ignored.",
+                    "description": "When enabled, the typ header of the token is validated against the expected values. When disabled, typ header validation is skipped entirely and tokens with any typ value are accepted. The default is false.",
                     "type": "boolean",
                     "default": false
                 },
