@@ -278,6 +278,13 @@ policy:
 
 ## Changelog
 
+### [8.0.0-alpha.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.0.0-alpha.3...8.0.0-alpha.4) (2026-06-04)
+
+
+##### Bug Fixes
+
+* disabled token validation with typ jws ([486bde8](https://github.com/gravitee-io/gravitee-policy-jwt/commit/486bde84f8f8db85c7683e237027a100ff719f99))
+
 ### [8.0.0-alpha.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.0.0-alpha.2...8.0.0-alpha.3) (2026-06-03)
 
 
