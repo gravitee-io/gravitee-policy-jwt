@@ -190,7 +190,7 @@ policy:
 | Resolver parameter<br>`resolverParameter`| string|  | | Set the signature key GIVEN_KEY or a JWKS_URL following selected resolver (support EL).|
 | Revocation Check<br>`revocationCheck`| object|  | | Define revocation check details. If enabled, will check the configured claim of the token against a cached revocation list and deny if a match is found. Disabled by default.<br/>See "Revocation Check" section.|
 | Signature<br>`signature`| enum (string)| ✅| `RSA_RS256`| Define how the JSON Web Token must be signed.<br>Values: `RSA_RS256` `RSA_RS384` `RSA_RS512` `HMAC_HS256` `HMAC_HS384` `HMAC_HS512`|
-| Token Type Validation<br>`tokenTypValidation`| object|  | | Define the token type to validate<br/>See "Token Type Validation" section.|
+| Token Type Validation<br>`tokenTypValidation`| object|  | | Define the token type to validate. When disabled, the typ header is not checked and tokens with any typ value (including JWS) are accepted.<br/>See "Token Type Validation" section.|
 | Use system proxy<br>`useSystemProxy`| boolean|  | | Use system proxy (make sense only when resolver is set to JWKS_URL)|
 | User claim<br>`userClaim`| string|  | `sub`| Claim where the user can be extracted. Supports dot-notation for nested claims (e.g. 'realm_access.preferred_username'). A flat claim whose name literally contains a dot takes precedence.|
 
@@ -264,10 +264,10 @@ policy:
 #### Token Type Validation (Object)
 | Name <br>`json name`  | Type <br>`constraint`  | Mandatory  | Default  | Description  |
 |:----------------------|:-----------------------|:----------:|:---------|:-------------|
-| Enable token type validation<br>`enabled`| boolean|  | | Will validate the token type extracted from the access_token with the one provided by the client. The default is false.|
-| Expected values<br>`expectedValues`| array (string)|  | `[JWT]`| List of expected token types. If the token type is not in the list, the validation will fail.|
-| Ignore case<br>`ignoreCase`| boolean|  | | Will ignore the case of the token type when comparing the expected values. Default is false.|
-| Ignore missing token type<br>`ignoreMissing`| boolean|  | | Will ignore token type validation if the token doesn't contain any token type information. Default is false.|
+| Enable token type validation<br>`enabled`| boolean|  | | When enabled, the typ header of the token is validated against the expected values. When disabled, typ header validation is skipped entirely and tokens with any typ value are accepted. The default is false.|
+| Expected values<br>`expectedValues`| array (string)|  | `[JWT]`| Only applies when token type validation is enabled. List of expected token types. If the token type is not in the list, the validation will fail.|
+| Ignore case<br>`ignoreCase`| boolean|  | | Only applies when token type validation is enabled. Will ignore the case of the token type when comparing the expected values. Default is false.|
+| Ignore missing token type<br>`ignoreMissing`| boolean|  | | Only applies when token type validation is enabled. Will ignore token type validation if the token doesn't contain any token type information. Default is false.|
 
 
 

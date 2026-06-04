@@ -26,6 +26,8 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class TokenTypeVerifierFactory {
 
+    private static final JOSEObjectTypeVerifier<SecurityContext> PERMISSIVE_VERIFIER = (type, context) -> {};
+
     public JOSEObjectTypeVerifier<SecurityContext> buildCustom(JWTPolicyConfiguration.TokenTypValidation tokenTypValidation) {
         return (header, context) -> {
             String typ = header.getType() != null ? header.getType() : null;
@@ -45,20 +47,14 @@ public class TokenTypeVerifierFactory {
         };
     }
 
-    public DefaultJOSEObjectTypeVerifier<SecurityContext> buildDefault() {
-        return new DefaultJOSEObjectTypeVerifier<>(
-            JOSEObjectType.JWT,
-            new JOSEObjectType("at+jwt"),
-            new JOSEObjectType("application/at+jwt"),
-            null
-        );
+    public JOSEObjectTypeVerifier<SecurityContext> buildPermissive() {
+        return PERMISSIVE_VERIFIER;
     }
 
     public JOSEObjectTypeVerifier<SecurityContext> build(JWTPolicyConfiguration.TokenTypValidation tokenTypValidation) {
         if (tokenTypValidation == null || !tokenTypValidation.isEnabled()) {
-            return buildDefault();
-        } else {
-            return buildCustom(tokenTypValidation);
+            return buildPermissive();
         }
+        return buildCustom(tokenTypValidation);
     }
 }

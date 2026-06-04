@@ -15,7 +15,8 @@
  */
 package io.gravitee.policy.jwt.utils;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
@@ -34,29 +35,21 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class TokenTypeVerifierFactoryTest {
 
     @Test
-    void buildDefault_should_return_default_verifier() {
-        DefaultJOSEObjectTypeVerifier<SecurityContext> verifier = TokenTypeVerifierFactory.buildDefault();
-        assertThat(verifier).isNotNull();
-        assertThat(verifier.getAllowedTypes()).containsExactlyInAnyOrder(
-            JOSEObjectType.JWT,
-            new JOSEObjectType("at+jwt"),
-            new JOSEObjectType("application/at+jwt"),
-            null
-        );
-    }
-
-    @Test
-    void build_should_return_default_verifier_when_tokenTypValidation_is_null() {
+    void build_should_return_permissive_verifier_when_tokenTypValidation_is_null() {
         JOSEObjectTypeVerifier<SecurityContext> verifier = TokenTypeVerifierFactory.build(null);
-        assertThat(verifier).isInstanceOf(DefaultJOSEObjectTypeVerifier.class);
+        assertThat(verifier).isNotInstanceOf(DefaultJOSEObjectTypeVerifier.class);
+        assertAcceptsTyp(verifier, "JWS");
+        assertAcceptsMissingTyp(verifier);
     }
 
     @Test
-    void build_should_return_default_verifier_when_tokenTypValidation_is_disabled() {
+    void build_should_return_permissive_verifier_when_tokenTypValidation_is_disabled() {
         JWTPolicyConfiguration.TokenTypValidation tokenTypValidation = new JWTPolicyConfiguration.TokenTypValidation();
         tokenTypValidation.setEnabled(false);
         JOSEObjectTypeVerifier<SecurityContext> verifier = TokenTypeVerifierFactory.build(tokenTypValidation);
-        assertThat(verifier).isInstanceOf(DefaultJOSEObjectTypeVerifier.class);
+        assertThat(verifier).isNotInstanceOf(DefaultJOSEObjectTypeVerifier.class);
+        assertAcceptsTyp(verifier, "JWS");
+        assertAcceptsMissingTyp(verifier);
     }
 
     @Test
@@ -69,5 +62,13 @@ class TokenTypeVerifierFactoryTest {
 
         JOSEObjectTypeVerifier<SecurityContext> verifier = TokenTypeVerifierFactory.build(tokenTypValidation);
         assertThat(verifier).isNotInstanceOf(DefaultJOSEObjectTypeVerifier.class).isInstanceOf(JOSEObjectTypeVerifier.class);
+    }
+
+    private void assertAcceptsTyp(JOSEObjectTypeVerifier<SecurityContext> verifier, String typ) {
+        assertThatCode(() -> verifier.verify(new JOSEObjectType(typ), null)).doesNotThrowAnyException();
+    }
+
+    private void assertAcceptsMissingTyp(JOSEObjectTypeVerifier<SecurityContext> verifier) {
+        assertThatCode(() -> verifier.verify(null, null)).doesNotThrowAnyException();
     }
 }
