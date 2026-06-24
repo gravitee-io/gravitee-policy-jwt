@@ -1,3 +1,26 @@
+# [8.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/7.0.4...8.0.0) (2026-06-24)
+
+
+### Bug Fixes
+
+* bump apim dependency to 4.12.0-milestone.1 ([2e984b0](https://github.com/gravitee-io/gravitee-policy-jwt/commit/2e984b0f40f54ad8f11eb10a45c5b64ff8d3440f))
+* disabled token validation with typ jws ([c7f4918](https://github.com/gravitee-io/gravitee-policy-jwt/commit/c7f4918131f78b4ea783390fb0fa7d7170e07ec3))
+
+
+### chore
+
+* update project to use vert.x 5 ([ae8ad74](https://github.com/gravitee-io/gravitee-policy-jwt/commit/ae8ad74500c446350e3147779e9ab571813ddd7e))
+
+
+### Features
+
+* **jwt:** support dot-notation nested claim paths for clientIdClaim and userClaim ([#173](https://github.com/gravitee-io/gravitee-policy-jwt/issues/173)) ([35301d0](https://github.com/gravitee-io/gravitee-policy-jwt/commit/35301d015eb7fffab532c5b5f53652ce7514d530))
+
+
+### BREAKING CHANGES
+
+* requires APIM 4.12 and Vert.x 5
+
 ## [7.0.4](https://github.com/gravitee-io/gravitee-policy-jwt/compare/7.0.3...7.0.4) (2026-06-04)
 
 
