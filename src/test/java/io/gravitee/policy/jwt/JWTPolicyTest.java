@@ -41,6 +41,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.SecurityContext;
@@ -50,10 +52,14 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.common.security.jwt.LazyJWT;
+import io.gravitee.gateway.api.buffer.Buffer;
 import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.api.http.HttpHeaders;
+import io.gravitee.gateway.reactive.api.context.ContextAttributes;
+import io.gravitee.gateway.reactive.api.context.InternalContextAttributes;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
+import io.gravitee.gateway.reactive.api.context.http.HttpPlainResponse;
 import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.gravitee.policy.jwt.configuration.RevocationCheckConfiguration;
@@ -74,6 +80,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -116,6 +123,9 @@ class JWTPolicyTest {
 
     @Mock
     private HttpPlainRequest request;
+
+    @Mock
+    private HttpPlainResponse response;
 
     @Mock
     private RevocationChecker revocationChecker;
@@ -439,6 +449,155 @@ class JWTPolicyTest {
     }
 
     @Test
+    void should_not_require_subscription_for_mcp_proxy_api() {
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn("MCP_PROXY");
+
+        assertThat(cut.requireSubscription(ctx)).isFalse();
+    }
+
+    @Test
+    void should_require_subscription_for_non_mcp_proxy_api() {
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn("PROXY");
+
+        assertThat(cut.requireSubscription(ctx)).isTrue();
+    }
+
+    @Test
+    void should_require_subscription_when_api_type_is_absent() {
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn(null);
+
+        assertThat(cut.requireSubscription(ctx)).isTrue();
+    }
+
+    @Test
+    void wwwAuthenticate_should_not_set_header_when_authorization_server_url_is_not_configured() {
+        when(configuration.getMcp()).thenReturn(new JWTPolicyConfiguration.McpConfiguration());
+
+        final TestObserver<Boolean> obs = cut.wwwAuthenticate(ctx).test();
+
+        obs.assertValue(false);
+        verify(ctx, Mockito.never()).response();
+    }
+
+    @Test
+    void wwwAuthenticate_should_not_set_header_when_authorization_server_url_is_blank() {
+        JWTPolicyConfiguration.McpConfiguration mcp = new JWTPolicyConfiguration.McpConfiguration();
+        mcp.setAuthorizationServerUrl("   ");
+        when(configuration.getMcp()).thenReturn(mcp);
+
+        final TestObserver<Boolean> obs = cut.wwwAuthenticate(ctx).test();
+
+        obs.assertValue(false);
+        verify(ctx, Mockito.never()).response();
+    }
+
+    @Test
+    void wwwAuthenticate_should_set_plain_bearer_header_on_non_mcp_proxy_api() {
+        JWTPolicyConfiguration.McpConfiguration mcp = new JWTPolicyConfiguration.McpConfiguration();
+        mcp.setAuthorizationServerUrl("https://my-tenant.logto.app/oidc");
+        when(configuration.getMcp()).thenReturn(mcp);
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn("PROXY");
+
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(ctx.response()).thenReturn(response);
+        when(response.headers()).thenReturn(headers);
+
+        final TestObserver<Boolean> obs = cut.wwwAuthenticate(ctx).test();
+
+        obs.assertValue(true);
+        verify(headers).set(HttpHeaderNames.WWW_AUTHENTICATE, "Bearer");
+    }
+
+    @Test
+    void wwwAuthenticate_should_set_resource_metadata_hint_on_mcp_proxy_api() {
+        JWTPolicyConfiguration.McpConfiguration mcp = new JWTPolicyConfiguration.McpConfiguration();
+        mcp.setAuthorizationServerUrl("https://my-tenant.logto.app/oidc");
+        when(configuration.getMcp()).thenReturn(mcp);
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn("MCP_PROXY");
+        when(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL)).thenReturn("https://gateway.example.com/mcp");
+
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(ctx.response()).thenReturn(response);
+        when(response.headers()).thenReturn(headers);
+
+        final TestObserver<Boolean> obs = cut.wwwAuthenticate(ctx).test();
+
+        obs.assertValue(true);
+        verify(headers).set(
+            HttpHeaderNames.WWW_AUTHENTICATE,
+            "Bearer resource_metadata=\"https://gateway.example.com/.well-known/oauth-protected-resource/mcp\""
+        );
+    }
+
+    @Test
+    void onWellKnown_should_return_false_when_authorization_server_url_is_not_configured() {
+        when(configuration.getMcp()).thenReturn(new JWTPolicyConfiguration.McpConfiguration());
+
+        final TestObserver<Boolean> obs = cut.onWellKnown(ctx).test();
+
+        obs.assertValue(false);
+        verify(ctx, Mockito.never()).response();
+    }
+
+    @Test
+    void onWellKnown_should_return_false_when_path_does_not_match_well_known_path() {
+        JWTPolicyConfiguration.McpConfiguration mcp = new JWTPolicyConfiguration.McpConfiguration();
+        mcp.setAuthorizationServerUrl("https://my-tenant.logto.app/oidc");
+        when(configuration.getMcp()).thenReturn(mcp);
+        when(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL)).thenReturn("https://gateway.example.com/mcp");
+
+        final TestObserver<Boolean> obs = cut.onWellKnown(ctx).test();
+
+        obs.assertValue(false);
+        verify(ctx, Mockito.never()).response();
+    }
+
+    @Test
+    void onWellKnown_should_serve_protected_resource_metadata_document() throws Exception {
+        JWTPolicyConfiguration.McpConfiguration mcp = new JWTPolicyConfiguration.McpConfiguration();
+        mcp.setAuthorizationServerUrl("https://my-tenant.logto.app/oidc");
+        mcp.setScopesSupported(List.of("openid", "mcp:access"));
+        when(configuration.getMcp()).thenReturn(mcp);
+        when(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL)).thenReturn(
+            "https://gateway.example.com/.well-known/oauth-protected-resource/mcp"
+        );
+        when(ctx.response()).thenReturn(response);
+
+        final TestObserver<Boolean> obs = cut.onWellKnown(ctx).test();
+
+        obs.assertValue(true);
+
+        final ArgumentCaptor<Buffer> bodyCaptor = ArgumentCaptor.forClass(Buffer.class);
+        verify(response).body(bodyCaptor.capture());
+
+        final JsonNode json = new ObjectMapper().readTree(bodyCaptor.getValue().toString());
+        assertThat(json.get("resource").asText()).isEqualTo("https://gateway.example.com/mcp");
+        assertThat(toStringList(json.get("authorization_servers"))).containsExactly("https://my-tenant.logto.app/oidc");
+        assertThat(toStringList(json.get("scopes_supported"))).containsExactly("openid", "mcp:access");
+    }
+
+    @Test
+    void onWellKnown_should_omit_scopes_supported_when_not_configured() throws Exception {
+        JWTPolicyConfiguration.McpConfiguration mcp = new JWTPolicyConfiguration.McpConfiguration();
+        mcp.setAuthorizationServerUrl("https://my-tenant.logto.app/oidc");
+        when(configuration.getMcp()).thenReturn(mcp);
+        when(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL)).thenReturn(
+            "https://gateway.example.com/.well-known/oauth-protected-resource/mcp"
+        );
+        when(ctx.response()).thenReturn(response);
+
+        final TestObserver<Boolean> obs = cut.onWellKnown(ctx).test();
+
+        obs.assertValue(true);
+
+        final ArgumentCaptor<Buffer> bodyCaptor = ArgumentCaptor.forClass(Buffer.class);
+        verify(response).body(bodyCaptor.capture());
+
+        final JsonNode json = new ObjectMapper().readTree(bodyCaptor.getValue().toString());
+        assertThat(json.has("scopes_supported")).isFalse();
+    }
+
+    @Test
     void extractSecurityToken_should_return_securityToken_when_token_is_present() {
         final HttpHeaders headers = mock(HttpHeaders.class);
 
@@ -579,6 +738,12 @@ class JWTPolicyTest {
         obs.assertComplete();
 
         verify(ctx).setAttribute(ATTR_USER, "flat-user-value");
+    }
+
+    private List<String> toStringList(JsonNode arrayNode) {
+        final List<String> values = new java.util.ArrayList<>();
+        arrayNode.forEach(node -> values.add(node.asText()));
+        return values;
     }
 
     private void verifyMetricsAttributesAndHeaders(Metrics metrics, HttpHeaders headers, String expectedClientId, String expectedSubject) {

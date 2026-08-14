@@ -47,9 +47,20 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private Integer connectTimeout = 2000;
     private Long requestTimeout = 2000L;
     private Boolean followRedirects = false;
+    private McpConfiguration mcp = new McpConfiguration();
     private ConfirmationMethodValidation confirmationMethodValidation = new ConfirmationMethodValidation();
     private TokenTypValidation tokenTypValidation = new TokenTypValidation();
     private RevocationCheckConfiguration revocationCheck = new RevocationCheckConfiguration();
+
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Getter
+    @Setter
+    public static class McpConfiguration {
+
+        private String authorizationServerUrl;
+        private List<String> scopesSupported;
+    }
 
     @NoArgsConstructor
     @AllArgsConstructor

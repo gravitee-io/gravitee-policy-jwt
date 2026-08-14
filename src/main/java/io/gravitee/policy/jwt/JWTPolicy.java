@@ -21,6 +21,10 @@ import static io.gravitee.gateway.api.ExecutionContext.ATTR_API;
 import static io.gravitee.gateway.api.ExecutionContext.ATTR_USER;
 import static io.gravitee.reporter.api.http.SecurityType.JWT;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.SecurityContext;
@@ -28,7 +32,11 @@ import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.security.jwt.LazyJWT;
+import io.gravitee.gateway.api.buffer.Buffer;
+import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
+import io.gravitee.gateway.reactive.api.context.ContextAttributes;
+import io.gravitee.gateway.reactive.api.context.InternalContextAttributes;
 import io.gravitee.gateway.reactive.api.context.base.BaseExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainExecutionContext;
 import io.gravitee.gateway.reactive.api.context.http.HttpPlainRequest;
@@ -52,8 +60,10 @@ import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.rxjava3.core.http.HttpHeaders;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import javax.security.auth.callback.Callback;
@@ -83,6 +93,20 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     static final String ERROR_MSG_MISSING_TOKEN = "Missing JWT token";
     static final String ERROR_MSG_EMPTY_TOKEN = "Empty JWT token";
     static final String ERROR_MSG_INVALID_THUMBPRINT = "Invalid certificate bound thumbprint";
+
+    // MCP (RFC 9728 Protected Resource Metadata) discovery support
+    private static final String API_TYPE_MCP_PROXY = "MCP_PROXY";
+    private static final String WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH = "/.well-known/oauth-protected-resource";
+    private static final ObjectMapper MCP_MAPPER = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
+
+    /**
+     * RFC 9728 OAuth 2.0 Protected Resource Metadata document.
+     */
+    private record ProtectedResourceMetadata(
+        @JsonProperty("resource") String resource,
+        @JsonProperty("authorization_servers") List<String> authorizationServers,
+        @JsonProperty("scopes_supported") List<String> scopesSupported
+    ) {}
 
     private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
 
@@ -130,6 +154,75 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     @Override
     public boolean requireSubscription() {
         return true;
+    }
+
+    /**
+     * MCP_PROXY APIs don't require a Gravitee subscription to be associated with the caller
+     * (matching {@code Oauth2Policy}'s behavior) - MCP's authorization model doesn't presuppose
+     * one has been created ahead of time. All other API types still require a valid subscription.
+     */
+    @Override
+    public boolean requireSubscription(BaseExecutionContext context) {
+        return !API_TYPE_MCP_PROXY.equals(context.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE));
+    }
+
+    /**
+     * Emits the WWW-Authenticate challenge on a 401. On an MCP_PROXY API, includes a
+     * {@code resource_metadata} hint pointing at this policy's protected-resource-metadata
+     * document (see {@link #onWellKnown}) so MCP clients can discover how to authenticate,
+     * per RFC 9728. Only active when {@code mcp.authorizationServerUrl} is configured.
+     */
+    @Override
+    public Single<Boolean> wwwAuthenticate(final HttpPlainExecutionContext ctx) {
+        String authorizationServerUrl = configuration.getMcp().getAuthorizationServerUrl();
+        if (authorizationServerUrl == null || authorizationServerUrl.isBlank()) {
+            return Single.just(false);
+        }
+
+        String wwwAuthenticateHeader = "Bearer";
+        if (API_TYPE_MCP_PROXY.equals(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE))) {
+            URI uri = URI.create(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL));
+            String resourceMetadata =
+                uri.getScheme() + "://" + uri.getRawAuthority() + WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH + uri.getRawPath();
+            wwwAuthenticateHeader += " resource_metadata=\"" + resourceMetadata + "\"";
+        }
+        ctx.response().headers().set(HttpHeaderNames.WWW_AUTHENTICATE, wwwAuthenticateHeader);
+        return Single.just(true);
+    }
+
+    /**
+     * Serves the RFC 9728 OAuth 2.0 Protected Resource Metadata document at
+     * {@code /.well-known/oauth-protected-resource}, advertising {@code mcp.authorizationServerUrl}
+     * as the issuer that can mint valid tokens for this resource. Only active when
+     * {@code mcp.authorizationServerUrl} is configured.
+     */
+    @Override
+    public Single<Boolean> onWellKnown(final HttpPlainExecutionContext ctx) {
+        String authorizationServerUrl = configuration.getMcp().getAuthorizationServerUrl();
+        if (authorizationServerUrl == null || authorizationServerUrl.isBlank()) {
+            return Single.just(false);
+        }
+
+        URI uri = URI.create(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL));
+        if (!uri.getRawPath().startsWith(WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH)) {
+            return Single.just(false);
+        }
+
+        String protectedResourceUri =
+            uri.getScheme() + "://" + uri.getRawAuthority() + uri.getRawPath().substring(WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH.length());
+        ProtectedResourceMetadata metadata = new ProtectedResourceMetadata(
+            protectedResourceUri,
+            List.of(authorizationServerUrl),
+            configuration.getMcp().getScopesSupported()
+        );
+
+        try {
+            ctx.response().body(Buffer.buffer(MCP_MAPPER.writeValueAsString(metadata)));
+            return Single.just(true);
+        } catch (JsonProcessingException e) {
+            log.error("Unable to serialize JWT protected resource metadata", e);
+            return Single.just(false);
+        }
     }
 
     @Override
