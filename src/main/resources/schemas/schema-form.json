@@ -141,6 +141,27 @@
             "description": "Claim where the client ID can be extracted. Supports dot-notation for nested claims (e.g. 'act.repository'). A flat claim whose name literally contains a dot takes precedence. Configuring this field will override the standard behavior.",
             "type": "string"
         },
+        "mcp": {
+            "type": "object",
+            "title": "MCP",
+            "description": "OAuth 2.0 Protected Resource Metadata (RFC 9728) support for Model Context Protocol clients. Served at /.well-known/oauth-protected-resource and referenced in the WWW-Authenticate challenge on 401 responses on MCP_PROXY APIs. Has no effect on other API types unless a client independently discovers the metadata document.",
+            "properties": {
+                "authorizationServerUrl": {
+                    "title": "Authorization server URL",
+                    "description": "Issuer URL of the authorization server that signs the JWTs (e.g. https://my-tenant.logto.app/oidc). When set, this is advertised via the OAuth 2.0 Protected Resource Metadata document. Leave empty to disable this behavior.",
+                    "type": "string"
+                },
+                "scopesSupported": {
+                    "title": "Scopes supported",
+                    "description": "List of OAuth 2.0 scopes clients should request for this resource (e.g. 'openid', 'mcp:access'). Only applies when 'Authorization server URL' is set. Advertised as 'scopes_supported' in the metadata document so MCP clients know which scopes to include in their authorization request. Leave empty to omit this field from the metadata document.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
         "confirmationMethodValidation": {
             "type": "object",
             "title": "Confirmation Method Validation",
