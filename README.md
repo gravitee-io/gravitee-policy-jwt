@@ -108,6 +108,7 @@ The error keys sent by this policy are as follows:
 | JWT_INVALID_TOKEN |
 | JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT |
 | JWT_REVOKED |
+| JWT_INSUFFICIENT_SCOPE |
 
 
 
@@ -179,14 +180,18 @@ policy:
 #### 
 | Name <br>`json name`  | Type <br>`constraint`  | Mandatory  | Default  | Description  |
 |:----------------------|:-----------------------|:----------:|:---------|:-------------|
+| Check scopes<br>`checkRequiredScopes`| boolean|  | | Check required scopes to access the resource|
 | Client ID claim<br>`clientIdClaim`| string|  | | Claim where the client ID can be extracted. Supports dot-notation for nested claims (e.g. 'act.repository'). A flat claim whose name literally contains a dot takes precedence. Configuring this field will override the standard behavior.|
 | Confirmation Method Validation<br>`confirmationMethodValidation`| object|  | | <br/>See "Confirmation Method Validation" section.|
 | JWKS URL connect timeout<br>`connectTimeout`| integer|  | `2000`| Only applies when the resolver is JWKS_URL|
 | Extract JWT Claims<br>`extractClaims`| boolean|  | | Put claims into the 'jwt.claims' context attribute.|
 | Follow HTTP redirects<br>`followRedirects`| boolean|  | | Only applies when the resolver is JWKS_URL|
+| Mode strict<br>`modeStrict`| boolean|  | `true`| Check scopes with exactly those configured|
 | Propagate Authorization header<br>`propagateAuthHeader`| boolean|  | `true`| Allows to propagate Authorization header to the target endpoints|
+| Protected resource metadata<br>`protectedResourceMetadata`| object|  | | OAuth 2.0 Protected Resource Metadata (RFC 9728). When authorization servers are configured, the document is served at /.well-known/oauth-protected-resource and referenced from the WWW-Authenticate challenge on 401 responses, so a client can discover where to obtain a token for this API instead of having to be configured with it upfront.<br/>See "Protected resource metadata" section.|
 | JWKS resolver<br>`publicKeyResolver`| enum (string)| ✅| `GIVEN_KEY`| Define how the JSON Web Key Set is retrieved<br>Values: `GIVEN_KEY` `GATEWAY_KEYS` `JWKS_URL`|
 | JWKS URL request timeout<br>`requestTimeout`| integer|  | `2000`| Only applies when the resolver is JWKS_URL|
+| Required scopes<br>`requiredScopes`| array (string)|  | | List of required scopes to access the resource. Also advertised as 'scopes_supported' in the protected resource metadata document, so clients request exactly what is enforced.|
 | Resolver parameter<br>`resolverParameter`| string|  | | Set the signature key GIVEN_KEY or a JWKS_URL following selected resolver (support EL).|
 | Revocation Check<br>`revocationCheck`| object|  | | Define revocation check details. If enabled, will check the configured claim of the token against a cached revocation list and deny if a match is found. Disabled by default.<br/>See "Revocation Check" section.|
 | Signature<br>`signature`| enum (string)| ✅| `RSA_RS256`| Define how the JSON Web Token must be signed.<br>Values: `RSA_RS256` `RSA_RS384` `RSA_RS512` `HMAC_HS256` `HMAC_HS384` `HMAC_HS512`|
@@ -208,6 +213,12 @@ policy:
 | Enable certificate bound thumbprint validation<br>`enabled`| boolean|  | | Will validate the certificate thumbprint extracted from the access_token with the one provided by the client. The default is false.|
 | Extract client certificate from headers<br>`extractCertificateFromHeader`| boolean|  | | Enabled to extract the client certificate from request header. Necessary when the M-TLS connection is handled by a proxy.|
 | Header name<br>`headerName`| string|  | `ssl-client-cert`| Name of the header where to find the client certificate.|
+
+
+#### Protected resource metadata (Object)
+| Name <br>`json name`  | Type <br>`constraint`  | Mandatory  | Description  |
+|:----------------------|:-----------------------|:----------:|:-------------|
+| Authorization servers<br>`authorizationServers`| array (string)|  | Issuer URLs of the authorization servers that sign the JWTs. Take each value from the 'issuer' field of the authorization server's own discovery document, so it cannot drift from the JWKS URL configured above. Leave empty to serve no metadata document.|
 
 
 #### Revocation Check (Object)

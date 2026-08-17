@@ -7,3 +7,5 @@ rows:
           key: "JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT"
     - data:
           key: "JWT_REVOKED"
+    - data:
+          key: "JWT_INSUFFICIENT_SCOPE"
