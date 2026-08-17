@@ -99,5 +99,6 @@ The error keys sent by this policy are as follows:
 | JWT_INVALID_TOKEN |
 | JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT |
 | JWT_REVOKED |
+| JWT_INSUFFICIENT_SCOPE |
 
 

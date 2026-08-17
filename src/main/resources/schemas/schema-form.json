@@ -141,19 +141,35 @@
             "description": "Claim where the client ID can be extracted. Supports dot-notation for nested claims (e.g. 'act.repository'). A flat claim whose name literally contains a dot takes precedence. Configuring this field will override the standard behavior.",
             "type": "string"
         },
-        "mcp": {
+        "checkRequiredScopes": {
+            "title": "Check scopes",
+            "description": "Check required scopes to access the resource",
+            "type": "boolean",
+            "default": false
+        },
+        "requiredScopes": {
+            "type": "array",
+            "title": "Required scopes",
+            "description": "List of required scopes to access the resource. Also advertised as 'scopes_supported' in the protected resource metadata document, so clients request exactly what is enforced.",
+            "items": {
+                "type": "string",
+                "title": "Scope"
+            }
+        },
+        "modeStrict": {
+            "title": "Mode strict",
+            "description": "Check scopes with exactly those configured",
+            "type": "boolean",
+            "default": true
+        },
+        "protectedResourceMetadata": {
             "type": "object",
-            "title": "MCP",
-            "description": "OAuth 2.0 Protected Resource Metadata (RFC 9728) support for Model Context Protocol clients. Served at /.well-known/oauth-protected-resource and referenced in the WWW-Authenticate challenge on 401 responses on MCP_PROXY APIs. Has no effect on other API types unless a client independently discovers the metadata document.",
+            "title": "Protected resource metadata",
+            "description": "OAuth 2.0 Protected Resource Metadata (RFC 9728). When authorization servers are configured, the document is served at /.well-known/oauth-protected-resource and referenced from the WWW-Authenticate challenge on 401 responses, so a client can discover where to obtain a token for this API instead of having to be configured with it upfront.",
             "properties": {
-                "authorizationServerUrl": {
-                    "title": "Authorization server URL",
-                    "description": "Issuer URL of the authorization server that signs the JWTs (e.g. https://my-tenant.logto.app/oidc). When set, this is advertised via the OAuth 2.0 Protected Resource Metadata document. Leave empty to disable this behavior.",
-                    "type": "string"
-                },
-                "scopesSupported": {
-                    "title": "Scopes supported",
-                    "description": "List of OAuth 2.0 scopes clients should request for this resource (e.g. 'openid', 'mcp:access'). Only applies when 'Authorization server URL' is set. Advertised as 'scopes_supported' in the metadata document so MCP clients know which scopes to include in their authorization request. Leave empty to omit this field from the metadata document.",
+                "authorizationServers": {
+                    "title": "Authorization servers",
+                    "description": "Issuer URLs of the authorization servers that sign the JWTs. Take each value from the 'issuer' field of the authorization server's own discovery document, so it cannot drift from the JWKS URL configured above. Leave empty to serve no metadata document.",
                     "type": "array",
                     "items": {
                         "type": "string"

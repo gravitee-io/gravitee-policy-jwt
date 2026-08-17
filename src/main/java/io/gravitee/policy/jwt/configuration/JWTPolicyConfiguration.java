@@ -47,7 +47,10 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private Integer connectTimeout = 2000;
     private Long requestTimeout = 2000L;
     private Boolean followRedirects = false;
-    private McpConfiguration mcp = new McpConfiguration();
+    private boolean checkRequiredScopes = false;
+    private List<String> requiredScopes;
+    private boolean modeStrict = true;
+    private ProtectedResourceMetadataConfiguration protectedResourceMetadata = new ProtectedResourceMetadataConfiguration();
     private ConfirmationMethodValidation confirmationMethodValidation = new ConfirmationMethodValidation();
     private TokenTypValidation tokenTypValidation = new TokenTypValidation();
     private RevocationCheckConfiguration revocationCheck = new RevocationCheckConfiguration();
@@ -56,10 +59,9 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     @AllArgsConstructor
     @Getter
     @Setter
-    public static class McpConfiguration {
+    public static class ProtectedResourceMetadataConfiguration {
 
-        private String authorizationServerUrl;
-        private List<String> scopesSupported;
+        private List<String> authorizationServers;
     }
 
     @NoArgsConstructor
