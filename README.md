@@ -289,6 +289,14 @@ policy:
 
 ## Changelog
 
+### [8.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.0.0...8.1.0) (2026-08-18)
+
+
+##### Features
+
+* **jwt:** enforce required scopes and generalize protected resource metadata ([97e6cca](https://github.com/gravitee-io/gravitee-policy-jwt/commit/97e6cca6d91d99f1577af13ed999efe6e0d294a9))
+* make the jwt plan mcp compliant ([ccfaf84](https://github.com/gravitee-io/gravitee-policy-jwt/commit/ccfaf84cf1c479b6f99ef2321abeb5e0e96872b1))
+
 ### [8.0.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/7.0.4...8.0.0) (2026-06-24)
 
 
