@@ -29,16 +29,15 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 public class URLJWKSourceResolver<C extends SecurityContext> implements JWKSourceResolver<C> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(URLJWKSourceResolver.class);
     private static final Duration CACHE_DURATION = Duration.ofMinutes(5);
 
     private final URL jwksUrl;
@@ -64,10 +63,10 @@ public class URLJWKSourceResolver<C extends SecurityContext> implements JWKSourc
             .thenCompose(this::readJwkSourceFromResource)
             .exceptionally(ex -> {
                 if (cachedJWKSource != null) {
-                    LOGGER.warn("Failed to retrieve JWKS from URL {}. Using old cached JWKS", jwksUrl, ex);
+                    log.warn("Failed to retrieve JWKS from URL {}. Using old cached JWKS", jwksUrl, ex);
                     return cachedJWKSource.getJwkSource();
                 }
-                LOGGER.error("Failed to retrieve JWKS from URL, returning null", ex);
+                log.error("Failed to retrieve JWKS from URL, returning null", ex);
                 return null;
             });
     }

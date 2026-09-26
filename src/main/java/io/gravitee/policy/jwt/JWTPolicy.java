@@ -70,11 +70,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import javax.security.auth.callback.Callback;
+import lombok.CustomLog;
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken;
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerValidatorCallback;
 import org.apache.kafka.common.security.oauthbearer.internals.secured.BasicOAuthBearerToken;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.core.env.Environment;
 
@@ -82,6 +81,7 @@ import org.springframework.core.env.Environment;
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaSecurityPolicy {
 
     public static final String CONTEXT_ATTRIBUTE_JWT = "jwt";
@@ -117,8 +117,6 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         @JsonProperty("authorization_servers") List<String> authorizationServers,
         @JsonProperty("scopes_supported") List<String> scopesSupported
     ) {}
-
-    private static final Logger log = LoggerFactory.getLogger(JWTPolicy.class);
 
     private final JWTProcessorProvider jwtProcessorResolver;
 
@@ -242,7 +240,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
             ctx.response().body(Buffer.buffer(document));
             return Single.just(true);
         } catch (JsonProcessingException e) {
-            log.error("Unable to serialize JWT protected resource metadata", e);
+            ctx.withLogger(log).error("Unable to serialize JWT protected resource metadata", e);
             return Single.just(false);
         }
     }
@@ -281,7 +279,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         try {
             return URI.create(QUERY_OR_FRAGMENT.split(originalUrl, 2)[0]);
         } catch (IllegalArgumentException e) {
-            log.debug("Unable to parse the original request URL as a URI: {}", originalUrl);
+            ctx.withLogger(log).debug("Unable to parse the original request URL as a URI: {}", originalUrl);
             return null;
         }
     }
@@ -480,7 +478,7 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
 
             return Single.just(claims);
         } catch (Exception e) {
-            log.warn("Error during revocation check, skipping revocation check", e);
+            ctx.withLogger(log).warn("Error during revocation check, skipping revocation check", e);
             return Single.just(claims);
         }
     }
@@ -608,14 +606,16 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
                         final String api = httpPlainExecutionContext.getAttribute(ATTR_API);
                         MDC.put("api", api);
 
-                        log.debug(
-                            "[api-id:{}] [request-id:{}] [request-path:{}] {}",
-                            api,
-                            request.id(),
-                            request.path(),
-                            throwable.getMessage(),
-                            throwable
-                        );
+                        ctx
+                            .withLogger(log)
+                            .debug(
+                                "[api-id:{}] [request-id:{}] [request-path:{}] {}",
+                                api,
+                                request.id(),
+                                request.path(),
+                                throwable.getMessage(),
+                                throwable
+                            );
                     } finally {
                         MDC.remove("api");
                     }

@@ -30,8 +30,7 @@ import io.gravitee.policy.jwt.jwk.selector.NoKidJWSVerificationKeySelector;
 import io.gravitee.policy.jwt.utils.JWKBuilder;
 import io.gravitee.policy.jwt.utils.TokenTypeVerifierFactory;
 import io.reactivex.rxjava3.core.Maybe;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 
 /**
  * {@link JWTProcessorProvider} based on {@link io.gravitee.policy.v3.jwt.resolver.KeyResolver#GIVEN_KEY}.
@@ -40,9 +39,9 @@ import org.slf4j.LoggerFactory;
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 class GivenKeyJWTProcessorProvider implements JWTProcessorProvider {
 
-    private static final Logger log = LoggerFactory.getLogger(GivenKeyJWTProcessorProvider.class);
     private static final String JWT_INVALID_KEY_WARN = "JWT_INVALID_KEY";
     private static final String KEY_LOADING_ERROR_MESSAGE = "Error occurred when loading key. Key will be ignored.";
 
@@ -72,7 +71,7 @@ class GivenKeyJWTProcessorProvider implements JWTProcessorProvider {
 
             jwtProcessor.setJWSKeySelector(selector);
         } catch (Throwable throwable) {
-            log.warn(KEY_LOADING_ERROR_MESSAGE, throwable);
+            ctx.withLogger(log).warn(KEY_LOADING_ERROR_MESSAGE, throwable);
             ctx.warnWith(new ExecutionWarn(JWT_INVALID_KEY_WARN).message(KEY_LOADING_ERROR_MESSAGE).cause(throwable));
         }
 

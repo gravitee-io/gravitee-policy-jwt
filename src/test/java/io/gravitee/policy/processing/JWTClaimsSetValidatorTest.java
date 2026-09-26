@@ -61,6 +61,9 @@ class JWTClaimsSetValidatorTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient()
+            .when(ctx.withLogger(org.mockito.ArgumentMatchers.any()))
+            .thenReturn(org.slf4j.LoggerFactory.getLogger(getClass()));
         when(ctx.getAttribute(ContextAttributes.ATTR_API)).thenReturn("API_ID");
     }
 

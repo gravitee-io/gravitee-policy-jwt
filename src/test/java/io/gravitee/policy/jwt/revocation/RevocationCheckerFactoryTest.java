@@ -39,6 +39,13 @@ class RevocationCheckerFactoryTest {
     @Mock
     private Configuration configuration;
 
+    @org.junit.jupiter.api.BeforeEach
+    void stubExecutionContextLogger() {
+        org.mockito.Mockito.lenient()
+            .when(ctx.withLogger(org.mockito.ArgumentMatchers.any()))
+            .thenReturn(org.slf4j.LoggerFactory.getLogger(getClass()));
+    }
+
     @Test
     void should_create_revocation_check_without_cache_when_configuration_invalid() {
         RevocationCheckConfiguration config = new RevocationCheckConfiguration(true, null, null, null, null, null, false, false, null);

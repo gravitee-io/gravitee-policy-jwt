@@ -60,8 +60,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.SSLSession;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 import org.slf4j.MDC;
 import org.springframework.core.env.Environment;
 import org.springframework.util.ObjectUtils;
@@ -71,9 +70,8 @@ import org.springframework.util.StringUtils;
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 public class JWTPolicyV3 {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(JWTPolicyV3.class);
 
     public static final String CONTEXT_ATTRIBUTE_PREFIX = "jwt.";
     public static final String CONTEXT_ATTRIBUTE_JWT_CLAIMS = CONTEXT_ATTRIBUTE_PREFIX + "claims";
@@ -127,20 +125,17 @@ public class JWTPolicyV3 {
                 if (throwable != null) {
                     String key = JWT_INVALID_TOKEN_KEY;
                     if (throwable.getCause() instanceof InvalidTokenException) {
-                        LOGGER.debug(
+                        log.debug(
                             String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
                             throwable.getCause()
                         );
                         request.metrics().setMessage(throwable.getCause().getCause().getMessage());
                     } else if (throwable instanceof InvalidCertificateThumbprintException) {
                         key = JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT;
-                        LOGGER.debug(
-                            String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
-                            throwable
-                        );
+                        log.debug(String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()), throwable);
                         request.metrics().setMessage(throwable.getCause().getCause().getMessage());
                     } else {
-                        LOGGER.error(
+                        log.error(
                             String.format(errorMessageFormat, api, request.id(), request.path(), throwable.getMessage()),
                             throwable.getCause()
                         );
@@ -178,7 +173,7 @@ public class JWTPolicyV3 {
                         // Finally continue the process...
                         policyChain.doNext(request, response);
                     } catch (Exception e) {
-                        LOGGER.error(String.format(errorMessageFormat, api, request.id(), request.path(), e.getMessage()), e.getCause());
+                        log.error(String.format(errorMessageFormat, api, request.id(), request.path(), e.getMessage()), e.getCause());
                         policyChain.failWith(
                             PolicyResult.failure(JWT_INVALID_TOKEN_KEY, HttpStatusCode.UNAUTHORIZED_401, UNAUTHORIZED_MESSAGE)
                         );
@@ -189,7 +184,7 @@ public class JWTPolicyV3 {
             });
         } catch (Exception e) {
             MDC.put("api", String.valueOf(executionContext.getAttribute(ATTR_API)));
-            LOGGER.error(
+            log.error(
                 String.format(errorMessageFormat, executionContext.getAttribute(ATTR_API), request.id(), request.path(), e.getMessage()),
                 e.getCause()
             );
@@ -370,7 +365,7 @@ public class JWTPolicyV3 {
                 .map(tokenThumbprint::equals)
                 .orElse(false);
         } catch (ParseException e) {
-            LOGGER.debug("Unable to valid certificate thumbprint", e);
+            log.debug("Unable to valid certificate thumbprint", e);
             return false;
         }
     }

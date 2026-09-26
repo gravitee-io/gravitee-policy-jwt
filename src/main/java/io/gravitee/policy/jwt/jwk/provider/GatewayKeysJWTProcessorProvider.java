@@ -42,8 +42,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 import org.springframework.core.env.ConfigurableEnvironment;
 
 /**
@@ -53,10 +52,10 @@ import org.springframework.core.env.ConfigurableEnvironment;
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
 
     protected static final String KEY_PROPERTY_PREFIX = "policy.jwt.issuer";
-    private static final Logger log = LoggerFactory.getLogger(GatewayKeysJWTProcessorProvider.class);
     private static final String DEFAULT_KID = "default";
     private static final Pattern KEY_PROPERTY_PATTERN = Pattern.compile("^policy\\.jwt\\.issuer\\.(?<iss>.*)\\.(?<kid>.*)$");
     private static final String JWT_INVALID_KEY_WARN = "JWT_INVALID_KEY";
@@ -108,7 +107,7 @@ class GatewayKeysJWTProcessorProvider implements JWTProcessorProvider {
                         return new SimpleEntry<>(iss, JWKBuilder.buildKey(kid, key, alg));
                     } catch (KeyException e) {
                         String errorMessage = String.format(KEY_LOADING_ERROR_MESSAGE_FORMAT, iss, kid);
-                        log.warn(errorMessage, e);
+                        ctx.withLogger(log).warn(errorMessage, e);
                         ctx.warnWith(new ExecutionWarn(JWT_INVALID_KEY_WARN).message(errorMessage).cause(e));
                     }
                 }

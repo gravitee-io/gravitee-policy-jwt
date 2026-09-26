@@ -23,9 +23,9 @@ import io.gravitee.policy.jwt.contentretriever.vertx.VertxContentRetriever;
 import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.vertx.rxjava3.core.Vertx;
-import lombok.extern.slf4j.Slf4j;
+import lombok.CustomLog;
 
-@Slf4j
+@CustomLog
 public final class RevocationCheckerFactory {
 
     public static RevocationChecker create(RevocationCheckConfiguration configuration, BaseExecutionContext ctx) {
@@ -34,7 +34,7 @@ public final class RevocationCheckerFactory {
         }
 
         ContentRetriever contentRetriever = createContentRetriever(configuration, ctx);
-        RevocationCache revocationCache = createRevocationCache(configuration, contentRetriever);
+        RevocationCache revocationCache = createRevocationCache(configuration, contentRetriever, ctx);
 
         return new RevocationChecker(configuration, revocationCache);
     }
@@ -53,7 +53,11 @@ public final class RevocationCheckerFactory {
         );
     }
 
-    private static RevocationCache createRevocationCache(RevocationCheckConfiguration configuration, ContentRetriever contentRetriever) {
+    private static RevocationCache createRevocationCache(
+        RevocationCheckConfiguration configuration,
+        ContentRetriever contentRetriever,
+        BaseExecutionContext ctx
+    ) {
         RevocationCache cache = new RevocationCache(
             configuration.getRevocationListUrl(),
             configuration.getRefreshInterval(),
@@ -64,8 +68,8 @@ public final class RevocationCheckerFactory {
             .initialize()
             .subscribeOn(Schedulers.io())
             .subscribe(
-                () -> log.info("Revocation cache initialized successfully"),
-                error -> log.error("Failed to initialize revocation cache, revocation check is disabled", error)
+                () -> ctx.withLogger(log).info("Revocation cache initialized successfully"),
+                error -> ctx.withLogger(log).error("Failed to initialize revocation cache, revocation check is disabled", error)
             );
 
         return cache;
