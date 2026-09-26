@@ -73,6 +73,13 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
     @Mock
     private ContentRetriever contentRetriever;
 
+    @org.junit.jupiter.api.BeforeEach
+    void stubExecutionContextLogger() {
+        org.mockito.Mockito.lenient()
+            .when(ctx.withLogger(org.mockito.ArgumentMatchers.any()))
+            .thenReturn(org.slf4j.LoggerFactory.getLogger(getClass()));
+    }
+
     @ParameterizedTest
     @MethodSource("provideRSAParameters")
     void shouldVerifyRSASignature(Integer keySize, Signature signature) throws Exception {

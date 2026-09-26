@@ -31,14 +31,14 @@ import io.gravitee.node.api.cache.CacheConfiguration;
 import io.gravitee.node.plugin.cache.common.InMemoryCache;
 import java.text.ParseException;
 import java.util.Date;
-import lombok.extern.slf4j.Slf4j;
+import lombok.CustomLog;
 
 /**
  * Allows validating and caching the result of JWT claims set processing.
  * @author Yann TAVERNIER (yann.tavernier at graviteesource.com)
  * @author GraviteeSource Team
  */
-@Slf4j
+@CustomLog
 public class JWTClaimsSetValidator {
 
     /**

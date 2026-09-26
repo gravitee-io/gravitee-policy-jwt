@@ -30,16 +30,15 @@ import io.vertx.core.http.RequestOptions;
 import java.net.URL;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 public class VertxResourceRetriever implements ResourceRetriever {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(VertxResourceRetriever.class);
     private static final String HTTPS_SCHEME = "https";
 
     private final Vertx vertx;
@@ -67,12 +66,12 @@ public class VertxResourceRetriever implements ResourceRetriever {
             try {
                 options.setProxyOptions(VertxProxyOptionsUtils.buildProxyOptions(configuration));
             } catch (Exception e) {
-                LOGGER.warn(
+                log.warn(
                     "JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}",
                     url.toString(),
                     e.getMessage()
                 );
-                LOGGER.warn("Ignoring system proxy");
+                log.warn("Ignoring system proxy");
             }
         }
 

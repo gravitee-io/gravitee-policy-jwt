@@ -19,17 +19,15 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
 import java.text.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 import org.springframework.core.env.Environment;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 public class GatewaySignatureKeyResolver implements SignatureKeyResolver {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(GatewaySignatureKeyResolver.class);
 
     private static final String DEFAULT_KID = "default";
     private static final String KEY_PROPERTY = "policy.jwt.issuer.%s.%s";

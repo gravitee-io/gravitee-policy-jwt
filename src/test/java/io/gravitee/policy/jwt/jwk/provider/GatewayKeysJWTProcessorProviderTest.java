@@ -60,6 +60,9 @@ class GatewayKeysJWTProcessorProviderTest extends AbstractJWKTest {
 
     @BeforeEach
     void init() {
+        org.mockito.Mockito.lenient()
+            .when(ctx.withLogger(org.mockito.ArgumentMatchers.any()))
+            .thenReturn(org.slf4j.LoggerFactory.getLogger(getClass()));
         environment = new MockEnvironment();
     }
 

@@ -17,14 +17,14 @@ package io.gravitee.policy.jwt.configuration;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import lombok.CustomLog;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 
 @NoArgsConstructor
 @Getter
-@Slf4j
+@CustomLog
 public class RevocationCheckConfiguration {
 
     public static final Integer DEFAULT_REFRESH_INTERVAL = 300;
