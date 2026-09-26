@@ -18,9 +18,9 @@ package io.gravitee.policy.jwt.revocation;
 import com.nimbusds.jwt.JWTClaimsSet;
 import io.gravitee.policy.jwt.configuration.RevocationCheckConfiguration;
 import java.text.ParseException;
-import lombok.extern.slf4j.Slf4j;
+import lombok.CustomLog;
 
-@Slf4j
+@CustomLog
 public class RevocationChecker {
 
     private final RevocationCheckConfiguration configuration;

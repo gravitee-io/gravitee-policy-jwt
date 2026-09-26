@@ -40,8 +40,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 import org.springframework.core.NestedExceptionUtils;
 
 /**
@@ -51,9 +50,8 @@ import org.springframework.core.NestedExceptionUtils;
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKSource<C> {
-
-    private static final Logger log = LoggerFactory.getLogger(JWKSUrlJWKSourceResolver.class);
 
     public static final String JWKS_RESOLUTION_ERROR_KEY = "JWT_JWKS_RESOLUTION_ERROR";
 

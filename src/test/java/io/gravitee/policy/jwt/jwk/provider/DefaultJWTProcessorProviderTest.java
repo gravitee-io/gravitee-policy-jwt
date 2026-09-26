@@ -60,6 +60,13 @@ class DefaultJWTProcessorProviderTest extends AbstractJWKTest {
     @Mock
     private TemplateEngine templateEngine;
 
+    @org.junit.jupiter.api.BeforeEach
+    void stubExecutionContextLogger() {
+        org.mockito.Mockito.lenient()
+            .when(ctx.withLogger(org.mockito.ArgumentMatchers.any()))
+            .thenReturn(org.slf4j.LoggerFactory.getLogger(getClass()));
+    }
+
     public static Stream<Arguments> provideParameters() {
         return Stream.of(
             Arguments.of(KeyResolver.GIVEN_KEY, GivenKeyJWTProcessorProvider.class),

@@ -127,17 +127,17 @@ The `jwt` policy can be applied to the following API types and flow phases.
 ## Compatibility matrix
 Strikethrough text indicates that a version is deprecated.
 
-| Plugin version| APIM |
-| --- | ---  |
-|8.x|4.12.x to latest |
-|7.x|4.9.x to 4.11.x |
-|6.x|4.6.x to 4.8.x |
-|5.x|4.4.x to 4.5.x |
-|4.x|4.0.x to 4.3.x |
-|~~2.x~~|~~3.18.x to 3.20.x~~ |
-|~~1.22.x~~|~~3.15.x to 3.17.x~~ |
-|~~1.20.x to 1.21.x~~|~~3.10.x to 3.14.x~~ |
-|~~Up to 1.19.x~~|~~Up to 3.9.x~~ |
+| Plugin version| APIM| Java version |
+| --- | --- | ---  |
+|8.x|4.12.x to latest|21 |
+|7.x|4.9.x to 4.11.x|21 |
+|6.x|4.6.x to 4.8.x|17 |
+|5.x|4.4.x to 4.5.x|17 |
+|4.x|4.0.x to 4.3.x|17 |
+|~~2.x~~|~~3.18.x to 3.20.x~~|~~11~~ |
+|~~1.22.x~~|~~3.15.x to 3.17.x~~|~~11~~ |
+|~~1.20.x to 1.21.x~~|~~3.10.x to 3.14.x~~|~~11~~ |
+|~~Up to 1.19.x~~|~~Up to 3.9.x~~|~~8~~ |
 
 
 
