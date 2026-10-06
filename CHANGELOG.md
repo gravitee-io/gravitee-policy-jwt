@@ -1,3 +1,10 @@
+## [8.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.1.0...8.1.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **deps:** bump gravitee-apim to 4.12.21 ([fe7026d](https://github.com/gravitee-io/gravitee-policy-jwt/commit/fe7026d2ce2382fe30a33b1c2242a51b43517d7b))
+
 # [8.1.0](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.0.0...8.1.0) (2026-08-18)
 
 
