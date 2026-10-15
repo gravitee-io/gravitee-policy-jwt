@@ -527,9 +527,10 @@ class JWTPolicyTest {
     }
 
     @Test
-    void wwwAuthenticate_should_append_resource_metadata_hint_when_metadata_is_configured() {
+    void wwwAuthenticate_should_advertise_the_inserted_metadata_url_for_an_mcp_proxy_api() {
         when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration("https://my-tenant.logto.app/oidc"));
         when(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL)).thenReturn("https://gateway.example.com/mcp");
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn("MCP_PROXY");
 
         final HttpHeaders headers = mock(HttpHeaders.class);
         when(ctx.response()).thenReturn(response);
@@ -541,6 +542,60 @@ class JWTPolicyTest {
         verify(headers).set(
             HttpHeaderNames.WWW_AUTHENTICATE,
             "Bearer resource_metadata=\"https://gateway.example.com/.well-known/oauth-protected-resource/mcp\""
+        );
+    }
+
+    @Test
+    void wwwAuthenticate_should_advertise_the_path_based_metadata_url_for_any_other_api() {
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration("https://my-tenant.logto.app/oidc"));
+        when(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL)).thenReturn("https://gateway.example.com/prm-probe/mcp");
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn("PROXY");
+
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(ctx.response()).thenReturn(response);
+        when(response.headers()).thenReturn(headers);
+
+        cut.wwwAuthenticate(ctx).test().assertValue(true);
+
+        verify(headers).set(
+            HttpHeaderNames.WWW_AUTHENTICATE,
+            "Bearer resource_metadata=\"https://gateway.example.com/prm-probe/mcp/.well-known/oauth-protected-resource\""
+        );
+    }
+
+    @Test
+    void wwwAuthenticate_should_keep_the_trailing_slash_so_the_resource_matches_the_requested_url() {
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration("https://my-tenant.logto.app/oidc"));
+        when(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL)).thenReturn("https://gateway.example.com/prm-probe/");
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn("PROXY");
+
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(ctx.response()).thenReturn(response);
+        when(response.headers()).thenReturn(headers);
+
+        cut.wwwAuthenticate(ctx).test().assertValue(true);
+
+        verify(headers).set(
+            HttpHeaderNames.WWW_AUTHENTICATE,
+            "Bearer resource_metadata=\"https://gateway.example.com/prm-probe//.well-known/oauth-protected-resource\""
+        );
+    }
+
+    @Test
+    void wwwAuthenticate_should_advertise_the_host_root_metadata_url_for_an_api_rooted_at_the_origin() {
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration("https://my-tenant.logto.app/oidc"));
+        when(ctx.getAttribute(ContextAttributes.ATTR_REQUEST_ORIGINAL_URL)).thenReturn("https://gateway.example.com/");
+        when(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE)).thenReturn("PROXY");
+
+        final HttpHeaders headers = mock(HttpHeaders.class);
+        when(ctx.response()).thenReturn(response);
+        when(response.headers()).thenReturn(headers);
+
+        cut.wwwAuthenticate(ctx).test().assertValue(true);
+
+        verify(headers).set(
+            HttpHeaderNames.WWW_AUTHENTICATE,
+            "Bearer resource_metadata=\"https://gateway.example.com/.well-known/oauth-protected-resource\""
         );
     }
 
@@ -571,7 +626,7 @@ class JWTPolicyTest {
 
         verify(headers).set(
             HttpHeaderNames.WWW_AUTHENTICATE,
-            "Bearer resource_metadata=\"https://gateway.example.com/.well-known/oauth-protected-resource/mcp\""
+            "Bearer resource_metadata=\"https://gateway.example.com/mcp/.well-known/oauth-protected-resource\""
         );
     }
 
@@ -717,6 +772,17 @@ class JWTPolicyTest {
         stubWellKnownRequest("/.well-known/oauth-protected-resource", "https://gateway.example.com/.well-known/oauth-protected-resource");
 
         assertThat(serveWellKnownDocument().get("resource").asText()).isEqualTo("https://gateway.example.com/");
+    }
+
+    @Test
+    void onWellKnown_should_keep_the_trailing_slash_of_the_resource_on_the_path_based_form() throws Exception {
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration("https://my-tenant.logto.app/oidc"));
+        stubWellKnownRequest(
+            "/prm-probe//.well-known/oauth-protected-resource",
+            "https://gateway.example.com/prm-probe//.well-known/oauth-protected-resource"
+        );
+
+        assertThat(serveWellKnownDocument().get("resource").asText()).isEqualTo("https://gateway.example.com/prm-probe/");
     }
 
     @Test
