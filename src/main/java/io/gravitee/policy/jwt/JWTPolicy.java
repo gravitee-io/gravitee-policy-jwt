@@ -33,6 +33,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import io.gravitee.common.http.MediaType;
 import io.gravitee.common.security.jwt.LazyJWT;
+import io.gravitee.definition.model.v4.ApiType;
 import io.gravitee.gateway.api.buffer.Buffer;
 import io.gravitee.gateway.api.http.HttpHeaderNames;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
@@ -100,7 +101,6 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     static final String ERROR_MSG_INSUFFICIENT_SCOPE = "JWT token does not carry the required scopes";
 
     // RFC 9728 Protected Resource Metadata support
-    private static final String API_TYPE_MCP_PROXY = "MCP_PROXY";
     private static final String WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH = "/.well-known/oauth-protected-resource";
     private static final String BEARER_CHALLENGE = "Bearer";
     private static final ObjectMapper METADATA_MAPPER = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
@@ -172,17 +172,20 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
      */
     @Override
     public boolean requireSubscription(BaseExecutionContext context) {
-        boolean mcpProxy = API_TYPE_MCP_PROXY.equals(context.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE));
+        boolean mcpProxy = ApiType.MCP_PROXY.name().equals(context.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE));
         return !(mcpProxy && hasProtectedResourceMetadata());
     }
 
     /**
      * Emits the {@code WWW-Authenticate} challenge, unconditionally: answering with a challenge is what
      * bearer authentication mandates, not an operator preference. When protected resource metadata is
-     * configured, a {@code resource_metadata} hint of the shape
-     * {@code scheme://authority/.well-known/oauth-protected-resource<request-path>} is appended so clients
-     * can discover how to authenticate, per RFC 9728; the hint is dropped when the original request URL is
-     * unavailable or unparseable.
+     * configured, a {@code resource_metadata} hint is appended so clients can discover how to authenticate,
+     * per RFC 9728; the hint is dropped when the original request URL is unavailable or unparseable.
+     * <p>
+     * The hint must point at a URL the gateway actually routes back to this API. Only the MCP proxy reactor
+     * maps the inserted form {@code /.well-known/oauth-protected-resource<request-path>} to its API; every other
+     * reactor serves the document under the API's own context path, so those get the path-based form
+     * {@code <request-path>/.well-known/oauth-protected-resource}. Clients use the advertised URL as is.
      * <p>
      * The security chain calls this from a single place: the {@code GATEWAY_PLAN_UNRESOLVABLE} 401 raised
      * when no plan could execute. The 401s this policy raises itself do not reach it, and deliberately so -
@@ -196,14 +199,23 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
         if (hasProtectedResourceMetadata()) {
             URI uri = originalRequestUri(ctx);
             if (uri != null) {
-                String resourceMetadata =
-                    uri.getScheme() + "://" + uri.getRawAuthority() + WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH + uri.getRawPath();
-                challenge += " resource_metadata=\"" + resourceMetadata + "\"";
+                challenge += " resource_metadata=\"" + resourceMetadataUrl(ctx, uri) + "\"";
             }
         }
 
         ctx.response().headers().set(HttpHeaderNames.WWW_AUTHENTICATE, challenge);
         return Single.just(true);
+    }
+
+    private static String resourceMetadataUrl(BaseExecutionContext ctx, URI uri) {
+        String origin = uri.getScheme() + "://" + uri.getRawAuthority();
+        if (ApiType.MCP_PROXY.name().equals(ctx.getInternalAttribute(InternalContextAttributes.ATTR_INTERNAL_API_TYPE))) {
+            return origin + WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH + uri.getRawPath();
+        }
+        // A trailing slash is kept, "/api//.well-known/...": the document's resource must equal the requested URL.
+        // The host root is the exception: both placements coincide there, and the document still reports "/".
+        String path = "/".equals(uri.getRawPath()) ? "" : uri.getRawPath();
+        return origin + path + WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH;
     }
 
     /**
