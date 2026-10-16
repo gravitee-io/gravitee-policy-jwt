@@ -289,6 +289,13 @@ policy:
 
 ## Changelog
 
+#### [8.1.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.1.1...8.1.2) (2026-10-16)
+
+
+##### Bug Fixes
+
+* **jwt:** advertise a resource metadata url the gateway routes for non mcp proxy apis ([eec51e3](https://github.com/gravitee-io/gravitee-policy-jwt/commit/eec51e3cd6b6836670e22260ed1aa6b91f6b7260))
+
 #### [8.1.1](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.1.0...8.1.1) (2026-10-06)
 
 
