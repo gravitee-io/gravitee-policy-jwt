@@ -16,6 +16,7 @@
 package io.gravitee.policy.jwt.contentretriever.vertx;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static org.mockito.ArgumentMatchers.any;
 
 import com.github.tomakehurst.wiremock.client.BasicCredentials;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
@@ -24,12 +25,17 @@ import io.gravitee.node.api.configuration.Configuration;
 import io.gravitee.policy.jwt.configuration.AuthConfiguration;
 import io.gravitee.policy.jwt.configuration.SecurityType;
 import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.PoolOptions;
 import io.vertx.rxjava3.core.Vertx;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 
 @WireMockTest
 class VertxContentRetrieverTest {
@@ -249,7 +255,7 @@ class VertxContentRetrieverTest {
 
     @Test
     void should_reuse_one_http_client_across_failed_fetches() {
-        io.vertx.core.Vertx coreVertx = org.mockito.Mockito.spy(io.vertx.core.Vertx.vertx());
+        io.vertx.core.Vertx coreVertx = Mockito.spy(io.vertx.core.Vertx.vertx());
         VertxContentRetriever contentRetriever = new VertxContentRetriever(
             Vertx.newInstance(coreVertx),
             configuration,
@@ -261,13 +267,11 @@ class VertxContentRetrieverTest {
             contentRetriever.retrieve("http://127.0.0.1:1/jwks.json").test().awaitDone(10, TimeUnit.SECONDS).assertError(Throwable.class);
         }
 
-        org.mockito.Mockito.verify(coreVertx, org.mockito.Mockito.times(1)).createHttpClient(
-            org.mockito.ArgumentMatchers.any(io.vertx.core.http.HttpClientOptions.class)
-        );
+        Mockito.verify(coreVertx, Mockito.times(1)).createHttpClient(any(HttpClientOptions.class), any(PoolOptions.class));
     }
 
     @Test
-    void should_fetch_again_after_a_non_success_status(WireMockRuntimeInfo wmRuntimeInfo) {
+    void should_fetch_again_after_non_success_statuses(WireMockRuntimeInfo wmRuntimeInfo) {
         stubFor(get(urlPathEqualTo("/ids")).willReturn(serverError()));
         VertxContentRetriever contentRetriever = new VertxContentRetriever(
             Vertx.vertx(),
@@ -276,7 +280,7 @@ class VertxContentRetrieverTest {
             null
         );
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 20; i++) {
             contentRetriever
                 .retrieve(wmRuntimeInfo.getHttpBaseUrl() + "/ids")
                 .test()
@@ -284,6 +288,41 @@ class VertxContentRetrieverTest {
                 .assertError(Throwable.class);
         }
         stubFor(get(urlPathEqualTo("/ids")).willReturn(ok().withBody(SAMPLE_RESPONSE)));
+
+        contentRetriever
+            .retrieve(wmRuntimeInfo.getHttpBaseUrl() + "/ids")
+            .test()
+            .awaitDone(10, TimeUnit.SECONDS)
+            .assertValue(content -> content.content().equals(SAMPLE_RESPONSE));
+    }
+
+    @Test
+    void should_replace_the_shared_client_when_the_verticle_that_created_it_is_undeployed(WireMockRuntimeInfo wmRuntimeInfo)
+        throws Exception {
+        stubFor(get(urlPathEqualTo("/ids")).willReturn(ok().withBody(SAMPLE_RESPONSE)));
+        io.vertx.core.Vertx coreVertx = io.vertx.core.Vertx.vertx();
+        VertxContentRetriever contentRetriever = new VertxContentRetriever(
+            Vertx.newInstance(coreVertx),
+            configuration,
+            RetrieveOptions.builder().build(),
+            null
+        );
+
+        String deploymentId = coreVertx
+            .deployVerticle(
+                new AbstractVerticle() {
+                    @Override
+                    public void start(Promise<Void> startPromise) {
+                        contentRetriever
+                            .retrieve(wmRuntimeInfo.getHttpBaseUrl() + "/ids")
+                            .subscribe(content -> startPromise.complete(), startPromise::fail);
+                    }
+                }
+            )
+            .toCompletionStage()
+            .toCompletableFuture()
+            .get(10, TimeUnit.SECONDS);
+        coreVertx.undeploy(deploymentId).toCompletionStage().toCompletableFuture().get(10, TimeUnit.SECONDS);
 
         contentRetriever
             .retrieve(wmRuntimeInfo.getHttpBaseUrl() + "/ids")
