@@ -17,12 +17,17 @@ package io.gravitee.policy.v3.jwt.jwks.retriever;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.nimbusds.jose.util.Resource;
 import io.gravitee.node.api.configuration.Configuration;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.PoolOptions;
 import java.net.URL;
 import java.util.concurrent.TimeUnit;
 import lombok.SneakyThrows;
@@ -30,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 
 /**
  * @author Jeoffrey HAEYAERT (jeoffrey.haeyaert at graviteesource.com)
@@ -106,7 +112,7 @@ class VertxResourceRetrieverTest {
     @Test
     @SneakyThrows
     void should_reuse_one_http_client_across_failed_fetches() {
-        Vertx vertx = org.mockito.Mockito.spy(Vertx.vertx());
+        Vertx vertx = Mockito.spy(Vertx.vertx());
         VertxResourceRetriever vertxResourceRetriever = new VertxResourceRetriever(
             vertx,
             configuration,
@@ -117,8 +123,58 @@ class VertxResourceRetrieverTest {
             assertThat(vertxResourceRetriever.retrieve(new URL("http://127.0.0.1:1/jwks.json"))).failsWithin(10, TimeUnit.SECONDS);
         }
 
-        org.mockito.Mockito.verify(vertx, org.mockito.Mockito.times(1)).createHttpClient(
-            org.mockito.ArgumentMatchers.any(io.vertx.core.http.HttpClientOptions.class)
+        Mockito.verify(vertx, Mockito.times(1)).createHttpClient(any(HttpClientOptions.class), any(PoolOptions.class));
+    }
+
+    @Test
+    @SneakyThrows
+    void should_fetch_again_after_non_success_statuses(WireMockRuntimeInfo wmRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/.well-known/jwks.json")).willReturn(serverError()));
+        VertxResourceRetriever vertxResourceRetriever = new VertxResourceRetriever(
+            Vertx.vertx(),
+            configuration,
+            RetrieveOptions.builder().build()
         );
+        URL url = new URL(wmRuntimeInfo.getHttpBaseUrl() + "/.well-known/jwks.json");
+
+        for (int i = 0; i < 20; i++) {
+            assertThat(vertxResourceRetriever.retrieve(url)).failsWithin(10, TimeUnit.SECONDS);
+        }
+        stubFor(get(urlPathEqualTo("/.well-known/jwks.json")).willReturn(okJson(JWKS_JSON)));
+
+        assertThat(vertxResourceRetriever.retrieve(url).get(10, TimeUnit.SECONDS).getContent()).isEqualTo(JWKS_JSON);
+    }
+
+    @Test
+    @SneakyThrows
+    void should_replace_the_shared_client_when_the_verticle_that_created_it_is_undeployed(WireMockRuntimeInfo wmRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/.well-known/jwks.json")).willReturn(okJson(JWKS_JSON)));
+        Vertx vertx = Vertx.vertx();
+        VertxResourceRetriever vertxResourceRetriever = new VertxResourceRetriever(vertx, configuration, RetrieveOptions.builder().build());
+        URL url = new URL(wmRuntimeInfo.getHttpBaseUrl() + "/.well-known/jwks.json");
+
+        String deploymentId = vertx
+            .deployVerticle(
+                new AbstractVerticle() {
+                    @Override
+                    public void start(Promise<Void> startPromise) {
+                        vertxResourceRetriever
+                            .retrieve(url)
+                            .whenComplete((resource, error) -> {
+                                if (error != null) {
+                                    startPromise.fail(error);
+                                } else {
+                                    startPromise.complete();
+                                }
+                            });
+                    }
+                }
+            )
+            .toCompletionStage()
+            .toCompletableFuture()
+            .get(10, TimeUnit.SECONDS);
+        vertx.undeploy(deploymentId).toCompletionStage().toCompletableFuture().get(10, TimeUnit.SECONDS);
+
+        assertThat(vertxResourceRetriever.retrieve(url).get(10, TimeUnit.SECONDS).getContent()).isEqualTo(JWKS_JSON);
     }
 }

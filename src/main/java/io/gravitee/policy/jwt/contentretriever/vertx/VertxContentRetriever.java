@@ -73,7 +73,18 @@ public class VertxContentRetriever implements ContentRetriever {
             return Single.error(throwable);
         }
 
-        HttpClient httpClient = buildHttpClient(finalURL);
+        return retrieve(finalURL, true);
+    }
+
+    private Single<Content> retrieve(URL finalURL, boolean retryOnClosedClient) {
+        io.vertx.core.http.HttpClient delegate = SharedHttpClients.get(
+            vertx.getDelegate(),
+            configuration,
+            useSystemProxy,
+            connectTimeout,
+            finalURL
+        );
+        HttpClient httpClient = HttpClient.newInstance(delegate);
         final RequestOptions requestOptions = buildRequestOptions(finalURL);
 
         return httpClient
@@ -96,20 +107,23 @@ public class VertxContentRetriever implements ContentRetriever {
                             return new Content(buffer.toString(), response.getHeader(HttpHeaders.CONTENT_TYPE));
                         });
                 } else {
-                    // Drain the body so the connection goes back to the shared client pool.
+                    // Discard the body (without buffering it) so the connection goes back to the shared pool.
                     return response
-                        .rxBody()
-                        .flatMap(buffer ->
+                        .rxEnd()
+                        .andThen(
                             Single.<Content>error(
                                 new Exception(String.format("Invalid status code %d received from %s", response.statusCode(), finalURL))
                             )
                         );
                 }
+            })
+            .onErrorResumeNext(throwable -> {
+                if (retryOnClosedClient && SharedHttpClients.isClientClosed(throwable)) {
+                    SharedHttpClients.evict(delegate);
+                    return retrieve(finalURL, false);
+                }
+                return Single.error(throwable);
             });
-    }
-
-    private HttpClient buildHttpClient(URL url) {
-        return HttpClient.newInstance(SharedHttpClients.get(vertx.getDelegate(), configuration, useSystemProxy, connectTimeout, url));
     }
 
     private RequestOptions buildRequestOptions(URL finalURL) {
