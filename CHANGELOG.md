@@ -1,3 +1,11 @@
+## [8.1.3](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.1.2...8.1.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **jwks:** recover from a closed shared client and size its pool ([4c7a0ab](https://github.com/gravitee-io/gravitee-policy-jwt/commit/4c7a0ab55c66ee7c92c555f4a6c8a9af5ed9f072))
+* **jwks:** reuse a shared http client instead of one per fetch ([a19e69e](https://github.com/gravitee-io/gravitee-policy-jwt/commit/a19e69eefc93b0a183348e20ebd54f74465dd8e2))
+
 ## [8.1.2](https://github.com/gravitee-io/gravitee-policy-jwt/compare/8.1.1...8.1.2) (2026-10-16)
 
 
