@@ -17,30 +17,25 @@ package io.gravitee.policy.v3.jwt.jwks.retriever;
 
 import com.nimbusds.jose.util.Resource;
 import io.gravitee.node.api.configuration.Configuration;
-import io.gravitee.node.vertx.proxy.VertxProxyOptionsUtils;
+import io.gravitee.policy.jwt.contentretriever.vertx.SharedHttpClients;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.RequestOptions;
 import java.net.URL;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 public class VertxResourceRetriever implements ResourceRetriever {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(VertxResourceRetriever.class);
-    private static final String HTTPS_SCHEME = "https";
 
     private final Vertx vertx;
     private final Configuration configuration;
@@ -61,26 +56,7 @@ public class VertxResourceRetriever implements ResourceRetriever {
 
     @Override
     public CompletableFuture<Resource> retrieve(URL url) {
-        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(connectTimeout);
-
-        if (useSystemProxy) {
-            try {
-                options.setProxyOptions(VertxProxyOptionsUtils.buildProxyOptions(configuration));
-            } catch (Exception e) {
-                LOGGER.warn(
-                    "JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}",
-                    url.toString(),
-                    e.getMessage()
-                );
-                LOGGER.warn("Ignoring system proxy");
-            }
-        }
-
-        if (HTTPS_SCHEME.equalsIgnoreCase(url.getProtocol())) {
-            options.setSsl(true).setTrustAll(true);
-        }
-
-        HttpClient httpClient = vertx.createHttpClient(options);
+        HttpClient httpClient = SharedHttpClients.get(vertx, configuration, useSystemProxy, connectTimeout, url);
 
         Promise<Resource> promise = Promise.promise();
 
@@ -93,32 +69,25 @@ public class VertxResourceRetriever implements ResourceRetriever {
         final Future<HttpClientRequest> futureRequest = httpClient.request(requestOptions);
 
         futureRequest
-            .onFailure(throwable -> handleFailure(httpClient, promise, throwable))
+            .onFailure(promise::fail)
             .onSuccess(httpRequest ->
                 httpRequest
                     .send()
-                    .onFailure(throwable -> handleFailure(httpClient, promise, throwable))
-                    .onSuccess(httpResponse -> handleSuccess(httpClient, promise, httpResponse))
+                    .onFailure(promise::fail)
+                    .onSuccess(httpResponse -> handleResponse(promise, httpResponse))
             );
 
         return promise.future().toCompletionStage().toCompletableFuture();
     }
 
-    private void handleSuccess(HttpClient httpClient, Promise<Resource> promise, HttpClientResponse httpResponse) {
+    private void handleResponse(Promise<Resource> promise, HttpClientResponse httpResponse) {
         if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() <= 299) {
-            httpResponse.bodyHandler(body -> {
-                promise.complete(new Resource(body.toString(), httpResponse.getHeader(io.gravitee.common.http.HttpHeaders.CONTENT_TYPE)));
-                httpClient.close();
-            });
+            httpResponse.bodyHandler(body ->
+                promise.complete(new Resource(body.toString(), httpResponse.getHeader(io.gravitee.common.http.HttpHeaders.CONTENT_TYPE)))
+            );
         } else {
-            httpResponse.end(event -> httpClient.close());
+            httpResponse.end();
             promise.fail("Status code from JWKS URL is not valid: " + httpResponse.statusCode());
         }
-    }
-
-    private void handleFailure(HttpClient httpClient, Promise<Resource> promise, Throwable throwable) {
-        // Finally exit chain
-        httpClient.close();
-        promise.fail(throwable);
     }
 }

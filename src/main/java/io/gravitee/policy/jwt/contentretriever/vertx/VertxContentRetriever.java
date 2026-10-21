@@ -16,7 +16,6 @@
 package io.gravitee.policy.jwt.contentretriever.vertx;
 
 import io.gravitee.node.api.configuration.Configuration;
-import io.gravitee.node.vertx.proxy.VertxProxyOptionsUtils;
 import io.gravitee.policy.jwt.configuration.AuthConfiguration;
 import io.gravitee.policy.jwt.configuration.SecurityType;
 import io.gravitee.policy.jwt.contentretriever.Content;
@@ -27,7 +26,6 @@ import io.gravitee.policy.jwt.contentretriever.vertx.authentication.BearerTokenA
 import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.reactivex.rxjava3.core.Single;
 import io.vertx.core.MultiMap;
-import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.RequestOptions;
@@ -40,7 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class VertxContentRetriever implements ContentRetriever {
 
-    private static final String HTTPS_SCHEME = "https";
     private static final int MAX_RESPONSE_SIZE = 5_242_880; // 5MB
 
     private final Vertx vertx;
@@ -99,35 +96,20 @@ public class VertxContentRetriever implements ContentRetriever {
                             return new Content(buffer.toString(), response.getHeader(HttpHeaders.CONTENT_TYPE));
                         });
                 } else {
-                    return Single.error(
-                        new Exception(String.format("Invalid status code %d received from %s", response.statusCode(), finalURL))
-                    );
+                    // Drain the body so the connection goes back to the shared client pool.
+                    return response
+                        .rxBody()
+                        .flatMap(buffer ->
+                            Single.<Content>error(
+                                new Exception(String.format("Invalid status code %d received from %s", response.statusCode(), finalURL))
+                            )
+                        );
                 }
-            })
-            .doFinally(httpClient::close);
+            });
     }
 
     private HttpClient buildHttpClient(URL url) {
-        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(connectTimeout);
-
-        if (useSystemProxy) {
-            try {
-                options.setProxyOptions(VertxProxyOptionsUtils.buildProxyOptions(configuration));
-            } catch (Exception e) {
-                log.warn(
-                    "JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}",
-                    url.toString(),
-                    e.getMessage()
-                );
-                log.warn("Ignoring system proxy");
-            }
-        }
-
-        if (HTTPS_SCHEME.equalsIgnoreCase(url.getProtocol())) {
-            options.setSsl(true).setTrustAll(true);
-        }
-
-        return vertx.createHttpClient(options);
+        return HttpClient.newInstance(SharedHttpClients.get(vertx.getDelegate(), configuration, useSystemProxy, connectTimeout, url));
     }
 
     private RequestOptions buildRequestOptions(URL finalURL) {
