@@ -24,14 +24,14 @@ import io.vertx.core.http.PoolOptions;
 import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import lombok.CustomLog;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Shares Vert.x HTTP clients between content retrievals. A client is bound to the Vert.x context that was current
  * when it was created, and a closed client stays referenced by that context. Creating (and closing) one client per
  * fetch therefore grows the heap on every fetch; clients are created once per distinct set of options and reused.
  */
-@CustomLog
+@Slf4j
 public final class SharedHttpClients {
 
     private static final String HTTPS_SCHEME = "https";

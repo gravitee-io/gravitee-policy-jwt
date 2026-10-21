@@ -28,13 +28,13 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.RequestOptions;
 import java.net.URL;
 import java.util.concurrent.CompletableFuture;
-import lombok.CustomLog;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-@CustomLog
+@Slf4j
 public class VertxResourceRetriever implements ResourceRetriever {
 
     private final Vertx vertx;
