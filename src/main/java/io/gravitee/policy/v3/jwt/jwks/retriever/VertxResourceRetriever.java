@@ -56,6 +56,10 @@ public class VertxResourceRetriever implements ResourceRetriever {
 
     @Override
     public CompletableFuture<Resource> retrieve(URL url) {
+        return retrieve(url, true);
+    }
+
+    private CompletableFuture<Resource> retrieve(URL url, boolean retryOnClosedClient) {
         HttpClient httpClient = SharedHttpClients.get(vertx, configuration, useSystemProxy, connectTimeout, url);
 
         Promise<Resource> promise = Promise.promise();
@@ -66,18 +70,28 @@ public class VertxResourceRetriever implements ResourceRetriever {
             .setTimeout(requestTimeout)
             .setFollowRedirects(followRedirects);
 
-        final Future<HttpClientRequest> futureRequest = httpClient.request(requestOptions);
+        try {
+            httpClient
+                .request(requestOptions)
+                .compose(HttpClientRequest::send)
+                .onFailure(promise::fail)
+                .onSuccess(httpResponse -> handleResponse(promise, httpResponse));
+        } catch (IllegalStateException e) {
+            // Thrown synchronously when the client has been closed.
+            promise.tryFail(e);
+        }
 
-        futureRequest
-            .onFailure(promise::fail)
-            .onSuccess(httpRequest ->
-                httpRequest
-                    .send()
-                    .onFailure(promise::fail)
-                    .onSuccess(httpResponse -> handleResponse(promise, httpResponse))
-            );
-
-        return promise.future().toCompletionStage().toCompletableFuture();
+        return promise
+            .future()
+            .recover(throwable -> {
+                if (retryOnClosedClient && SharedHttpClients.isClientClosed(throwable)) {
+                    SharedHttpClients.evict(httpClient);
+                    return Future.fromCompletionStage(retrieve(url, false));
+                }
+                return Future.failedFuture(throwable);
+            })
+            .toCompletionStage()
+            .toCompletableFuture();
     }
 
     private void handleResponse(Promise<Resource> promise, HttpClientResponse httpResponse) {

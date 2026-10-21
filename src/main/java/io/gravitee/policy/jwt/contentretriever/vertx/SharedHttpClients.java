@@ -20,6 +20,7 @@ import io.gravitee.node.vertx.proxy.VertxProxyOptionsUtils;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.PoolOptions;
 import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,30 +36,40 @@ public final class SharedHttpClients {
 
     private static final String HTTPS_SCHEME = "https";
 
+    /**
+     * Max HTTP/1 connections per host. The default of 5 is too low once every plan using the same identity provider
+     * shares one client: concurrent key refreshes would wait for a connection and hit the request timeout.
+     */
+    private static final int HTTP1_MAX_POOL_SIZE = 50;
+
+    // Bounded in practice: one Vert.x instance and a handful of distinct option sets.
     private static final Map<Key, HttpClient> CLIENTS = new ConcurrentHashMap<>();
 
     private SharedHttpClients() {}
 
     public static HttpClient get(Vertx vertx, Configuration configuration, boolean useSystemProxy, int connectTimeout, URL url) {
         boolean ssl = HTTPS_SCHEME.equalsIgnoreCase(url.getProtocol());
-        return CLIENTS.computeIfAbsent(new Key(vertx, configuration, useSystemProxy, connectTimeout, ssl), key ->
-            create(vertx, configuration, useSystemProxy, connectTimeout, ssl, url)
-        );
+        return CLIENTS.computeIfAbsent(new Key(vertx, configuration, useSystemProxy, connectTimeout, ssl), key -> create(key, url));
     }
 
-    private static HttpClient create(
-        Vertx vertx,
-        Configuration configuration,
-        boolean useSystemProxy,
-        int connectTimeout,
-        boolean ssl,
-        URL url
-    ) {
-        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(connectTimeout);
+    /**
+     * A client is closed together with the Vert.x context that created it. Drop it from the registry so that the next
+     * call creates a new one instead of handing out a closed client forever.
+     */
+    public static void evict(HttpClient client) {
+        CLIENTS.values().removeIf(cached -> cached == client);
+    }
 
-        if (useSystemProxy) {
+    public static boolean isClientClosed(Throwable throwable) {
+        return throwable instanceof IllegalStateException && String.valueOf(throwable.getMessage()).toLowerCase().contains("closed");
+    }
+
+    private static HttpClient create(Key key, URL url) {
+        HttpClientOptions options = new HttpClientOptions().setConnectTimeout(key.connectTimeout());
+
+        if (key.useSystemProxy()) {
             try {
-                options.setProxyOptions(VertxProxyOptionsUtils.buildProxyOptions(configuration));
+                options.setProxyOptions(VertxProxyOptionsUtils.buildProxyOptions(key.configuration()));
             } catch (Exception e) {
                 log.warn(
                     "JWTPlugin requires a system proxy to be defined to retrieve resource [{}] but some configurations are missing or not well defined: {}",
@@ -69,11 +80,11 @@ public final class SharedHttpClients {
             }
         }
 
-        if (ssl) {
+        if (key.ssl()) {
             options.setSsl(true).setTrustAll(true);
         }
 
-        return vertx.createHttpClient(options);
+        return key.vertx().createHttpClient(options, new PoolOptions().setHttp1MaxSize(HTTP1_MAX_POOL_SIZE));
     }
 
     private record Key(Vertx vertx, Configuration configuration, boolean useSystemProxy, int connectTimeout, boolean ssl) {}
