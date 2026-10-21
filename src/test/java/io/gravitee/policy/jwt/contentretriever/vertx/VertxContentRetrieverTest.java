@@ -246,4 +246,49 @@ class VertxContentRetrieverTest {
 
         verify(getRequestedFor(urlPathEqualTo("/ids")).withHeader("Authorization", equalTo("Bearer " + token)));
     }
+
+    @Test
+    void should_reuse_one_http_client_across_failed_fetches() {
+        io.vertx.core.Vertx coreVertx = org.mockito.Mockito.spy(io.vertx.core.Vertx.vertx());
+        VertxContentRetriever contentRetriever = new VertxContentRetriever(
+            Vertx.newInstance(coreVertx),
+            configuration,
+            RetrieveOptions.builder().connectTimeout(500).requestTimeout(500L).build(),
+            null
+        );
+
+        for (int i = 0; i < 5; i++) {
+            contentRetriever.retrieve("http://127.0.0.1:1/jwks.json").test().awaitDone(10, TimeUnit.SECONDS).assertError(Throwable.class);
+        }
+
+        org.mockito.Mockito.verify(coreVertx, org.mockito.Mockito.times(1)).createHttpClient(
+            org.mockito.ArgumentMatchers.any(io.vertx.core.http.HttpClientOptions.class)
+        );
+    }
+
+    @Test
+    void should_fetch_again_after_a_non_success_status(WireMockRuntimeInfo wmRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/ids")).willReturn(serverError()));
+        VertxContentRetriever contentRetriever = new VertxContentRetriever(
+            Vertx.vertx(),
+            configuration,
+            RetrieveOptions.builder().build(),
+            null
+        );
+
+        for (int i = 0; i < 3; i++) {
+            contentRetriever
+                .retrieve(wmRuntimeInfo.getHttpBaseUrl() + "/ids")
+                .test()
+                .awaitDone(10, TimeUnit.SECONDS)
+                .assertError(Throwable.class);
+        }
+        stubFor(get(urlPathEqualTo("/ids")).willReturn(ok().withBody(SAMPLE_RESPONSE)));
+
+        contentRetriever
+            .retrieve(wmRuntimeInfo.getHttpBaseUrl() + "/ids")
+            .test()
+            .awaitDone(10, TimeUnit.SECONDS)
+            .assertValue(content -> content.content().equals(SAMPLE_RESPONSE));
+    }
 }

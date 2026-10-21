@@ -102,4 +102,23 @@ class VertxResourceRetrieverTest {
         verify(getRequestedFor(urlPathEqualTo("/.well-known/old-jwks.json")));
         verify(getRequestedFor(urlPathEqualTo("/.well-known/jwks.json")));
     }
+
+    @Test
+    @SneakyThrows
+    void should_reuse_one_http_client_across_failed_fetches() {
+        Vertx vertx = org.mockito.Mockito.spy(Vertx.vertx());
+        VertxResourceRetriever vertxResourceRetriever = new VertxResourceRetriever(
+            vertx,
+            configuration,
+            RetrieveOptions.builder().connectTimeout(500).requestTimeout(500L).build()
+        );
+
+        for (int i = 0; i < 5; i++) {
+            assertThat(vertxResourceRetriever.retrieve(new URL("http://127.0.0.1:1/jwks.json"))).failsWithin(10, TimeUnit.SECONDS);
+        }
+
+        org.mockito.Mockito.verify(vertx, org.mockito.Mockito.times(1)).createHttpClient(
+            org.mockito.ArgumentMatchers.any(io.vertx.core.http.HttpClientOptions.class)
+        );
+    }
 }
