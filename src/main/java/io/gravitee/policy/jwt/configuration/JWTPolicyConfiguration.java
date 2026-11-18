@@ -50,6 +50,7 @@ public class JWTPolicyConfiguration implements PolicyConfiguration {
     private boolean checkRequiredScopes = false;
     private List<String> requiredScopes;
     private boolean modeStrict = true;
+    private List<String> audiences;
     private ProtectedResourceMetadataConfiguration protectedResourceMetadata = new ProtectedResourceMetadataConfiguration();
     private ConfirmationMethodValidation confirmationMethodValidation = new ConfirmationMethodValidation();
     private TokenTypValidation tokenTypValidation = new TokenTypValidation();

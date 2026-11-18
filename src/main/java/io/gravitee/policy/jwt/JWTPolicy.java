@@ -92,6 +92,8 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     public static final String JWT_REVOKED = "JWT_REVOKED";
     public static final String JWT_POLICY_ERROR_KEY = "JWT_POLICY_ERROR";
     public static final String JWT_INSUFFICIENT_SCOPE = "JWT_INSUFFICIENT_SCOPE";
+    public static final String JWT_UNTRUSTED_ISSUER = "JWT_UNTRUSTED_ISSUER";
+    public static final String JWT_INVALID_AUDIENCE = "JWT_INVALID_AUDIENCE";
 
     // Error messages for RuntimeExceptions
     static final String ERROR_MSG_JWT_REVOKED = "JWT token has been revoked";
@@ -99,6 +101,8 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     static final String ERROR_MSG_EMPTY_TOKEN = "Empty JWT token";
     static final String ERROR_MSG_INVALID_THUMBPRINT = "Invalid certificate bound thumbprint";
     static final String ERROR_MSG_INSUFFICIENT_SCOPE = "JWT token does not carry the required scopes";
+    static final String ERROR_MSG_UNTRUSTED_ISSUER = "JWT token was not issued by a configured authorization server";
+    static final String ERROR_MSG_INVALID_AUDIENCE = "JWT token was not issued for a configured audience";
 
     // RFC 9728 Protected Resource Metadata support
     private static final String WELL_KNOWN_OAUTH_PROTECTED_RESOURCE_PATH = "/.well-known/oauth-protected-resource";
@@ -409,9 +413,54 @@ public class JWTPolicy extends JWTPolicyV3 implements HttpSecurityPolicy, KafkaS
     private Single<JWTClaimsSet> handleSecurity(final BaseExecutionContext ctx) {
         return fetchJWTToken(ctx).flatMap(jwt ->
             validateToken(ctx, jwt)
+                .flatMap(claims -> validateIssuer(ctx, claims))
+                .flatMap(claims -> validateAudience(ctx, claims))
                 .flatMap(claims -> validateScopes(ctx, claims))
                 .doOnSuccess(claims -> setAuthContextInfos(ctx, jwt, claims))
         );
+    }
+
+    /**
+     * The configured authorization servers are advertised as the issuers that mint valid tokens for this
+     * resource, so a token from any other issuer is refused - even when its signature verifies, since a JWKS
+     * (a multi-tenant one, say) can sign for issuers this API never trusted. This check matters most on an
+     * MCP proxy, where advertising them also lifts the subscription check that used to bind the token to a
+     * known application. Issuers compare exactly, as RFC 8414 §3.3 requires.
+     */
+    private Single<JWTClaimsSet> validateIssuer(BaseExecutionContext ctx, JWTClaimsSet claims) {
+        List<String> issuers = authorizationServers();
+        if (issuers.isEmpty() || issuers.contains(claims.getIssuer())) {
+            return Single.just(claims);
+        }
+        RuntimeException cause = new RuntimeException(ERROR_MSG_UNTRUSTED_ISSUER);
+        reportError(ctx, cause);
+        return interruptUnauthorized(ctx, JWT_UNTRUSTED_ISSUER, cause);
+    }
+
+    /**
+     * Restricts the plan to tokens issued for this resource: when audiences are configured, the token's
+     * {@code aud} must carry at least one of them (RFC 7519 §4.1.3), so a token the same client obtained
+     * for another resource of the same authorization server is refused.
+     */
+    private Single<JWTClaimsSet> validateAudience(BaseExecutionContext ctx, JWTClaimsSet claims) {
+        List<String> audiences = audiences();
+        if (audiences.isEmpty() || claims.getAudience().stream().anyMatch(audiences::contains)) {
+            return Single.just(claims);
+        }
+        RuntimeException cause = new RuntimeException(ERROR_MSG_INVALID_AUDIENCE);
+        reportError(ctx, cause);
+        return interruptUnauthorized(ctx, JWT_INVALID_AUDIENCE, cause);
+    }
+
+    private List<String> audiences() {
+        if (configuration.getAudiences() == null) {
+            return List.of();
+        }
+        return configuration
+            .getAudiences()
+            .stream()
+            .filter(audience -> audience != null && !audience.isBlank())
+            .toList();
     }
 
     private Single<JWTClaimsSet> validateScopes(BaseExecutionContext ctx, JWTClaimsSet claims) {

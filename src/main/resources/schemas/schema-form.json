@@ -162,6 +162,16 @@
             "type": "boolean",
             "default": true
         },
+        "audiences": {
+            "type": "array",
+            "title": "Audiences",
+            "description": "Accept only tokens issued for one of these audiences: the token's 'aud' claim must contain at least one of them. Leave empty to accept any audience. Set it whenever protected resource metadata is advertised, typically to the resource URL, so a token issued for another resource of the same authorization server is refused.",
+            "items": {
+                "type": "string",
+                "title": "Audience",
+                "minLength": 1
+            }
+        },
         "protectedResourceMetadata": {
             "type": "object",
             "title": "Protected resource metadata",
@@ -169,7 +179,7 @@
             "properties": {
                 "authorizationServers": {
                     "title": "Authorization servers",
-                    "description": "Issuer URLs of the authorization servers that sign the JWTs. Take each value from the 'issuer' field of the authorization server's own discovery document, so it cannot drift from the JWKS URL configured above. Leave empty to serve no metadata document.",
+                    "description": "Issuer URLs of the authorization servers that sign the JWTs. Take each value from the 'issuer' field of the authorization server's own discovery document, so it cannot drift from the JWKS URL configured above. Tokens whose 'iss' claim is not one of these values are rejected. Leave empty to serve no metadata document and accept any issuer.",
                     "type": "array",
                     "items": {
                         "type": "string"

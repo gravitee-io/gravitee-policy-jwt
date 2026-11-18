@@ -9,3 +9,7 @@ rows:
           key: "JWT_REVOKED"
     - data:
           key: "JWT_INSUFFICIENT_SCOPE"
+    - data:
+          key: "JWT_UNTRUSTED_ISSUER"
+    - data:
+          key: "JWT_INVALID_AUDIENCE"
