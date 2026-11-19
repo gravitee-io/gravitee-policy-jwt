@@ -109,6 +109,8 @@ The error keys sent by this policy are as follows:
 | JWT_INVALID_CERTIFICATE_BOUND_THUMBPRINT |
 | JWT_REVOKED |
 | JWT_INSUFFICIENT_SCOPE |
+| JWT_UNTRUSTED_ISSUER |
+| JWT_INVALID_AUDIENCE |
 
 
 
@@ -180,6 +182,7 @@ policy:
 #### 
 | Name <br>`json name`  | Type <br>`constraint`  | Mandatory  | Default  | Description  |
 |:----------------------|:-----------------------|:----------:|:---------|:-------------|
+| Audiences<br>`audiences`| array (string)|  | | Accept only tokens issued for one of these audiences: the token's 'aud' claim must contain at least one of them. Leave empty to accept any audience. Set it whenever protected resource metadata is advertised, typically to the resource URL, so a token issued for another resource of the same authorization server is refused.|
 | Check scopes<br>`checkRequiredScopes`| boolean|  | | Check required scopes to access the resource|
 | Client ID claim<br>`clientIdClaim`| string|  | | Claim where the client ID can be extracted. Supports dot-notation for nested claims (e.g. 'act.repository'). A flat claim whose name literally contains a dot takes precedence. Configuring this field will override the standard behavior.|
 | Confirmation Method Validation<br>`confirmationMethodValidation`| object|  | | <br/>See "Confirmation Method Validation" section.|
@@ -218,7 +221,7 @@ policy:
 #### Protected resource metadata (Object)
 | Name <br>`json name`  | Type <br>`constraint`  | Mandatory  | Description  |
 |:----------------------|:-----------------------|:----------:|:-------------|
-| Authorization servers<br>`authorizationServers`| array (string)|  | Issuer URLs of the authorization servers that sign the JWTs. Take each value from the 'issuer' field of the authorization server's own discovery document, so it cannot drift from the JWKS URL configured above. Leave empty to serve no metadata document.|
+| Authorization servers<br>`authorizationServers`| array (string)|  | Issuer URLs of the authorization servers that sign the JWTs. Take each value from the 'issuer' field of the authorization server's own discovery document, so it cannot drift from the JWKS URL configured above. Tokens whose 'iss' claim is not one of these values are rejected. Leave empty to serve no metadata document and accept any issuer.|
 
 
 #### Revocation Check (Object)

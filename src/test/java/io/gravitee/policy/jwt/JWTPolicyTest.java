@@ -24,9 +24,11 @@ import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_JWT_CLAIMS;
 import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_OAUTH_CLIENT_ID;
 import static io.gravitee.policy.jwt.JWTPolicy.CONTEXT_ATTRIBUTE_TOKEN;
 import static io.gravitee.policy.jwt.JWTPolicy.JWT_INSUFFICIENT_SCOPE;
+import static io.gravitee.policy.jwt.JWTPolicy.JWT_INVALID_AUDIENCE;
 import static io.gravitee.policy.jwt.JWTPolicy.JWT_INVALID_TOKEN_KEY;
 import static io.gravitee.policy.jwt.JWTPolicy.JWT_MISSING_TOKEN_KEY;
 import static io.gravitee.policy.jwt.JWTPolicy.JWT_REVOKED;
+import static io.gravitee.policy.jwt.JWTPolicy.JWT_UNTRUSTED_ISSUER;
 import static io.gravitee.policy.jwt.JWTPolicy.UNAUTHORIZED_MESSAGE;
 import static io.gravitee.reporter.api.http.SecurityType.JWT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -922,6 +924,148 @@ class JWTPolicyTest {
         when(ctx.metrics()).thenReturn(mock(Metrics.class));
 
         cut.onRequest(ctx).test().assertComplete();
+    }
+
+    @Test
+    void should_interrupt_with_401_when_token_issuer_is_not_a_configured_authorization_server() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet("https://evil.example/", null);
+
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration(ISSUER));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        cut.onRequest(ctx).test().assertError(Throwable.class);
+
+        verifyInterruptedWithKey(JWT_UNTRUSTED_ISSUER);
+    }
+
+    @Test
+    void should_interrupt_with_401_when_token_carries_no_issuer_and_authorization_servers_are_configured() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet(null, null);
+
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration(ISSUER));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        cut.onRequest(ctx).test().assertError(Throwable.class);
+
+        verifyInterruptedWithKey(JWT_UNTRUSTED_ISSUER);
+    }
+
+    @Test
+    void should_accept_token_issued_by_one_of_the_configured_authorization_servers() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet(ISSUER, null);
+
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration("https://other.example/", ISSUER));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+
+        cut.onRequest(ctx).test().assertComplete();
+    }
+
+    @Test
+    void should_compare_issuer_exactly() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet(ISSUER + "/", null);
+
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration(ISSUER));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        cut.onRequest(ctx).test().assertError(Throwable.class);
+
+        verifyInterruptedWithKey(JWT_UNTRUSTED_ISSUER);
+    }
+
+    @Test
+    void should_accept_any_issuer_when_no_authorization_server_is_configured() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet("https://anywhere.example/", null);
+
+        when(configuration.getProtectedResourceMetadata()).thenReturn(metadataConfiguration("  "));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+
+        cut.onRequest(ctx).test().assertComplete();
+    }
+
+    @Test
+    void should_interrupt_with_401_when_token_audience_is_not_configured() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet(ISSUER, List.of("api://another-app"));
+
+        when(configuration.getAudiences()).thenReturn(List.of("api://mcp-server"));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        cut.onRequest(ctx).test().assertError(Throwable.class);
+
+        verifyInterruptedWithKey(JWT_INVALID_AUDIENCE);
+    }
+
+    @Test
+    void should_interrupt_with_401_when_token_carries_no_audience_and_audiences_are_configured() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet(ISSUER, null);
+
+        when(configuration.getAudiences()).thenReturn(List.of("api://mcp-server"));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+        when(ctx.interruptWith(any())).thenReturn(Completable.error(new RuntimeException(MOCK_EXCEPTION)));
+
+        cut.onRequest(ctx).test().assertError(Throwable.class);
+
+        verifyInterruptedWithKey(JWT_INVALID_AUDIENCE);
+    }
+
+    @Test
+    void should_accept_token_whose_audiences_contain_a_configured_one() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet(ISSUER, List.of("api://another-app", "api://mcp-server"));
+
+        when(configuration.getAudiences()).thenReturn(List.of("api://mcp-server"));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+
+        cut.onRequest(ctx).test().assertComplete();
+    }
+
+    @Test
+    void should_accept_any_audience_when_only_blank_audiences_are_configured() throws Exception {
+        final JWTClaimsSet claimsSet = claimsSet(ISSUER, List.of("api://another-app"));
+
+        when(configuration.getAudiences()).thenReturn(Arrays.asList(" ", null));
+
+        stubTokenProcessing(claimsSet);
+        when(ctx.metrics()).thenReturn(mock(Metrics.class));
+
+        cut.onRequest(ctx).test().assertComplete();
+    }
+
+    private JWTClaimsSet claimsSet(String issuer, List<String> audiences) {
+        return new JWTClaimsSet.Builder()
+            .issuer(issuer)
+            .audience(audiences)
+            .subject(STANDARD_SUBJECT)
+            .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+            .build();
+    }
+
+    private void verifyInterruptedWithKey(String key) {
+        verify(ctx).interruptWith(
+            argThat(failure -> {
+                assertEquals(HttpStatusCode.UNAUTHORIZED_401, failure.statusCode());
+                assertEquals(key, failure.key());
+                return true;
+            })
+        );
     }
 
     private JWTClaimsSet scopedClaimsSet(String claimName, Object scopes) {
