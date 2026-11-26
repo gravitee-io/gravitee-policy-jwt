@@ -16,13 +16,16 @@
 package io.gravitee.policy.jwt;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static io.gravitee.policy.jwt.alg.Signature.RSA_RS256;
 import static io.gravitee.policy.v3.jwt.resolver.KeyResolver.JWKS_URL;
 import static io.vertx.core.http.HttpMethod.GET;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -47,6 +50,7 @@ import io.gravitee.gateway.reactive.api.policy.SecurityToken;
 import io.gravitee.policy.jwt.configuration.JWTPolicyConfiguration;
 import io.vertx.rxjava3.core.http.HttpClient;
 import io.vertx.rxjava3.core.http.HttpClientRequest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
@@ -87,7 +91,7 @@ class JwtPolicyV4EmulationEngineJwksUrlIntegrationTest extends AbstractPolicyTes
     }
 
     @Test
-    void should_not_authorize_while_the_jwks_url_fails_then_accept_once_it_recovers(HttpClient httpClient) throws Exception {
+    void should_fail_fast_while_the_jwks_url_fails_then_accept_once_it_recovers(HttpClient httpClient) throws Exception {
         wiremock.stubFor(get("/team").willReturn(ok("response from backend")));
         whenSearchingSubscription().thenReturn(Optional.of(subscription()));
         String jwtToken = jsonWebToken();
@@ -96,9 +100,14 @@ class JwtPolicyV4EmulationEngineJwksUrlIntegrationTest extends AbstractPolicyTes
         for (int i = 0; i < 3; i++) {
             assertThat(statusOf(httpClient, jwtToken)).isGreaterThanOrEqualTo(400);
         }
+        // Only the first attempt contacts the failing url, the next ones fail fast.
+        wiremock.verify(1, getRequestedFor(urlPathEqualTo("/jwks.json")));
 
         wiremock.stubFor(get("/jwks.json").willReturn(okJson(new JWKSet(RSA_KEY.toPublicJWK()).toString())));
-        assertThat(statusOf(httpClient, jwtToken)).isEqualTo(200);
+        await()
+            .atMost(Duration.ofSeconds(30))
+            .pollInterval(Duration.ofMillis(500))
+            .untilAsserted(() -> assertThat(statusOf(httpClient, jwtToken)).isEqualTo(200));
     }
 
     private int statusOf(HttpClient httpClient, String jwtToken) {
