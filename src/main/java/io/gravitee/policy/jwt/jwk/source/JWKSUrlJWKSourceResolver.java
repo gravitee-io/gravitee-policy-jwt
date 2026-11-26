@@ -28,11 +28,14 @@ import com.nimbusds.jose.util.Resource;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
 import io.gravitee.policy.jwt.contentretriever.Content;
 import io.gravitee.policy.jwt.contentretriever.ContentRetriever;
+import io.gravitee.policy.v3.jwt.jwks.retriever.RetrieveOptions;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
 import java.text.ParseException;
 import java.time.Duration;
 import java.util.Collections;
@@ -58,6 +61,7 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
     public static final String JWKS_RESOLUTION_ERROR_KEY = "JWT_JWKS_RESOLUTION_ERROR";
 
     private final String jwksUrl;
+    private final RetrievalKey retrievalKey;
     private final Duration refreshInterval;
     private final AtomicBoolean refreshing;
     private final ContentRetriever contentRetriever;
@@ -67,8 +71,63 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
      */
     static final ConcurrentHashMap<String, CachedJWKSource<SecurityContext>> cache = new ConcurrentHashMap<>();
 
+    /**
+     * How long a failed retrieval is remembered, so that repeated attempts fail fast instead of each waiting
+     * for the connect / request timeout against an unreachable JWKS url.
+     */
+    static final Duration FAILURE_TTL = Duration.ofSeconds(10);
+
+    /**
+     * Upper bound of {@link #failures}. Once reached, further failures are not remembered until older ones expire.
+     */
+    static final int MAX_REMEMBERED_FAILURES = 1000;
+
+    /**
+     * Recent retrieval failures by jwks url and retrieval options, only relevant while no JWKS is cached for that url.
+     */
+    static final ConcurrentHashMap<RetrievalKey, FailedResolution> failures = new ConcurrentHashMap<>();
+
+    /**
+     * Retrievals in progress by jwks url and retrieval options, so that concurrent attempts share a single retrieval.
+     */
+    static final ConcurrentHashMap<RetrievalKey, Completable> loadings = new ConcurrentHashMap<>();
+
+    /**
+     * Identifies a retrieval: the same url fetched with other options (timeouts, proxy, redirects) may not fail the same way.
+     */
+    record RetrievalKey(String url, Integer connectTimeout, Long requestTimeout, Boolean useSystemProxy, Boolean followRedirects) {
+        static RetrievalKey of(String url, RetrieveOptions options) {
+            if (options == null) {
+                return new RetrievalKey(url, null, null, null, null);
+            }
+            return new RetrievalKey(
+                url,
+                options.getConnectTimeout(),
+                options.getRequestTimeout(),
+                options.isUseSystemProxy(),
+                options.isFollowRedirects()
+            );
+        }
+    }
+
+    record FailedResolution(long atNanos, ResolutionException error) {
+        boolean isActive() {
+            return System.nanoTime() - atNanos < FAILURE_TTL.toNanos();
+        }
+    }
+
     public JWKSUrlJWKSourceResolver(String jwksUrl, ContentRetriever contentRetriever, Duration refreshInterval) {
+        this(jwksUrl, null, contentRetriever, refreshInterval);
+    }
+
+    public JWKSUrlJWKSourceResolver(
+        String jwksUrl,
+        RetrieveOptions retrieveOptions,
+        ContentRetriever contentRetriever,
+        Duration refreshInterval
+    ) {
         this.jwksUrl = jwksUrl;
+        this.retrievalKey = RetrievalKey.of(jwksUrl, retrieveOptions);
         this.refreshInterval = refreshInterval;
         this.refreshing = new AtomicBoolean(false);
         this.contentRetriever = contentRetriever;
@@ -92,6 +151,14 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
     public Completable initialize() {
         CachedJWKSource<SecurityContext> cachedJWKSource = cache.get(jwksUrl);
         if (cachedJWKSource == null) {
+            final FailedResolution failure = failures.get(retrievalKey);
+            if (failure != null) {
+                if (failure.isActive()) {
+                    log.debug("JWKS from url {} failed to load recently, failing fast", jwksUrl);
+                    return Completable.error(failure.error());
+                }
+                failures.remove(retrievalKey, failure);
+            }
             return load();
         }
 
@@ -99,34 +166,78 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
     }
 
     private Completable load() {
-        if (refreshing.compareAndSet(false, true)) {
-            return contentRetriever
-                .retrieve(jwksUrl)
-                .onErrorResumeNext(throwable ->
-                    Single.error(new ResolutionException("Failed to retrieve JWKS from url " + jwksUrl, throwable))
-                )
-                .flatMapMaybe(this::readJwkSourceFromResource)
-                .map(CachedJWKSource::new)
-                .doOnSuccess(jwkSource -> cache.put(jwksUrl, jwkSource))
-                .doFinally(() -> refreshing.set(false))
-                .ignoreElement();
+        return Completable.defer(() -> onCallerEventLoop(loadings.computeIfAbsent(retrievalKey, key -> retrieve())));
+    }
+
+    /**
+     * A shared retrieval completes on the event loop of the request that started it: resume the other requests on their own.
+     */
+    private static Completable onCallerEventLoop(Completable retrieval) {
+        final Context caller = Vertx.currentContext();
+        if (caller == null || !caller.isEventLoopContext()) {
+            return retrieval;
+        }
+        return retrieval.observeOn(Schedulers.from(command -> caller.runOnContext(ignored -> command.run())));
+    }
+
+    private Completable retrieve() {
+        return contentRetriever
+            .retrieve(jwksUrl)
+            .onErrorResumeNext(throwable -> Single.error(new ResolutionException("Failed to retrieve JWKS from url " + jwksUrl, throwable)))
+            .flatMapMaybe(this::readJwkSourceFromResource)
+            .map(CachedJWKSource::new)
+            .doOnSuccess(jwkSource -> cache.put(jwksUrl, jwkSource))
+            .doOnError(this::onLoadError)
+            .ignoreElement()
+            .doFinally(() -> loadings.remove(retrievalKey))
+            .cache();
+    }
+
+    private void onLoadError(Throwable throwable) {
+        if (cache.containsKey(jwksUrl)) {
+            if (log.isWarnEnabled()) {
+                log.warn("Unable to refresh the JWKS from url {}, previous JWKS kept untouched: {}", jwksUrl, describe(throwable));
+            }
+            return;
         }
 
-        return Completable.complete();
+        if (log.isWarnEnabled()) {
+            log.warn("Unable to load the JWKS from url {}: {}", jwksUrl, describe(throwable));
+        }
+        if (throwable instanceof ResolutionException resolutionException) {
+            rememberFailure(resolutionException);
+        }
+    }
+
+    private static String describe(Throwable throwable) {
+        return throwable.getCause() == null ? throwable.getMessage() : withMostSpecificCause(throwable.getMessage(), throwable.getCause());
+    }
+
+    private static String withMostSpecificCause(String message, Throwable cause) {
+        final Throwable mostSpecific = NestedExceptionUtils.getMostSpecificCause(cause);
+        final String mostSpecificMessage = Optional.ofNullable(mostSpecific.getMessage()).map(String::trim).orElse("");
+        return mostSpecificMessage.isEmpty() ? message : message + " - " + mostSpecificMessage;
+    }
+
+    private void rememberFailure(ResolutionException error) {
+        if (failures.size() >= MAX_REMEMBERED_FAILURES) {
+            failures.values().removeIf(failure -> !failure.isActive());
+        }
+        if (failures.size() < MAX_REMEMBERED_FAILURES) {
+            failures.put(retrievalKey, new FailedResolution(System.nanoTime(), error.withoutCause()));
+        }
     }
 
     private void backgroundRefresh() {
-        load()
-            .subscribeOn(Schedulers.io())
-            .subscribe(
-                () -> log.debug("JWKS from url {} has been refreshed", jwksUrl),
-                throwable ->
-                    log.error(
-                        "An error occurred when trying to background refresh the JWK from url {}. Previous JWKS kept untouched.",
-                        jwksUrl,
-                        throwable
-                    )
-            );
+        if (refreshing.compareAndSet(false, true)) {
+            load()
+                .doFinally(() -> refreshing.set(false))
+                .subscribeOn(Schedulers.io())
+                .subscribe(
+                    () -> log.debug("JWKS from url {} has been refreshed", jwksUrl),
+                    throwable -> log.debug("Background refresh of the JWKS from url {} failed", jwksUrl, throwable)
+                );
+        }
     }
 
     private Maybe<JWKSource<SecurityContext>> readJwkSourceFromResource(Content content) {
@@ -141,21 +252,33 @@ public class JWKSUrlJWKSourceResolver<C extends SecurityContext> implements JWKS
 
     public static final class ResolutionException extends RuntimeException {
 
-        private final ExecutionFailure failure;
+        private final String failureMessage;
 
         public ResolutionException(String message, Throwable cause) {
             super(message, cause);
-            Throwable mostSpecific = NestedExceptionUtils.getMostSpecificCause(cause);
-            String mostSpecificMessage = Optional.ofNullable(mostSpecific.getMessage()).map(String::trim).orElse("");
-            String combinedMessage = mostSpecificMessage.isEmpty() ? message : message + " - " + mostSpecificMessage;
-            this.failure = new ExecutionFailure(INTERNAL_SERVER_ERROR_500)
-                .key(JWKS_RESOLUTION_ERROR_KEY)
-                .message(HttpResponseStatus.INTERNAL_SERVER_ERROR.reasonPhrase())
-                .cause(new RuntimeException(combinedMessage));
+            this.failureMessage = withMostSpecificCause(message, cause);
         }
 
+        private ResolutionException(String message, String failureMessage) {
+            super(message, null, false, false);
+            this.failureMessage = failureMessage;
+        }
+
+        /**
+         * Same message and execution failure, without the cause chain and stack trace, so it is cheap to keep and to share.
+         */
+        ResolutionException withoutCause() {
+            return new ResolutionException(getMessage(), failureMessage);
+        }
+
+        /**
+         * A new execution failure on each call, since the same exception can be handed to several requests.
+         */
         public ExecutionFailure failure() {
-            return failure;
+            return new ExecutionFailure(INTERNAL_SERVER_ERROR_500)
+                .key(JWKS_RESOLUTION_ERROR_KEY)
+                .message(HttpResponseStatus.INTERNAL_SERVER_ERROR.reasonPhrase())
+                .cause(new RuntimeException(failureMessage));
         }
     }
 }
