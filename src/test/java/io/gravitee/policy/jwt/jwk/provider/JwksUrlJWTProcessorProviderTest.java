@@ -19,6 +19,9 @@ import static io.gravitee.common.http.HttpStatusCode.INTERNAL_SERVER_ERROR_500;
 import static io.gravitee.policy.jwt.jwk.provider.DefaultJWTProcessorProvider.ATTR_INTERNAL_RESOLVED_PARAMETER;
 import static io.gravitee.policy.jwt.jwk.source.JWKSUrlJWKSourceResolver.JWKS_RESOLUTION_ERROR_KEY;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.nimbusds.jose.jwk.JWK;
@@ -46,9 +49,12 @@ import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -219,6 +225,56 @@ class JwksUrlJWTProcessorProviderTest extends AbstractJWKTest {
 
             return true;
         });
+    }
+
+    static Stream<Arguments> configurationsThatDifferByOneRetrievalOption() {
+        return Stream.of(
+            Arguments.of(
+                (Consumer<JWTPolicyConfiguration>) c -> when(c.getConnectTimeout()).thenReturn(500),
+                (Consumer<JWTPolicyConfiguration>) c -> when(c.getConnectTimeout()).thenReturn(5000)
+            ),
+            Arguments.of(
+                (Consumer<JWTPolicyConfiguration>) c -> when(c.getRequestTimeout()).thenReturn(500L),
+                (Consumer<JWTPolicyConfiguration>) c -> when(c.getRequestTimeout()).thenReturn(5000L)
+            ),
+            Arguments.of(
+                (Consumer<JWTPolicyConfiguration>) c -> {},
+                (Consumer<JWTPolicyConfiguration>) c -> when(c.isUseSystemProxy()).thenReturn(true)
+            ),
+            Arguments.of(
+                (Consumer<JWTPolicyConfiguration>) c -> {},
+                (Consumer<JWTPolicyConfiguration>) c -> when(c.getFollowRedirects()).thenReturn(true)
+            )
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("configurationsThatDifferByOneRetrievalOption")
+    void shouldNotShareFailedRetrievalBetweenConfigurationsWithOtherRetrievalOptions(
+        Consumer<JWTPolicyConfiguration> oneOption,
+        Consumer<JWTPolicyConfiguration> otherOption
+    ) {
+        final String jwksUrl = JWKS_URL.replace("{type}", UUID.randomUUID().toString());
+        final JWTPolicyConfiguration otherConfiguration = mock(JWTPolicyConfiguration.class);
+        when(contentRetriever.retrieve(jwksUrl)).thenReturn(Single.error(new RuntimeException(MOCK_EXCEPTION)));
+        when(ctx.getInternalAttribute(ATTR_INTERNAL_RESOLVED_PARAMETER)).thenReturn(jwksUrl);
+        when(configuration.getSignature()).thenReturn(Signature.RSA_RS256);
+        oneOption.accept(configuration);
+        when(otherConfiguration.getSignature()).thenReturn(Signature.RSA_RS256);
+        otherOption.accept(otherConfiguration);
+
+        providerFor(configuration).provide(ctx).test().assertError(JWKSUrlJWKSourceResolver.ResolutionException.class);
+        providerFor(otherConfiguration).provide(ctx).test().assertError(JWKSUrlJWKSourceResolver.ResolutionException.class);
+        verify(contentRetriever, times(2)).retrieve(jwksUrl);
+
+        providerFor(configuration).provide(ctx).test().assertError(JWKSUrlJWKSourceResolver.ResolutionException.class);
+        verify(contentRetriever, times(2)).retrieve(jwksUrl);
+    }
+
+    private JwksUrlJWTProcessorProvider providerFor(JWTPolicyConfiguration configuration) {
+        final JwksUrlJWTProcessorProvider provider = new JwksUrlJWTProcessorProvider(configuration);
+        ReflectionTestUtils.setField(provider, "contentRetriever", contentRetriever);
+        return provider;
     }
 
     private JWKSet generateJWKSConfiguration(Integer keySize, Signature signature, int nbIssuers, int nbSecretsPerIssuer) {
