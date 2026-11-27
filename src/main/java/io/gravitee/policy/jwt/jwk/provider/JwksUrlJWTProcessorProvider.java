@@ -46,10 +46,17 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
     private static final Duration JWKS_REFRESH_INTERVAL = Duration.ofMinutes(5);
 
     private final JWTPolicyConfiguration configuration;
+    private final RetrieveOptions retrieveOptions;
     private ContentRetriever contentRetriever;
 
     public JwksUrlJWTProcessorProvider(final JWTPolicyConfiguration configuration) {
         this.configuration = configuration;
+        this.retrieveOptions = RetrieveOptions.builder()
+            .connectTimeout(configuration.getConnectTimeout())
+            .requestTimeout(configuration.getRequestTimeout())
+            .useSystemProxy(configuration.isUseSystemProxy())
+            .followRedirects(Boolean.TRUE.equals(configuration.getFollowRedirects()))
+            .build();
     }
 
     /**
@@ -68,6 +75,7 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
         // Create a source resolver to resolve the Json Web Keystore from an url.
         final JWKSUrlJWKSourceResolver<SecurityContext> sourceResolver = new JWKSUrlJWKSourceResolver<>(
             url,
+            retrieveOptions,
             getResourceRetriever(ctx),
             JWKS_REFRESH_INTERVAL
         );
@@ -93,12 +101,7 @@ class JwksUrlJWTProcessorProvider implements JWTProcessorProvider {
             contentRetriever = new VertxContentRetriever(
                 ctx.getComponent(Vertx.class),
                 ctx.getComponent(Configuration.class),
-                RetrieveOptions.builder()
-                    .connectTimeout(configuration.getConnectTimeout())
-                    .requestTimeout(configuration.getRequestTimeout())
-                    .useSystemProxy(configuration.isUseSystemProxy())
-                    .followRedirects(configuration.getFollowRedirects())
-                    .build(),
+                retrieveOptions,
                 null
             );
         }
